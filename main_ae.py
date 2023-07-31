@@ -161,10 +161,10 @@ def main():
 
     # Training loop
     for epoch in range(EPOCHS):
-        for batch in train_dataloader:
 
-            # start timer
-            starttime = time.time()
+        starttime = time.time() # start timer
+
+        for batch in train_dataloader:
 
             # assuming that the data loader returns images and labels, but we don't need labels here
             images, _ = batch
@@ -181,12 +181,10 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            endtime = time.time()
-            batchtime = endtime - starttime
-
-            print(f"Time taken for batch: {batchtime} seconds")
-
-        print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch + 1, EPOCHS, loss.item()))
+        endtime = time.time()
+        epochtime = endtime - starttime
+        print("Epoch [{}/{}], Loss: {:.4f}".format(epoch + 1, EPOCHS, loss.item()))
+        print(f"Epoch took {epochtime} seconds")
 
     # Evaluate the model
     avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='./ae_results')
