@@ -2,7 +2,7 @@
 import os
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, random_split
 import numpy as np
 import random
 
@@ -62,21 +62,29 @@ class ResNetAutoencoder(nn.Module):
         super(ResNetAutoencoder, self).__init__()
 
         self.encoder = nn.Sequential(
-            ResidualBlock(1, 64),
-            ResidualBlock(64, 128, 2),
-            ResidualBlock(128, 256, 2),
+            ResidualBlock(1, 16), # N, 16, 160, 160
+            ResidualBlock(16, 32, 2), # N, 32, 80, 80
+            ResidualBlock(32, 64, 2), # N, 64, 40, 40
+            ResidualBlock(64, 128, 2), # N, 128, 20, 20
+            ResidualBlock(128, 256, 2), # N, 256, 10, 10
+            nn.Flatten(),
+            nn.Linear(256*10*10, 256)
         )
 
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
+            nn.Linear(256, 256*10*10),
+            nn.Unflatten(1, (256,10,10)),
+            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 128, 20, 20
             nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 64, 40, 40
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 1, kernel_size=2, stride=2),
-            nn.Sigmoid(),  # to ensure the output is in [0, 1] as image pixel intensities
+            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 32, 80, 80
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 16, 160, 160
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding = 1), # N, 1, 160, 160
+            nn.Sigmoid()  # to ensure the output is in [0, 1] as image pixel intensities--should this be between 0 and 255?
         )
-
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))  # add this line
 
     def forward(self, x):
         x = self.encoder(x)
@@ -85,8 +93,7 @@ class ResNetAutoencoder(nn.Module):
 
     def get_embedding(self, x):
         x = self.encoder(x)
-        x = self.avgpool(x)
-        return x.view(x.size(0), -1)  # reshaping to (batch_size, 256)
+        return x  # reshaping to (batch_size, 256)
 
 def evaluate_model(model, dataloader, device):
     model.eval()
@@ -121,8 +128,8 @@ def main():
     val_proportion = 0.15
     # test proportion is 1 - train_proportion - val_proportion
     train_files = all_files[:int(num_files*train_proportion)]
-    val_files = all_files[int(num_files * train_proportion):int(num_files * train_proportion+val_proportion)]
-    test_files = all_files[int(num_files * train_proportion+val_proportion):]
+    val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion+val_proportion))]
+    test_files = all_files[int(num_files * (train_proportion+val_proportion)):]
 
     train_dataset = RPMPanels(train_files)
     val_dataset = RPMPanels(val_files)
@@ -144,7 +151,7 @@ def main():
             images, _ = batch
 
             # move images to the device, reshape them and ensure channel dimension is present
-            images = images.to(device).view(-1, 1, 160, 160)
+            images = images.to(device)
 
             # forward pass
             outputs = autoencoder(images)
