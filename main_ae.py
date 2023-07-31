@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, random_split
 import numpy as np
 import random
+import time
 
 def gather_files(root_dir):
     all_files = []
