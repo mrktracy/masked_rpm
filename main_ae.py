@@ -129,7 +129,7 @@ def evaluate_model(model, dataloader, device, save_path):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 1
+    EPOCHS = 10
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
 
@@ -182,13 +182,15 @@ def main():
             optimizer.zero_grad()
 
         endtime = time.time()
-        epochtime = endtime - starttime
+        epochtime = (endtime - starttime)/60
         print("Epoch [{}/{}], Loss: {:.4f}".format(epoch + 1, EPOCHS, loss.item()))
-        print(f"Epoch took {epochtime} seconds")
+        print(f"Epoch took {epochtime} minutes")
 
     # Evaluate the model
     avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='./ae_results')
     print(f"Average validation loss: {avg_val_loss}")
+
+    torch.save(autoencoder.state_dict(), "../modelsaves/autoencoder_v0.pth")
 
 if __name__ == "__main__":
     main()
