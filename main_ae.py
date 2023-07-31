@@ -115,13 +115,14 @@ def evaluate_model(model, dataloader, device, save_path):
             total_loss += loss.item()
             idx = 0
             for image,output in zip(images,outputs):
-                if idx >= 10:
+                if idx >= 1: # only save first image from each mini-batch
                     break
                 image = image.cpu().numpy()
                 output = output.cpu().numpy()
                 filename = f"eval_{imgnum}"
                 np.savez(os.path.join(save_path,filename), image=image, output=output)
                 imgnum += 1
+                idx += 1
 
     return total_loss/len(dataloader.dataset)
 
@@ -160,6 +161,10 @@ def main():
     # Training loop
     for epoch in range(EPOCHS):
         for batch in train_dataloader:
+
+            # start timer
+            starttime = time.time()
+
             # assuming that the data loader returns images and labels, but we don't need labels here
             images, _ = batch
 
@@ -174,6 +179,11 @@ def main():
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
+
+            endtime = time.time()
+            batchtime = endtime - starttime
+
+            print(f"Time taken for batch: {batchtime} seconds")
 
         print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch + 1, EPOCHS, loss.item()))
 
