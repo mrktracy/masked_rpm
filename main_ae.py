@@ -25,7 +25,7 @@ class RPMPanels(Dataset):
         filename = self.files[fileidx]
         data = np.load(filename)
         image = data['image']
-        panel = torch.from_numpy(image[panelidx,:,:]).float()
+        panel = torch.from_numpy(image[panelidx,:,:]).float() / 255
         label = panel.clone()
 
         return (panel.unsqueeze(0), label.unsqueeze(0))
@@ -95,11 +95,15 @@ class ResNetAutoencoder(nn.Module):
         x = self.encoder(x)
         return x  # reshaping to (batch_size, 256)
 
-def evaluate_model(model, dataloader, device):
+def evaluate_model(model, dataloader, device, save_path):
+
+    os.makedirs(save_path, exist_ok=True) # make file path if it doesn't exist, do nothing otherwise
+
     model.eval()
     with torch.no_grad():
         criterion = nn.MSELoss()
         total_loss = 0
+        imgnum = 0
         for batch in dataloader:
             # assuming that the data loader returns images and labels, but we don't need labels here
             images, _ = batch
@@ -109,6 +113,15 @@ def evaluate_model(model, dataloader, device):
             outputs = model(images)
             loss = criterion(outputs, images)
             total_loss += loss.item()
+            idx = 0
+            for image,output in zip(images,outputs):
+                if idx >= 10:
+                    break
+                image = image.cpu().numpy()
+                output = output.cpu().numpy()
+                filename = f"eval_{imgnum}"
+                np.savez(os.path.join(save_path,filename), image=image, output=output)
+                imgnum += 1
 
     return total_loss/len(dataloader.dataset)
 
@@ -121,7 +134,7 @@ def main():
     # Initialize device, data loader, model, optimizer, and loss function
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    root_dir = '/path/to/dataset'
+    root_dir = '../RAVEN-10000'
     all_files = gather_files(root_dir)
     num_files = len(all_files)
     train_proportion = 0.7
@@ -165,7 +178,7 @@ def main():
         print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch + 1, EPOCHS, loss.item()))
 
     # Evaluate the model
-    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device)
+    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='./ae_results')
     print(f"Average validation loss: {avg_val_loss}")
 
 if __name__ == "__main__":
