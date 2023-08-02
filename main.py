@@ -139,7 +139,7 @@ class TransformerModel(nn.Module):
         self.fc2 = nn.Linear(128, 256)
 
     def forward(self, x):
-        x = x + self.pos_embed # add positional embeddings
+        x = x + self.pos_embed.to(x.device) # add positional embeddings
         for blk in self.blocks: # multiheaded self-attention layer
             x = blk(x)
         x = self.norm(x)
