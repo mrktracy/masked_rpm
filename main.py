@@ -61,7 +61,7 @@ class RPMFullSentences(Dataset):
 
         target_embed = embeddings[target_num+8,:]  # extract target panel embedding
 
-        return maskedsentence, target_embed, imagetensor, target_num
+        return maskedsentence, target_embed, imagetensor, target_num, embeddings
 
     def __len__(self):
         length = len(self.files)
@@ -151,29 +151,36 @@ class TransformerModel(nn.Module):
 
         return x
 
+def pick_answers(outputs, candidates):
+    mse = torch.mean((outputs.unsqueeze(1) - candidates)**2)
+    min_indices = torch.argmin(mse, dim=-1)
+
+    return min_indices
+
 # 4. Evaluation Module
-def evaluate_model(model, dataloader, autoencoder, save_path):
+def evaluate_model(model, dataloader, autoencoder, save_path, device):
     os.makedirs(save_path, exist_ok=True)  # make file path if it doesn't exist, do nothing otherwise
 
     model.eval()
     with torch.no_grad():
-        criterion = nn.MSELoss()
-        total_loss = 0
+
+        num_correct = 0
         imgnum = 0
-        for idx, (inputs, targets, imagetensors, target_nums) in enumerate(dataloader):
+        for idx, (inputs, targets, imagetensors, target_nums, embeddings) in enumerate(dataloader):
 
             # move images to the device
             inputs = inputs.to(device)
+            targets = targets.to(device)
 
             # forward pass
-            outputs = model(inputs)
-            loss = criterion(outputs,targets)
-            total_loss += loss.item()
+            outputs = model(inputs) # (batch_size, 256)
+            candidates = embeddings[:,8:,:] # embeddings is shape (batch_size, 16, 256)
 
-            # get image form of guesses
-            guess_images = autoencoder.decode(outputs)
-            # get image form of target
-            target_images = imagetensors[:,8+target_nums,:,:]
+            min_indices = pick_answers(outputs, candidates)
+            num_correct += torch.sum(min_indices == target_nums)
+
+            guess_images = autoencoder.decode(outputs) # get image form of guesses
+            target_images = imagetensors[:,8+target_nums,:,:] # get image form of target
 
             idx = 0
             for guess, target in zip(guess_images, target_images):
@@ -186,7 +193,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path):
                 imgnum += 1
                 idx += 1
 
-    return total_loss / len(dataloader.dataset)
+    return num_correct / len(dataloader.dataset)
 
 def main():
     # Define Hyperparameters
@@ -196,6 +203,7 @@ def main():
 
     # Initialize device, data loader, model, optimizer, and loss function
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    num_gpus = torch.cuda.device_count()
 
     root_dir = '../RAVEN-10000'
     all_files = gather_files(root_dir)
@@ -208,7 +216,7 @@ def main():
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
     # initialize autoencoder
-    autoencoder = ResNetAutoencoder()
+    autoencoder = ResNetAutoencoder().to(device)
     state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
     autoencoder.load_state_dict(state_dict)
     autoencoder.eval()
@@ -221,6 +229,8 @@ def main():
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     transformer_model = TransformerModel().to(device)
+    if num_gpus > 1:
+        transformer_model = nn.DataParallel(transformer_model)
 
     optimizer = torch.optim.Adam(list(transformer_model.parameters()),
                                  lr=LEARNING_RATE)
@@ -250,8 +260,12 @@ def main():
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
     # Evaluate the model
-    avg_val_loss = evaluate_model(transformer_model, val_dataloader, val_files, autoencoder, save_path='../tr_results/v0/')
-    print(f"Average validation loss: {avg_val_loss}")
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, val_files, autoencoder, save_path='../tr_results/v0/', device)
+    print(f"Proportion of answers correct: {proportion_correct}")
+
+    output_file_path = "../tr_results/v0/proportion_correct.txt"
+    with open(output_file_path, "w") as file:
+        file.write(f"Proportion of answers correct: {proportion_correct}.")
 
     torch.save(transformer_model.state_dict(), "../modelsaves/transformer_v0.pth")
 
