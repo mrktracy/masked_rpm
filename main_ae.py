@@ -187,7 +187,7 @@ def main():
                 batch_time = end_time - start_time
                 print(f"2000 mini-batches took {batch_time} seconds")
 
-        print("Epoch [{}/{}], Loss: {:.4f}".format(epoch + 1, EPOCHS, loss.item()))
+        print("Epoch [{}/{}], Loss: {:.4f}\n".format(epoch + 1, EPOCHS, loss.item()))
 
     # Evaluate the model
     avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v0')
