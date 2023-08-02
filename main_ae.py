@@ -68,8 +68,8 @@ class ResNetAutoencoder(nn.Module):
             ResidualBlock(32, 64, 2), # N, 64, 40, 40
             ResidualBlock(64, 128, 2), # N, 128, 20, 20
             ResidualBlock(128, 256, 2), # N, 256, 10, 10
-            nn.Flatten(),
-            nn.Linear(256*10*10, 256)
+            nn.Flatten(), # N, 256*10*10
+            nn.Linear(256*10*10, 256) # N, 256
         )
 
         self.decoder = nn.Sequential(
@@ -95,6 +95,10 @@ class ResNetAutoencoder(nn.Module):
     def get_embedding(self, x):
         x = self.encoder(x)
         return x  # reshaping to (batch_size, 256)
+
+    def decode(self,x):
+        x = self.decoder(x)
+        return x
 
 def evaluate_model(model, dataloader, device, save_path):
 
@@ -161,13 +165,10 @@ def main():
 
     # Training loop
     for epoch in range(EPOCHS):
+        for idx, (images,_) in enumerate(train_dataloader):
 
-        starttime = time.time() # start timer
-
-        for batch in train_dataloader:
-
-            # assuming that the data loader returns images and labels, but we don't need labels here
-            images, _ = batch
+            if idx%2000 == 0:
+                start_time = time.time()
 
             # move images to the device, reshape them and ensure channel dimension is present
             images = images.to(device)
@@ -181,13 +182,15 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-        endtime = time.time()
-        epochtime = (endtime - starttime)/60
+            if idx%2000==1999:
+                end_time = time.time()
+                batch_time = end_time - start_time
+                print(f"2000 mini-batches took {batch_time} seconds")
+
         print("Epoch [{}/{}], Loss: {:.4f}".format(epoch + 1, EPOCHS, loss.item()))
-        print(f"Epoch took {epochtime} minutes")
 
     # Evaluate the model
-    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='./ae_results')
+    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v0')
     print(f"Average validation loss: {avg_val_loss}")
 
     torch.save(autoencoder.state_dict(), "../modelsaves/autoencoder_v0.pth")
