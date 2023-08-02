@@ -34,29 +34,33 @@ class RPMSentences(Dataset):
 
         return paddedmaskedsentence, target
 
-    # Dataset for evaluation
-    class RPMFullSentences(Dataset):
-        def __init__(self, files, ResNetAutoencoder, embed_dim):
-            self.files = files
-            self.autoencoder = ResNetAutoencoder
-            self.embed_dim = embed_dim
+    def __len__(self):
+        length = len(self.files)*8
+        return length
 
-        def __getitem__(self, idx):
-            mask = torch.ones([1,self.embed_dim])  # create masking token
+# Dataset for evaluation
+class RPMFullSentences(Dataset):
+    def __init__(self, files, ResNetAutoencoder, embed_dim):
+        self.files = files
+        self.autoencoder = ResNetAutoencoder
+        self.embed_dim = embed_dim
 
-            filename = self.files[idx]
-            data = np.load(filename)
-            image = data['image']
-            target_num = data['target'].item()
-            imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
+    def __getitem__(self, idx):
+        mask = torch.ones([1,self.embed_dim])  # create masking token
 
-            embeddings = self.autoencoder.get_embedding(imagetensor)  # get panel embeddings
-            sentence = embeddings[0:8, :]
-            maskedsentence = torch.cat([sentence, mask], 0)  # create masked sentence
+        filename = self.files[idx]
+        data = np.load(filename)
+        image = data['image']
+        target_num = data['target'].item()
+        imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
 
-            target_embed = embeddings[target_num+8,:]  # extract target panel embedding
+        embeddings = self.autoencoder.get_embedding(imagetensor)  # get panel embeddings
+        sentence = embeddings[0:8, :]
+        maskedsentence = torch.cat([sentence, mask], 0)  # create masked sentence
 
-            return maskedsentence, target_embed, imagetensor, target_num
+        target_embed = embeddings[target_num+8,:]  # extract target panel embedding
+
+        return maskedsentence, target_embed, imagetensor, target_num
 
     def __len__(self):
         length = len(self.files)
