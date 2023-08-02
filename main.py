@@ -234,8 +234,9 @@ def main():
                 start_time = time.time()
 
             inputs = inputs.to(device)
-            outputs = transformer_model.forward(inputs)
+            targets = targets.to(device)
 
+            outputs = transformer_model.forward(inputs)
             loss = criterion(outputs,targets)
 
             loss.backward()
