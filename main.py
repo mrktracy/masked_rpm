@@ -243,7 +243,7 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%100 == 199:
+            if idx%100 == 99:
                 end_time = time.time()
                 batch_time = end_time - start_time
                 print(f"2000 batches processed in {batch_time} seconds")
