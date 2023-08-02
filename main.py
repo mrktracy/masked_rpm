@@ -233,6 +233,7 @@ def main():
             if idx%2000 == 0:
                 start_time = time.time()
 
+            inputs.to(device)
             outputs = transformer_model.forward(inputs)
 
             loss = criterion(outputs,targets)
