@@ -230,7 +230,7 @@ def main():
     for epoch in range(EPOCHS):
         for idx, (inputs, targets) in enumerate(train_dataloader):
 
-            if idx%100 == 0:
+            if idx%5 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
@@ -243,10 +243,10 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%100 == 99:
+            if idx%5 == 4:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"2000 batches processed in {batch_time} seconds")
+                print(f"5 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
     # Evaluate the model
