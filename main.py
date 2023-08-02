@@ -230,7 +230,7 @@ def main():
     for epoch in range(EPOCHS):
         for idx, (inputs, targets) in enumerate(train_dataloader):
 
-            if idx%2000 == 0:
+            if idx%100 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
@@ -243,7 +243,7 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%2000 == 1999:
+            if idx%100 == 199:
                 end_time = time.time()
                 batch_time = end_time - start_time
                 print(f"2000 batches processed in {batch_time} seconds")
