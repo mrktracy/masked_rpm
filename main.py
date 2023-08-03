@@ -225,8 +225,8 @@ def main():
     autoencoder.load_state_dict(state_dict)
     autoencoder.eval()
 
-    train_dataset = RPMSentences(train_files, autoencoder, embed_dim=256, device=autoencoder.device)
-    val_dataset = RPMFullSentences(val_files, autoencoder, embed_dim=256, device=autoencoder.device)
+    train_dataset = RPMSentences(train_files, autoencoder, embed_dim=256, device=device)
+    val_dataset = RPMFullSentences(val_files, autoencoder, embed_dim=256, device=device)
     # test_dataset = RPMPanels(test_files)
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
