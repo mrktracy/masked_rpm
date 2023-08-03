@@ -9,14 +9,15 @@ import time
 
 # 1. Dataset
 class RPMSentences(Dataset):
-    def __init__(self, files, ResNetAutoencoder, embed_dim):
+    def __init__(self, files, ResNetAutoencoder, embed_dim, device):
         self.files = files
         self.autoencoder = ResNetAutoencoder
         self.embed_dim = embed_dim
+        self.device = device
 
     def __getitem__(self, idx):
-        mask = torch.ones(self.embed_dim) # create masking token
-        pad = torch.zeros([1,self.embed_dim]) # create padding token
+        mask = torch.ones(self.embed_dim).to(self.device) # create masking token
+        pad = torch.zeros([1,self.embed_dim]).to(self.device) # create padding token
 
         fileidx = idx // 8
         panelidx = idx % 8
@@ -25,8 +26,9 @@ class RPMSentences(Dataset):
         data = np.load(filename)
         image = data['image']
         imagetensor = torch.from_numpy(image[0:8,:,:]).float() / 255 # convert context panels to tensor
+        imagetensor = imagetensor.unsqueeze(1).to(self.device)
 
-        embeddings = self.autoencoder.get_embedding(imagetensor.unsqueeze(1)) # get panel embeddings
+        embeddings = self.autoencoder.get_embedding(imagetensor) # get panel embeddings
         maskedsentence = embeddings.clone() # create masked sentence
         maskedsentence[panelidx, :] = mask # replace one panel with mask token
         paddedmaskedsentence = torch.cat([maskedsentence, pad], 0)
@@ -41,21 +43,23 @@ class RPMSentences(Dataset):
 
 # Dataset for evaluation
 class RPMFullSentences(Dataset):
-    def __init__(self, files, ResNetAutoencoder, embed_dim):
+    def __init__(self, files, ResNetAutoencoder, embed_dim, device):
         self.files = files
         self.autoencoder = ResNetAutoencoder
         self.embed_dim = embed_dim
+        self.device = device
 
     def __getitem__(self, idx):
-        mask = torch.ones([1,self.embed_dim])  # create masking token
+        mask = torch.ones([1,self.embed_dim]).to(self.device)  # create masking token
 
         filename = self.files[idx]
         data = np.load(filename)
         image = data['image']
         target_num = data['target'].item()
         imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
+        imagetensor = imagetensor.unsqueeze(1).to(self.device)
 
-        embeddings = self.autoencoder.get_embedding(imagetensor.unsqueeze(1))  # get panel embeddings
+        embeddings = self.autoencoder.get_embedding(imagetensor)  # get panel embeddings
         sentence = embeddings[0:8, :]
         maskedsentence = torch.cat([sentence, mask], 0)  # create masked sentence
 
@@ -221,8 +225,8 @@ def main():
     autoencoder.load_state_dict(state_dict)
     autoencoder.eval()
 
-    train_dataset = RPMSentences(train_files, autoencoder, embed_dim=256)
-    val_dataset = RPMFullSentences(val_files, autoencoder, embed_dim=256)
+    train_dataset = RPMSentences(train_files, autoencoder, embed_dim=256, device=autoencoder.device)
+    val_dataset = RPMFullSentences(val_files, autoencoder, embed_dim=256, device=autoencoder.device)
     # test_dataset = RPMPanels(test_files)
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -260,7 +264,7 @@ def main():
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, val_files, autoencoder, save_path='../tr_results/v0/', device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, val_files, autoencoder, save_path='../tr_results/v0/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
     output_file_path = "../tr_results/v0/proportion_correct.txt"
