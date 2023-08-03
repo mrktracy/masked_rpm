@@ -83,8 +83,8 @@ class ResNetAutoencoder(nn.Module):
             nn.ReLU(),
             nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 16, 160, 160
             nn.ReLU(),
-            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding = 1), # N, 1, 160, 160
-            nn.Sigmoid()  # to ensure the output is in [0, 1] as image pixel intensities--should this be between 0 and 255?
+            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding=1), # N, 1, 160, 160
+            nn.Sigmoid()  # to ensure the output is in [0, 1] as image pixel intensities
         )
 
     def forward(self, x):

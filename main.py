@@ -144,7 +144,7 @@ class TransformerModel(nn.Module):
 
     def forward(self, x):
         x = x + self.pos_embed.to(x.device) # add positional embeddings
-        for blk in self.blocks: # multiheaded self-attention layer
+        for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x)
         x = self.norm(x)
         x = x.permute(0,2,1) # permute to pool
