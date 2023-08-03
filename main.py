@@ -201,7 +201,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 5
+    EPOCHS = 10
     BATCH_SIZE = 32
     LEARNING_RATE = 10e-3
 
@@ -244,7 +244,7 @@ def main():
     for epoch in range(EPOCHS):
         for idx, (inputs, targets) in enumerate(train_dataloader):
 
-            if idx%5 == 0:
+            if idx%100 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
@@ -257,7 +257,7 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%5 == 4:
+            if idx%100 == 99:
                 end_time = time.time()
                 batch_time = end_time - start_time
                 print(f"5 mini-batches processed in {batch_time} seconds")
