@@ -179,7 +179,6 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
             # move images to the device
             inputs = inputs.to(device)
-            targets = targets.to(device)
 
             # forward pass
             outputs = model(inputs) # (batch_size, 256)
@@ -238,44 +237,48 @@ def main():
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     transformer_model = TransformerModel().to(device)
-    if num_gpus > 1:
-        transformer_model = nn.DataParallel(transformer_model)
+    state_dict_tr = torch.load('../modelsaves/transformer_v0_ep15.pth') # Comment out for training
+    transformer_model.load_state_dict(state_dict_tr)
+    transformer_model.eval()
 
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()),
-                                 lr=LEARNING_RATE)
-    criterion = nn.MSELoss()
-
-    # Training loop
-    for epoch in range(EPOCHS):
-        for idx, (inputs, targets) in enumerate(train_dataloader):
-
-            if idx%100 == 0:
-                start_time = time.time()
-
-            inputs = inputs.to(device)
-            targets = targets.to(device)
-
-            outputs = transformer_model.forward(inputs)
-            loss = criterion(outputs,targets)
-
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-
-            if idx%100 == 99:
-                end_time = time.time()
-                batch_time = end_time - start_time
-                print(f"100 mini-batches processed in {batch_time} seconds")
-                print(f"Most recent batch total loss: {loss.item()}\n")
-
-        torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v0_ep{epoch+1}.pth")
-        print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
+    # if num_gpus > 1:
+    #     transformer_model = nn.DataParallel(transformer_model)
+    #
+    # optimizer = torch.optim.Adam(list(transformer_model.parameters()),
+    #                              lr=LEARNING_RATE)
+    # criterion = nn.MSELoss()
+    #
+    # # Training loop
+    # for epoch in range(EPOCHS):
+    #     for idx, (inputs, targets) in enumerate(train_dataloader):
+    #
+    #         if idx%100 == 0:
+    #             start_time = time.time()
+    #
+    #         inputs = inputs.to(device)
+    #         targets = targets.to(device)
+    #
+    #         outputs = transformer_model.forward(inputs)
+    #         loss = criterion(outputs,targets)
+    #
+    #         loss.backward()
+    #         optimizer.step()
+    #         optimizer.zero_grad()
+    #
+    #         if idx%100 == 99:
+    #             end_time = time.time()
+    #             batch_time = end_time - start_time
+    #             print(f"100 mini-batches processed in {batch_time} seconds")
+    #             print(f"Most recent batch total loss: {loss.item()}\n")
+    #
+    #     torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v0_ep{epoch+1}.pth")
+    #     print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v0/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v0test/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v0/proportion_correct.txt"
+    output_file_path = "../tr_results/v0test/proportion_correct.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
 
