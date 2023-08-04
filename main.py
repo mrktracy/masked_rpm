@@ -237,7 +237,7 @@ def main():
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     transformer_model = TransformerModel().to(device)
-    state_dict_tr = torch.load('../modelsaves/transformer_v0_ep15.pth') # Comment out for training
+    state_dict_tr = torch.load('../modelsaves/transformer_v0_ep14.pth') # Comment out for training
     transformer_model.load_state_dict(state_dict_tr)
     transformer_model.eval()
 
