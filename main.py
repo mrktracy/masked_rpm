@@ -193,6 +193,9 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             guess_images = autoencoder.decode(outputs) # get image form of guesses
             target_images = imagetensors[torch.arange(batch_size), offset_target_nums] # get image form of target
 
+            print(f"guess_images shape: {guess_images.shape}")
+            print(f"target_images shape: {target_images.shape}")
+
             idx = 0
             for guess, target in zip(guess_images, target_images):
                 if idx >= 1:  # only save first 1 images from each mini-batch

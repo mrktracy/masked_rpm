@@ -22,12 +22,12 @@ def displayresults():
     fig.show()
 
 def displayresults_tr():
-    filepath = "../tr_results/v0test/v0test/"
+    filepath = "../results/tr_results/v0/v0/"
     files = os.listdir(filepath)
     random.shuffle(files)
 
-    fig, axs = plt.subplots(5, 2)
-    idx = 0
+    # fig, axs = plt.subplots(5, 2)
+    # idx = 0
     for file in files[0:5]:
         path = os.path.join(filepath, file)
         data = np.load(path)
