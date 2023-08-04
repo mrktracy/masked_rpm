@@ -178,7 +178,6 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device, batch_size
         for idx, (inputs, targets, imagetensors, target_nums, embeddings) in enumerate(dataloader):
 
             offset_target_nums = target_nums + 8 # offset by 8
-            reshaped_target_nums = offset_target_nums.view(batch_size, 1, 1).to(device)
 
             # move images to the device
             inputs = inputs.to(device)
@@ -191,7 +190,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device, batch_size
             num_correct += torch.sum(min_indices == target_nums)
 
             guess_images = autoencoder.decode(outputs) # get image form of guesses
-            target_images = torch.index_select(imagetensors, 1, reshaped_target_nums).squeeze(1) # get image form of target
+            target_images = imagetensors[torch.arange(batch_size), offset_target_nums] # get image form of target
 
             print(f"guess_images shape: {guess_images.shape}")
             print(f"target_images shape: {target_images.shape}")
