@@ -25,6 +25,7 @@ class RPMSentences(Dataset):
 
     def __getitem__(self, idx):
         mask = torch.ones(self.embed_dim).to(self.device) # create masking token
+        mask_exp = torch.ones(self.embed_dim*2).to(self.device) # create mask for tensor output
         pad = torch.zeros([1,self.embed_dim]).to(self.device) # create padding token
 
         fileidx = idx // (8*4)
@@ -46,13 +47,13 @@ class RPMSentences(Dataset):
         paddedmaskedgrid_rotated = torch.rot90(paddedmaskedgrid, k=idx%4, dims=[0,1])
         final_sentence = paddedmaskedgrid_rotated.reshape([9, self.embed_dim])
 
-        mask_tensor = torch.zeros(9, self.embed_dim)
-        mask_tensor[panelidx, :] = mask  # ones where the mask is, 0s elsewhere
+        mask_tensor = torch.zeros(9, self.embed_dim*2)
+        mask_tensor[panelidx, :] = mask_exp  # ones where the mask is, 0s elsewhere
 
         # rotate mask tensor
-        maskgrid = mask_tensor.reshape([3, 3, self.embed_dim])
+        maskgrid = mask_tensor.reshape([3, 3, self.embed_dim*2])
         maskgrid_rotated = torch.rot90(maskgrid, k=idx%4, dims=[0,1])
-        final_mask_tensor = maskgrid_rotated.reshape([9, self.embed_dim])
+        final_mask_tensor = maskgrid_rotated.reshape([9, self.embed_dim*2])
 
         target = embeddings[panelidx, :] # extract target panel embedding
 
@@ -72,6 +73,7 @@ class RPMFullSentences(Dataset):
 
     def __getitem__(self, idx):
         mask = torch.ones([1,self.embed_dim]).to(self.device)  # create masking token
+        mask_exp = torch.ones(self.embed_dim*2).to(self.device)  # create mask token for tensor output
 
         filename = self.files[idx]
         data = np.load(filename)
@@ -86,8 +88,8 @@ class RPMFullSentences(Dataset):
 
         target_embed = embeddings[target_num+8,:]  # extract target panel embedding
 
-        mask_tensor = torch.zeros(9, self.embed_dim)
-        mask_tensor[9, :] = mask.unsqueeze(0)  # ones where the mask is, 0s elsewhere
+        mask_tensor = torch.zeros(9, self.embed_dim*2)
+        mask_tensor[9, :] = mask_exp  # ones where the mask is, 0s elsewhere
 
         return maskedsentence, target_embed, imagetensor, target_num, embeddings, mask_tensor
 
@@ -300,7 +302,6 @@ def main():
 
             inputs = inputs.to(device)
             targets = targets.to(device)
-            mask_tensors = mask_tensors.repeat(1,2).to(device)
 
             outputs = transformer_model.forward(inputs) # (B,9,512)
             guesses = (outputs * mask_tensors).sum(dim=1) # (B, 1, 512)
