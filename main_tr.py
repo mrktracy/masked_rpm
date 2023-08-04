@@ -173,7 +173,7 @@ class TransformerModel(nn.Module):
         # self.fc4 = nn.Linear(256*3, 256)
 
     def forward(self, x):
-        x = torch.cat(x,self.pos_embed.to(x.device)) # add positional embeddings
+        x = torch.cat([x,self.pos_embed.to(x.device)]) # add positional embeddings
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x)
         x = self.norm(x)
