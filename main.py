@@ -138,13 +138,13 @@ class TransformerModel(nn.Module):
 
         self.flatten = nn.Flatten()
 
-        self.fc1 = nn.Linear(256*9, 256*5)
+        self.fc1 = nn.Linear(256*9, 256*7)
 
-        self.fc2 = nn.Linear(256 * 7, 256 * 5)
+        self.fc2 = nn.Linear(256*7, 256*5)
 
         self.fc3 = nn.Linear(256*5, 256*3)
 
-        self.fc4 = nn.Linear(256 * 3, 256)
+        self.fc4 = nn.Linear(256*3, 256)
 
     def forward(self, x):
         x = x + self.pos_embed.to(x.device) # add positional embeddings
