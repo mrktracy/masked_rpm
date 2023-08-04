@@ -157,10 +157,10 @@ class TransformerModel(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
-            Block(embed_dim, num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
+            Block(embed_dim*2, num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
             for i in range(depth)])
 
-        self.norm = norm_layer(embed_dim)
+        self.norm = norm_layer(embed_dim*2)
 
         # self.flatten = nn.Flatten()
         #
