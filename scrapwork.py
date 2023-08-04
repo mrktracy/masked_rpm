@@ -22,29 +22,26 @@ def displayresults():
     fig.show()
 
 def displayresults_tr():
-    filepath = "../results/tr_results/v0/v0/"
+    filepath = "../results/tr_results/v/"
     files = os.listdir(filepath)
     random.shuffle(files)
 
-    # fig, axs = plt.subplots(5, 2)
-    # idx = 0
+    fig, axs = plt.subplots(5, 2)
+    idx = 0
     for file in files[0:5]:
         path = os.path.join(filepath, file)
         data = np.load(path)
         image = data['guess'].squeeze()
         output = data['target'].squeeze()
 
-        print(image.shape)
-        print(output.shape)
+        axs[idx, 0].imshow(image, cmap='gray')
+        axs[idx, 1].imshow(output, cmap='gray')
+        idx += 1
 
-    #     axs[idx, 0].imshow(image, cmap='gray')
-    #     axs[idx, 1].imshow(output[0], cmap='gray')
-    #     idx += 1
-    #
-    # fig.show()
+    fig.show()
 
 if __name__ == "__main__":
     # displayresults()
     displayresults_tr()
-    # while plt.get_fignums():
-    #     plt.pause(0.1)
+    while plt.get_fignums():
+        plt.pause(0.1)

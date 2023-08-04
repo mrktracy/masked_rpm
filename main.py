@@ -192,18 +192,22 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
             guess_images = autoencoder.decode(outputs) # get image form of guesses
             target_images = imagetensors[torch.arange(batch_size), offset_target_nums] # get image form of target
+            decoded_target_images = autoencoder.decode(targets)
 
             print(f"guess_images shape: {guess_images.shape}")
             print(f"target_images shape: {target_images.shape}")
+            print(f"decoded_target_images shape: {decoded_target_images.shape}")
 
             idx = 0
-            for guess, target in zip(guess_images, target_images):
+            for guess, target, decoded_target in zip(guess_images, target_images, decoded_target_images):
                 if idx >= 1:  # only save first 1 images from each mini-batch
                     break
                 guess = guess.cpu().numpy()
                 target = target.cpu().numpy()
+                decoded_target = decoded_target.cpu().numpy()
+
                 filename = f"eval_{imgnum}"
-                np.savez(os.path.join(save_path, filename), guess=guess, target=target)
+                np.savez(os.path.join(save_path, filename), guess=guess, target=target, decoded_target=decoded_target)
                 imgnum += 1
                 idx += 1
 
