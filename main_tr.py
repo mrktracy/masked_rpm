@@ -205,7 +205,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
             # move images to the device
             inputs = inputs.to(device)
-            mask_tensors = mask_tensors.to(device)
+            # mask_tensors = mask_tensors.to(device)
 
             # forward pass
             outputs = model(inputs) # (batch_size,9,256)
