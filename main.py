@@ -136,22 +136,26 @@ class TransformerModel(nn.Module):
 
         self.norm = norm_layer(embed_dim)
 
-        self.pooling = nn.AdaptiveAvgPool1d(output_size=1)
+        self.flatten = nn.Flatten()
 
-        self.fc1 = nn.Linear(256, 128)
+        self.fc1 = nn.Linear(256*9, 256*5)
 
-        self.fc2 = nn.Linear(128, 256)
+        self.fc2 = nn.Linear(256 * 7, 256 * 5)
+
+        self.fc3 = nn.Linear(256*5, 256*3)
+
+        self.fc4 = nn.Linear(256 * 3, 256)
 
     def forward(self, x):
         x = x + self.pos_embed.to(x.device) # add positional embeddings
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x)
         x = self.norm(x)
-        x = x.permute(0,2,1) # permute to pool
-        x = self.pooling(x) # average pooling to get embed_dim-dimensional summary
-        x = x.squeeze(-1) # eliminate last (pooled-across) dimension
+        x = self.flatten(x) # flatten
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = self.fc4(x)
 
         return x
 
@@ -201,7 +205,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 10
+    EPOCHS = 1
     BATCH_SIZE = 32
     LEARNING_RATE = 10e-3
 
@@ -264,7 +268,7 @@ def main():
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, val_files, autoencoder, save_path='../tr_results/v0/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v0/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
     output_file_path = "../tr_results/v0/proportion_correct.txt"
