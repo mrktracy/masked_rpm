@@ -42,17 +42,17 @@ class RPMSentences(Dataset):
         paddedmaskedsentence = torch.cat([maskedsentence, pad], 0) # (9, 256)
 
         # rotate grid
-        paddedmaskedgrid = paddedmaskedsentence.view(3, 3, 256)
+        paddedmaskedgrid = paddedmaskedsentence.view(3, 3, self.embed_dim)
         paddedmaskedgrid_rotated = torch.rot90(paddedmaskedgrid, k=idx%4, dims=[0,1])
-        final_sentence = paddedmaskedgrid_rotated.view(9, 256)
+        final_sentence = paddedmaskedgrid_rotated.view(9, self.embed_dim)
 
-        mask_tensor = torch.zeros(9, embed_dim)
+        mask_tensor = torch.zeros(9, self.embed_dim)
         mask_tensor[panelidx, :] = mask  # ones where the mask is, 0s elsewhere
 
         # rotate mask tensor
-        maskgrid = mask_tensor.view(3, 3, 256)
+        maskgrid = mask_tensor.view(3, 3, self.embed_dim)
         maskgrid_rotated = torch.rot90(maskgrid, k=idx%4, dims=[0,1])
-        final_mask_tensor = maskgrid_rotated.view(9, 256)
+        final_mask_tensor = maskgrid_rotated.view(9, self.embed_dim)
 
         target = embeddings[panelidx, :] # extract target panel embedding
 
@@ -86,7 +86,7 @@ class RPMFullSentences(Dataset):
 
         target_embed = embeddings[target_num+8,:]  # extract target panel embedding
 
-        mask_tensor = torch.zeros(9, embed_dim)
+        mask_tensor = torch.zeros(9, self.embed_dim)
         mask_tensor[9, :] = mask.unsqueeze(0)  # ones where the mask is, 0s elsewhere
 
         return maskedsentence, target_embed, imagetensor, target_num, embeddings, mask_tensor
