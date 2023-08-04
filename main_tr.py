@@ -42,7 +42,7 @@ class RPMSentences(Dataset):
         paddedmaskedsentence = torch.cat([maskedsentence, pad], 0) # (9, 256)
 
         # rotate grid
-        paddedmaskedgrid = paddedmaskedsentence.view(3, 3, self.embed_dim)
+        paddedmaskedgrid = paddedmaskedsentence.view([3, 3], self.embed_dim)
         paddedmaskedgrid_rotated = torch.rot90(paddedmaskedgrid, k=idx%4, dims=[0,1])
         final_sentence = paddedmaskedgrid_rotated.view(9, self.embed_dim)
 
