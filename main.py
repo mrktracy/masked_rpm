@@ -177,6 +177,9 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
         imgnum = 0
         for idx, (inputs, targets, imagetensors, target_nums, embeddings) in enumerate(dataloader):
 
+            print(f"imagetensors shape: {imagetensors.shape}")
+            print(f"target_nums shape: {target_nums.shape}")
+
             # move images to the device
             inputs = inputs.to(device)
 
@@ -189,6 +192,9 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
             guess_images = autoencoder.decode(outputs) # get image form of guesses
             target_images = imagetensors[:,8+target_nums,:,:].unsqueeze(1) # get image form of target
+
+            print(f"guess_images shape: {guess_images.shape}")
+            print(f"target_images shape: {target_images.shape}")
 
             idx = 0
             for guess, target in zip(guess_images, target_images):
