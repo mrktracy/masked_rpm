@@ -273,9 +273,9 @@ def main():
 
     transformer_model = TransformerModel(depth=12).to(device) # instantiate model
 
-    for name,param in transformer_model.named_parameters(): # initialize model
-        if 'weight' in name:
-            torch.nn.init.xavier_normal_(param)
+    # for name,param in transformer_model.named_parameters(): # initialize model
+    #     if 'weight' in name:
+    #         torch.nn.init.xavier_normal_(param)
 
     if num_gpus > 1: # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
