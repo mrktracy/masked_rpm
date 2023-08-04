@@ -216,7 +216,7 @@ def main():
     root_dir = '../RAVEN-10000'
     all_files = gather_files(root_dir)
     num_files = len(all_files)
-    train_proportion = 0.7
+    train_proportion = 0.15
     val_proportion = 0.15
     # test proportion is 1 - train_proportion - val_proportion
     train_files = all_files[:int(num_files * train_proportion)]
