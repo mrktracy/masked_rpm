@@ -183,7 +183,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
             # forward pass
             outputs = model(inputs) # (batch_size, 256)
-            candidates = embeddings[:,8:,:] # embeddings is shape (batch_size, 16, 256)
+            candidates = embeddings[:,8:,:].to(device) # embeddings is shape (batch_size, 16, 256)
 
             min_indices = pick_answers(outputs, candidates)
             num_correct += torch.sum(min_indices == target_nums)
@@ -217,7 +217,7 @@ def main():
     root_dir = '../RAVEN-10000'
     all_files = gather_files(root_dir)
     num_files = len(all_files)
-    train_proportion = 0.15
+    train_proportion = 0.5
     val_proportion = 0.15
     # test proportion is 1 - train_proportion - val_proportion
     train_files = all_files[:int(num_files * train_proportion)]
