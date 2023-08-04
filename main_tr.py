@@ -27,7 +27,7 @@ class RPMSentences(Dataset):
         mask = torch.ones(self.embed_dim).to(self.device) # create masking token
         pad = torch.zeros([1,self.embed_dim]).to(self.device) # create padding token
 
-        fileidx = idx // 8*4
+        fileidx = idx // (8*4)
         panelidx = idx % 8
 
         filename = self.files[fileidx]
