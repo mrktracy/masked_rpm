@@ -188,11 +188,11 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             num_correct += torch.sum(min_indices == target_nums)
 
             guess_images = autoencoder.decode(outputs) # get image form of guesses
-            target_images = imagetensors[:,8+target_nums,:,:] # get image form of target
+            target_images = imagetensors[:,8+target_nums,:,:].unsqueeze(1) # get image form of target
 
             idx = 0
             for guess, target in zip(guess_images, target_images):
-                if idx >= 5:  # only save first 5 images from each mini-batch
+                if idx >= 1:  # only save first 1 images from each mini-batch
                     break
                 guess = guess.cpu().numpy()
                 target = target.cpu().numpy()
