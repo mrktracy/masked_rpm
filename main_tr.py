@@ -146,7 +146,7 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
 
 # 3 Transformer Model
 class TransformerModel(nn.Module):
-    def __init__(self, embed_dim=256, grid_size = 3, num_heads=8, mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4):
+    def __init__(self, embed_dim=256, grid_size = 3, num_heads=16, mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4):
         super(TransformerModel, self).__init__()
 
         # initialize and retrieve positional embeddings
@@ -171,7 +171,7 @@ class TransformerModel(nn.Module):
         # self.fc4 = nn.Linear(256*3, 256)
 
     def forward(self, x):
-        x = x + self.pos_embed.to(x.device) # add positional embeddings
+        x = torch.cat(x,self.pos_embed.to(x.device)) # add positional embeddings
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x)
         x = self.norm(x)
@@ -210,12 +210,14 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             # forward pass
             outputs = model(inputs) # (batch_size,9,256)
             guesses = (outputs * mask_tensors).sum(dim=1)
+            guesses_cut = guesses[:.:256]
+
             candidates = embeddings[:,8:,:].to(device) # embeddings is shape (batch_size, 16, 256)
 
-            min_indices = pick_answers(guesses, candidates).cpu()
+            min_indices = pick_answers(guesses_cut, candidates).cpu()
             num_correct += torch.sum(min_indices == target_nums)
 
-            guess_images = autoencoder.decode(guesses) # get image form of guesses
+            guess_images = autoencoder.decode(guesses_cut) # get image form of guesses
             target_images = imagetensors[torch.arange(batch_size), offset_target_nums] # get image form of target
             decoded_target_images = autoencoder.decode(targets)
 
@@ -298,11 +300,13 @@ def main():
 
             inputs = inputs.to(device)
             targets = targets.to(device)
-            mask_tensors = mask_tensors.to(device)
+            mask_tensors = mask_tensors.repeat(1,2).to(device)
 
-            outputs = transformer_model.forward(inputs)
-            guesses = (outputs * mask_tensors).sum(dim=1)
-            loss = criterion(guesses,targets)
+            outputs = transformer_model.forward(inputs) # (B,9,512)
+            guesses = (outputs * mask_tensors).sum(dim=1) # (B, 1, 512)
+            guesses_cut = guesses[:.:256]
+
+            loss = criterion(guesses_cut,targets)
 
             loss.backward()
             optimizer.step()
