@@ -178,7 +178,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device, batch_size
         for idx, (inputs, targets, imagetensors, target_nums, embeddings) in enumerate(dataloader):
 
             offset_target_nums = target_nums + 8 # offset by 8
-            reshaped_target_nums = offset_target_nums.view(batch_size, 1, 1)
+            reshaped_target_nums = offset_target_nums.view(batch_size, 1, 1).to(device)
 
             # move images to the device
             inputs = inputs.to(device)
