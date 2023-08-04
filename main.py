@@ -208,7 +208,7 @@ def main():
     # Define Hyperparameters
     EPOCHS = 1
     BATCH_SIZE = 32
-    LEARNING_RATE = 10e-3
+    LEARNING_RATE = 0.01
 
     # Initialize device, data loader, model, optimizer, and loss function
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
