@@ -8,6 +8,12 @@ from main_ae import ResNetAutoencoder, gather_files
 from timm.models.vision_transformer import Block
 import time
 import os
+import random
+
+seed = 42
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
 
 # 1. Dataset
 class RPMSentences(Dataset):

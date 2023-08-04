@@ -7,6 +7,11 @@ import numpy as np
 import random
 import time
 
+seed = 42
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+
 def gather_files(root_dir):
     all_files = []
     for dirpath, _, filenames in os.walk(root_dir):
