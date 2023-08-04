@@ -264,7 +264,7 @@ def main():
             if idx%100 == 99:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"5 mini-batches processed in {batch_time} seconds")
+                print(f"100 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
     # Evaluate the model
