@@ -217,7 +217,7 @@ def main():
     root_dir = '../RAVEN-10000'
     all_files = gather_files(root_dir)
     num_files = len(all_files)
-    train_proportion = 0.5
+    train_proportion = 0.05
     val_proportion = 0.15
     # test proportion is 1 - train_proportion - val_proportion
     train_files = all_files[:int(num_files * train_proportion)]
@@ -268,6 +268,9 @@ def main():
                 print(f"100 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
+        torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v0_ep{epoch+1}.pth")
+        print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
+
     # Evaluate the model
     proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v0/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
@@ -275,8 +278,6 @@ def main():
     output_file_path = "../tr_results/v0/proportion_correct.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
-
-    torch.save(transformer_model.state_dict(), "../modelsaves/transformer_v0.pth")
 
 if __name__ == "__main__":
     main()
