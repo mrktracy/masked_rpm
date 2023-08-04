@@ -167,7 +167,7 @@ def pick_answers(outputs, candidates):
     return min_indices
 
 # 4. Evaluation Module
-def evaluate_model(model, dataloader, autoencoder, save_path, device):
+def evaluate_model(model, dataloader, autoencoder, save_path, device, batch_size):
     os.makedirs(save_path, exist_ok=True)  # make file path if it doesn't exist, do nothing otherwise
 
     model.eval()
@@ -177,8 +177,8 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
         imgnum = 0
         for idx, (inputs, targets, imagetensors, target_nums, embeddings) in enumerate(dataloader):
 
-            print(f"imagetensors shape: {imagetensors.shape}")
-            print(f"target_nums shape: {target_nums.shape}")
+            offset_target_nums = target_nums + 8 # offset by 8
+            reshaped_target_nums = offset_target_nums.view(batch_size, 1, 1)
 
             # move images to the device
             inputs = inputs.to(device)
@@ -191,7 +191,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             num_correct += torch.sum(min_indices == target_nums)
 
             guess_images = autoencoder.decode(outputs) # get image form of guesses
-            target_images = imagetensors[:,8+target_nums,:,:,:] # get image form of target
+            target_images = torch.index_select(imagetensors, 1, reshaped_target_nums).squeeze(1) # get image form of target
 
             print(f"guess_images shape: {guess_images.shape}")
             print(f"target_images shape: {target_images.shape}")
@@ -281,7 +281,7 @@ def main():
     #     print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v0test/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v0test/', device=device, batch_size=BATCH_SIZE)
     print(f"Proportion of answers correct: {proportion_correct}")
 
     output_file_path = "../tr_results/v0test/proportion_correct.txt"
