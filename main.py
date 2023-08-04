@@ -191,7 +191,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             num_correct += torch.sum(min_indices == target_nums)
 
             guess_images = autoencoder.decode(outputs) # get image form of guesses
-            target_images = imagetensors[:,8+target_nums,:,:].unsqueeze(1) # get image form of target
+            target_images = imagetensors[:,8+target_nums,:,:,:] # get image form of target
 
             print(f"guess_images shape: {guess_images.shape}")
             print(f"target_images shape: {target_images.shape}")
