@@ -174,7 +174,7 @@ class TransformerModel(nn.Module):
 
     def forward(self, x):
         batch_size = x.size(0)  # Get the batch size from the first dimension of x
-        x = torch.cat([x, self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)], dim=1)  # add positional embeddings
+        x = torch.cat([x, self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)], dim=1).unsqueeze(0)  # add positional embeddings
 
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x)
