@@ -210,7 +210,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             # forward pass
             outputs = model(inputs) # (batch_size,9,256)
             guesses = (outputs * mask_tensors).sum(dim=1)
-            guesses_cut = guesses[:.:256]
+            guesses_cut = guesses[:,:,0:256]
 
             candidates = embeddings[:,8:,:].to(device) # embeddings is shape (batch_size, 16, 256)
 
@@ -304,7 +304,7 @@ def main():
 
             outputs = transformer_model.forward(inputs) # (B,9,512)
             guesses = (outputs * mask_tensors).sum(dim=1) # (B, 1, 512)
-            guesses_cut = guesses[:.:256]
+            guesses_cut = guesses[:,:,0:256]
 
             loss = criterion(guesses_cut,targets)
 
