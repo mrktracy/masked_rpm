@@ -237,13 +237,13 @@ def main():
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     transformer_model = TransformerModel().to(device)
-    state_dict_tr = torch.load('../modelsaves/transformer_v0_ep14.pth', map_location='cuda:0') # Comment out for training
+    if num_gpus > 1:
+        transformer_model = nn.DataParallel(transformer_model)
+    #
+    state_dict_tr = torch.load('../modelsaves/transformer_v0_ep14.pth') # Comment out for training
     transformer_model.load_state_dict(state_dict_tr)
     transformer_model.eval()
 
-    # if num_gpus > 1:
-    #     transformer_model = nn.DataParallel(transformer_model)
-    #
     # optimizer = torch.optim.Adam(list(transformer_model.parameters()),
     #                              lr=LEARNING_RATE)
     # criterion = nn.MSELoss()
