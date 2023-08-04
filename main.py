@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from main_ae import ResNetAutoencoder, gather_files
 from timm.models.vision_transformer import Block
 import time
+import os
 
 # 1. Dataset
 class RPMSentences(Dataset):
