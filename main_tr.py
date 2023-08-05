@@ -304,6 +304,7 @@ def main():
 
             inputs = inputs.to(device)
             targets = targets.to(device)
+            mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model.forward(inputs) # (B,9,512)
             guesses = (outputs * mask_tensors).sum(dim=1) # (B, 1, 512)
