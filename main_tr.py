@@ -248,7 +248,7 @@ def main():
     # Define Hyperparameters
     EPOCHS = 10
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.1
+    LEARNING_RATE = 0.01
     # VERSION = 'v2'
 
     # Initialize device, data loader, model, optimizer, and loss function
@@ -278,7 +278,7 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    transformer_model = TransformerModel(depth=16).to(device) # instantiate model
+    transformer_model = TransformerModel(depth=12).to(device) # instantiate model
 
     # for name,param in transformer_model.named_parameters(): # initialize model
     #     if 'weight' in name:
@@ -287,9 +287,9 @@ def main():
     if num_gpus > 1: # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
 
-    # # comment out this block if training
-    # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
-    # transformer_model.load_state_dict(state_dict_tr)
+    # comment out this block if training
+    state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
+    transformer_model.load_state_dict(state_dict_tr)
     # transformer_model.eval()
 
     optimizer = torch.optim.Adam(list(transformer_model.parameters()),
@@ -323,14 +323,14 @@ def main():
                 print(f"100 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
-        torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v3_ep{epoch+1}.pth")
+        torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v4_ep{epoch+1}.pth")
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v3/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v4/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v3/proportion_correct.txt"
+    output_file_path = "../tr_results/v4/proportion_correct.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
 
