@@ -246,9 +246,9 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 15
+    EPOCHS = 5
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.1
 
     # Initialize device, data loader, model, optimizer, and loss function
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
