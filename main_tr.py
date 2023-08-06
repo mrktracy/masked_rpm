@@ -326,10 +326,10 @@ def main():
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v2/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v3/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v2/proportion_correct.txt"
+    output_file_path = "../tr_results/v3/proportion_correct.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
 
