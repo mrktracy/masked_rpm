@@ -22,7 +22,7 @@ def displayresults():
     fig.show()
 
 def displayresults_tr():
-    filepath = "../results/tr_results/v0/"
+    filepath = "../results/tr_results/v2/v2/"
     files = os.listdir(filepath)
     random.shuffle(files)
 
@@ -33,7 +33,7 @@ def displayresults_tr():
         path = os.path.join(filepath, file)
         data = np.load(path)
         image = data['guess'].squeeze()
-        output = data['decoded_target'].squeeze()
+        output = data['target'].squeeze()
 
         axs[idx, 0].imshow(image, cmap='gray')
         axs[idx, 1].imshow(output, cmap='gray')
