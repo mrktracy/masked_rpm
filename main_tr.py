@@ -246,9 +246,10 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 5
+    EPOCHS = 10
     BATCH_SIZE = 32
     LEARNING_RATE = 0.1
+    # VERSION = 'v2'
 
     # Initialize device, data loader, model, optimizer, and loss function
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -286,50 +287,50 @@ def main():
     if num_gpus > 1: # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
 
-    # comment out this block if training
-    state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
-    transformer_model.load_state_dict(state_dict_tr)
-    transformer_model.eval()
+    # # comment out this block if training
+    # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
+    # transformer_model.load_state_dict(state_dict_tr)
+    # transformer_model.eval()
 
-    # optimizer = torch.optim.Adam(list(transformer_model.parameters()),
-    #                              lr=LEARNING_RATE)
-    # criterion = nn.MSELoss()
-    #
-    # # Training loop
-    # for epoch in range(EPOCHS):
-    #     for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
-    #
-    #         if idx%100 == 0:
-    #             start_time = time.time()
-    #
-    #         inputs = inputs.to(device)
-    #         targets = targets.to(device)
-    #         mask_tensors = mask_tensors.to(device)
-    #
-    #         outputs = transformer_model.forward(inputs) # (B,9,512)
-    #         guesses = (outputs * mask_tensors).sum(dim=1) # (B,512)
-    #         guesses_cut = guesses[:,0:256] # (B, 1, 256)
-    #
-    #         loss = criterion(guesses_cut,targets)
-    #
-    #         loss.backward()
-    #         optimizer.step()
-    #         optimizer.zero_grad()
-    #
-    #         if idx%100 == 99:
-    #             end_time = time.time()
-    #             batch_time = end_time - start_time
-    #             print(f"100 mini-batches processed in {batch_time} seconds")
-    #             print(f"Most recent batch total loss: {loss.item()}\n")
-    #
-    #     torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v3_ep{epoch+1}.pth")
-    #     print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
+    optimizer = torch.optim.Adam(list(transformer_model.parameters()),
+                                 lr=LEARNING_RATE)
+    criterion = nn.MSELoss()
+
+    # Training loop
+    for epoch in range(EPOCHS):
+        for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
+
+            if idx%100 == 0:
+                start_time = time.time()
+
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+            mask_tensors = mask_tensors.to(device)
+
+            outputs = transformer_model.forward(inputs) # (B,9,512)
+            guesses = (outputs * mask_tensors).sum(dim=1) # (B,512)
+            guesses_cut = guesses[:,0:256] # (B, 1, 256)
+
+            loss = criterion(guesses_cut,targets)
+
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+
+            if idx%100 == 99:
+                end_time = time.time()
+                batch_time = end_time - start_time
+                print(f"100 mini-batches processed in {batch_time} seconds")
+                print(f"Most recent batch total loss: {loss.item()}\n")
+
+        torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v3_ep{epoch+1}.pth")
+        print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v2/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v3/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v2/proportion_correct.txt"
+    output_file_path = "../tr_results/v3/proportion_correct.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
 
