@@ -223,9 +223,19 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             num_correct += torch.sum(min_indices == target_nums)
 
             guess_images = autoencoder.decode(guesses_cut) # get image form of guesses
-            output_image_grids = autoencoder.decode(outputs_cut)
             target_images = imagetensors[torch.arange(batch_size), offset_target_nums] # get image form of target
             decoded_target_images = autoencoder.decode(targets)
+
+            output_image_list = []
+            for b in range(outputs_cut.shape[0]):
+                inner_list = []
+                for i in range(outputs_cut.shape[1]):
+                    vector = outputs_cut[b,i,:]
+                    vector_decoded = autoencoder.decode(vector.unsqueeze(0))
+                    inner_list.append(vector_decoded.squeeze(0))
+                output_image_list.append(torch.stack(inner_list))
+
+            output_image_grids = torch.stack(output_image_list)
 
             # print(f"guess_images shape: {guess_images.shape}")
             # print(f"target_images shape: {target_images.shape}")
