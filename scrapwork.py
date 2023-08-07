@@ -22,7 +22,7 @@ def displayresults():
     fig.show()
 
 def displayresults_tr():
-    filepath = "../results/tr_results/v2/"
+    filepath = "../results/tr_results/v4/v4"
     files = os.listdir(filepath)
     random.shuffle(files)
 

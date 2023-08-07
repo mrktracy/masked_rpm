@@ -212,9 +212,10 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             mask_tensors = mask_tensors.to(device)
 
             # forward pass
-            outputs = model(inputs) # (batch_size,9,256)
+            outputs = model(inputs) # (batch_size,9,512)
             guesses = (outputs * mask_tensors).sum(dim=1)
             guesses_cut = guesses[:,0:256]
+            outputs_cut = outputs[:,:,0:256]
 
             candidates = embeddings[:,8:,:].to(device) # embeddings is shape (batch_size, 16, 256)
 
@@ -222,6 +223,7 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             num_correct += torch.sum(min_indices == target_nums)
 
             guess_images = autoencoder.decode(guesses_cut) # get image form of guesses
+            output_image_grids = autoencoder.decode(outputs_cut)
             target_images = imagetensors[torch.arange(batch_size), offset_target_nums] # get image form of target
             decoded_target_images = autoencoder.decode(targets)
 
@@ -230,15 +232,21 @@ def evaluate_model(model, dataloader, autoencoder, save_path, device):
             # print(f"decoded_target_images shape: {decoded_target_images.shape}")
 
             idx = 0
-            for guess, target, decoded_target in zip(guess_images, target_images, decoded_target_images):
+            for guess, target, decoded_target, imagetensor, output_image_grid in \
+                    zip(guess_images, target_images, decoded_target_images, imagetensors, \
+                        output_image_grids):
                 if idx >= 1:  # only save first 1 images from each mini-batch
                     break
                 guess = guess.cpu().numpy()
                 target = target.cpu().numpy()
                 decoded_target = decoded_target.cpu().numpy()
+                imagetensor = imagetensor.cpu().numpy()
+                output_image_grid = output_image_grid.cpu().numpy()
 
                 filename = f"eval_{imgnum}"
-                np.savez(os.path.join(save_path, filename), guess=guess, target=target, decoded_target=decoded_target)
+                np.savez(os.path.join(save_path, filename), guess=guess, \
+                         target=target, decoded_target=decoded_target, \
+                         imagetensor=imagetensor, output_image_grid=output_image_grid)
                 imgnum += 1
                 idx += 1
 
@@ -290,47 +298,47 @@ def main():
     # comment out this block if training
     state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
     transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
+    transformer_model.eval()
 
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()),
-                                 lr=LEARNING_RATE)
-    criterion = nn.MSELoss()
-
-    # Training loop
-    for epoch in range(EPOCHS):
-        for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
-
-            if idx%100 == 0:
-                start_time = time.time()
-
-            inputs = inputs.to(device)
-            targets = targets.to(device)
-            mask_tensors = mask_tensors.to(device)
-
-            outputs = transformer_model.forward(inputs) # (B,9,512)
-            guesses = (outputs * mask_tensors).sum(dim=1) # (B,512)
-            guesses_cut = guesses[:,0:256] # (B, 1, 256)
-
-            loss = criterion(guesses_cut,targets)
-
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-
-            if idx%100 == 99:
-                end_time = time.time()
-                batch_time = end_time - start_time
-                print(f"100 mini-batches processed in {batch_time} seconds")
-                print(f"Most recent batch total loss: {loss.item()}\n")
-
-        torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v4_ep{epoch+1}.pth")
-        print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
+    # optimizer = torch.optim.Adam(list(transformer_model.parameters()),
+    #                              lr=LEARNING_RATE)
+    # criterion = nn.MSELoss()
+    #
+    # # Training loop
+    # for epoch in range(EPOCHS):
+    #     for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
+    #
+    #         if idx%100 == 0:
+    #             start_time = time.time()
+    #
+    #         inputs = inputs.to(device)
+    #         targets = targets.to(device)
+    #         mask_tensors = mask_tensors.to(device)
+    #
+    #         outputs = transformer_model.forward(inputs) # (B,9,512)
+    #         guesses = (outputs * mask_tensors).sum(dim=1) # (B,512)
+    #         guesses_cut = guesses[:,0:256] # (B, 1, 256)
+    #
+    #         loss = criterion(guesses_cut,targets)
+    #
+    #         loss.backward()
+    #         optimizer.step()
+    #         optimizer.zero_grad()
+    #
+    #         if idx%100 == 99:
+    #             end_time = time.time()
+    #             batch_time = end_time - start_time
+    #             print(f"100 mini-batches processed in {batch_time} seconds")
+    #             print(f"Most recent batch total loss: {loss.item()}\n")
+    #
+    #     torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v4_ep{epoch+1}.pth")
+    #     print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v4/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v2/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v4/proportion_correct.txt"
+    output_file_path = "../tr_results/v2/proportion_correct.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
 
