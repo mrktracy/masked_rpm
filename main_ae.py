@@ -164,12 +164,13 @@ def main():
 
     # Initialize device, data loader, model, optimizer, and loss function
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    num_gpus = torch.cuda.device_count()
 
     root_dir = '../pgm/neutral/'
-
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     # # Uncomment if using RAVEN data
+    # root_dir = '../RAVEN-10000/'
     # all_files = gather_files(root_dir)
     # num_files = len(all_files)
     # train_proportion = 0.7
@@ -187,6 +188,9 @@ def main():
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     autoencoder = ResNetAutoencoder().to(device)
+
+    if num_gpus > 1: # use multiple GPUs
+        autoencoder = nn.DataParallel(autoencoder)
 
     optimizer = torch.optim.Adam(list(autoencoder.parameters()),
                                  lr=LEARNING_RATE)
