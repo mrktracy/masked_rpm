@@ -1,6 +1,31 @@
 import numpy as np
 import torch
 
+class RPMSentencesNew(Dataset):
+    def __init__(self, files, ResNetAutoencoder, device):
+        self.files = files
+        self.autoencoder = ResNetAutoencoder
+        self.device = device
+
+    def __getitem__(self, idx):
+
+        filename = self.files[idx]
+        data = np.load(filename)
+        image = data['image'].reshape(16,160,160)
+        imagetensor = torch.from_numpy(image).float() / 255 # convert context panels to tensor
+        imagetensor = imagetensor.unsqueeze(1).to(self.device)
+
+        embeddings = self.autoencoder.get_embedding(imagetensor) # get panel embeddings
+
+        target = data['target'].item()
+        target_onehot = torch.zeros(8)
+        target_onehot[target] = 1
+
+        return embeddings, target_onehot, target
+
+    def __len__(self):
+        length = len(self.files)
+        return length
 
 # 1. Dataset
 class RPMSentences(Dataset):

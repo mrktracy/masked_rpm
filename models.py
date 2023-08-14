@@ -6,7 +6,41 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
-# Transformer Model
+# Previous Transformer Model, relying on Block class from timm
+class TransformerModelNew(nn.Module): #TODO: redefine transformer class for new architecture
+    def __init__(self, embed_dim=256, grid_size = 3, num_heads=16, mlp_ratio=4.,norm_layer=nn.LayerNorm, depth=4):
+        super(TransformerModelNew, self).__init__()
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.blocks = nn.ModuleList([ #TODO: redefine this and/or expand on it
+            Block(embed_dim*2, num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
+            for _ in range(depth)])
+
+        self.norm = norm_layer(embed_dim*2)
+
+    def forward(self, x):
+        batch_size = x.size(0)  # Get the batch size from the first dimension of x
+
+        context = x[:,0:8,:] # x is (B, 16, embed_dim)
+        candidates = x[:,8:,:]
+
+        context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)], \
+                            dim=2)  # add positional embeddings
+
+        candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)], \
+                            dim=2)  # add 9th positional embedding to all candidates
+
+        for blk in self.blocks: # multi-headed self-attention layer
+            context = blk(context)
+        x = self.norm(x) # TODO: finish redefining model architecture
+
+        return x
+
+# Previous Transformer Model, relying on Block class from timm
 class TransformerModel(nn.Module):
     def __init__(self, embed_dim=256, grid_size = 3, num_heads=16, mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4):
         super(TransformerModel, self).__init__()

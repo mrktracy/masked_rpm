@@ -7,8 +7,8 @@ from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
 from evaluate import evaluate_model
-from datasets import RPMSentences, RPMFullSentences
-from models import TransformerModel
+from datasets import RPMSentencesNew
+from models import TransformerModelNew
 
 seed = 42
 random.seed(seed)
@@ -46,17 +46,14 @@ def main():
     autoencoder.load_state_dict(state_dict)
     autoencoder.eval()
 
-    train_dataset = RPMSentences(train_files, autoencoder, embed_dim=256, device=device)
-    val_dataset = RPMFullSentences(val_files, autoencoder, embed_dim=256, device=device)
+    train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
+    val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    transformer_model = TransformerModel(depth=12).to(device) # instantiate model
-
-    # for name,param in transformer_model.named_parameters(): # initialize model
-    #     if 'weight' in name:
-    #         torch.nn.init.xavier_normal_(param)
+    # # Used for transformer model v1-itr2
+    transformer_model = TransformerModelNew(depth=12).to(device) # instantiate model TODO: update initialization
 
     if num_gpus > 1: # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
@@ -68,24 +65,20 @@ def main():
 
     optimizer = torch.optim.Adam(list(transformer_model.parameters()),
                                  lr=LEARNING_RATE)
-    criterion = nn.MSELoss()
+    criterion = nn.CrossEntropyLoss()
 
     # Training loop
     for epoch in range(EPOCHS):
-        for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
+        for idx, (inputs, targets_onehot, _) in enumerate(train_dataloader):
 
             if idx%100 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
-            targets = targets.to(device)
-            mask_tensors = mask_tensors.to(device)
+            targets = targets_onehot.to(device)
 
-            outputs = transformer_model.forward(inputs) # (B,9,512)
-            guesses = (outputs * mask_tensors).sum(dim=1) # (B,512)
-            guesses_cut = guesses[:,0:256] # (B, 1, 256)
-
-            loss = criterion(guesses_cut,targets)
+            outputs = transformer_model.forward(inputs) # (B,8)
+            loss = criterion(outputs,targets_onehot)
 
             loss.backward()
             optimizer.step()

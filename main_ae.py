@@ -222,14 +222,17 @@ def main():
                 end_time = time.time()
                 batch_time = end_time - start_time
                 print(f"150 mini-batches took {batch_time} seconds")
+                print(f"Most recent batch loss: {loss.item()}\n")
 
         print("Epoch [{}/{}], Loss: {:.4f}\n".format(epoch + 1, EPOCHS, loss.item()))
+        torch.save(autoencoder.state_dict(), f"../modelsaves/autoencoder_v2_ep{epoch+1}.pth")
 
     # Evaluate the model
-    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v1')
-    print(f"Average validation loss: {avg_val_loss}")
+    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v2')
 
-    torch.save(autoencoder.state_dict(), "../modelsaves/autoencoder_v2.pth")
+    output_file_path = "../ae_results/v2/avg_val_loss.txt"
+    with open(output_file_path, "w") as file:
+        file.write(f"Average validation loss: {avg_val_loss}")
 
 if __name__ == "__main__":
     main()
