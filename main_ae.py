@@ -184,6 +184,9 @@ def main():
     val_dataset = RPMPanels(val_files)
     # test_dataset = RPMPanels(test_files)
 
+    print("Training files: {}, validation files: {}, testing files: {}".format(len(train_files), len(val_files),\
+                                                                               len(test_files)))
+
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
@@ -200,7 +203,7 @@ def main():
     for epoch in range(EPOCHS):
         for idx, (images,_) in enumerate(train_dataloader):
 
-            if idx%2 == 0:
+            if idx%150 == 0:
                 start_time = time.time()
 
             # move images to the device, reshape them and ensure channel dimension is present
@@ -215,10 +218,10 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%2==1:
+            if idx%150==149:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"2000 mini-batches took {batch_time} seconds")
+                print(f"150 mini-batches took {batch_time} seconds")
 
         print("Epoch [{}/{}], Loss: {:.4f}\n".format(epoch + 1, EPOCHS, loss.item()))
 
