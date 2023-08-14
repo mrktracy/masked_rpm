@@ -200,7 +200,7 @@ def main():
     for epoch in range(EPOCHS):
         for idx, (images,_) in enumerate(train_dataloader):
 
-            if idx%2000 == 0:
+            if idx%2 == 0:
                 start_time = time.time()
 
             # move images to the device, reshape them and ensure channel dimension is present
@@ -215,7 +215,7 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%2000==1999:
+            if idx%2==1:
                 end_time = time.time()
                 batch_time = end_time - start_time
                 print(f"2000 mini-batches took {batch_time} seconds")
