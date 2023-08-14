@@ -7,8 +7,9 @@ from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
 # Previous Transformer Model, relying on Block class from timm
-class TransformerModelNew(nn.Module): #TODO: redefine transformer class for new architecture
-    def __init__(self, embed_dim=256, grid_size = 3, num_heads=16, mlp_ratio=4.,norm_layer=nn.LayerNorm, depth=4):
+class TransformerModelNew(nn.Module):
+    def __init__(self, embed_dim=256, grid_size = 3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=8,
+                 can_depth = 5, guess_depth = 5):
         super(TransformerModelNew, self).__init__()
 
         # initialize and retrieve positional embeddings
@@ -16,9 +17,21 @@ class TransformerModelNew(nn.Module): #TODO: redefine transformer class for new 
         pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
-        self.blocks = nn.ModuleList([ #TODO: redefine this and/or expand on it
-            Block(embed_dim*2, num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
-            for _ in range(depth)])
+        self.con_blocks = nn.ModuleList([
+            Block(embed_dim*2, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(con_depth)])
+
+        self.can_blocks = nn.ModuleList([
+            Block(embed_dim*2, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(can_depth-1)])
+
+        self.last_can_block = Block(embed_dim*2, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True,\
+                                    norm_layer=norm_layer)
+
+        self.guess_blocks = nn.ModuleList([
+            Block(embed_dim*2, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(embed_dim*2, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(guess_depth)])
 
         self.norm = norm_layer(embed_dim*2)
 
@@ -28,17 +41,25 @@ class TransformerModelNew(nn.Module): #TODO: redefine transformer class for new 
         context = x[:,0:8,:] # x is (B, 16, embed_dim)
         candidates = x[:,8:,:]
 
-        context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)], \
+        context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
                             dim=2)  # add positional embeddings
 
-        candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)], \
+        candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
                             dim=2)  # add 9th positional embedding to all candidates
 
-        for blk in self.blocks: # multi-headed self-attention layer
-            context = blk(context)
-        x = self.norm(x) # TODO: finish redefining model architecture
+        for blk in self.con_blocks: # multi-headed self-attention layer
+            context = blk(x_q=context,x_kv=context)
 
-        return x
+        for blk in self.can_blocks:
+            candidates = blk(x_q=candidates,x_kv=candidates)
+
+        y = self.last_can_block(x_q=candidates, x_kv=candidates)
+
+        for blk1, blk2 in self.guess_blocks:
+            y = blk1(x_q=y, x_kv=y,use_mlp_layer=False)
+            y = blk2(x_q=y, x_kv=context)
+
+        # TODO: add MLP head
 
 # Previous Transformer Model, relying on Block class from timm
 class TransformerModel(nn.Module):
@@ -122,7 +143,7 @@ class Attention(nn.Module):
 
     def forward(self, x_q, x_kv):
 
-        batch_size, len_q, len_kv, C = x_q.size(0), x_q.size(1), x_kv.size(1), self.dim
+        batch_size, len_q, len_kv, c = x_q.size(0), x_q.size(1), x_kv.size(1), self.dim
 
         # Pass through the pre-attention projection: b x lq x (n*dv)
         # Separate different heads: b x lq x n x dv
@@ -144,7 +165,7 @@ class Attention(nn.Module):
             attn = self.attn_drop(attn)
             x = attn @ v
 
-        x = x.transpose(1, 2).reshape(batch_size, len_q, C)
+        x = x.transpose(1, 2).reshape(batch_size, len_q, c)
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
@@ -203,9 +224,9 @@ class Block(nn.Module):
         self.ls2 = LayerScale(dim, init_values=init_values) if init_values else nn.Identity()
         self.drop_path2 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
-    def forward(self, x_q, x_kv, mlp_layer=True): # modify to take two inputs and whether or not to do MLP
+    def forward(self, x_q, x_kv, use_mlp_layer=True):
         x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_kv))))
-        if mlp_layer:
+        if use_mlp_layer:
             x = x + self.drop_path2(self.ls2(self.mlp(self.norm2(x))))
         else:
             x = self.norm2(x)
