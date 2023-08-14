@@ -30,7 +30,7 @@ class RPMPanels(Dataset):
         panelidx = idx % 16
         filename = self.files[fileidx]
         data = np.load(filename)
-        image = data['image']
+        image = data['image'].reshape([16,160,160])
         panel = torch.from_numpy(image[panelidx,:,:]).float() / 255
         label = panel.clone()
 
@@ -74,7 +74,8 @@ class ResNetAutoencoder(nn.Module):
             ResidualBlock(64, 128, 2), # N, 128, 20, 20
             ResidualBlock(128, 256, 2), # N, 256, 10, 10
             nn.Flatten(), # N, 256*10*10
-            nn.Linear(256*10*10, 256) # N, 256
+            nn.Linear(256*10*10, 256), # N, 256
+            nn.Sigmoid()
         )
 
         self.decoder = nn.Sequential(
@@ -195,10 +196,10 @@ def main():
         print("Epoch [{}/{}], Loss: {:.4f}\n".format(epoch + 1, EPOCHS, loss.item()))
 
     # Evaluate the model
-    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v0')
+    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v1')
     print(f"Average validation loss: {avg_val_loss}")
 
-    torch.save(autoencoder.state_dict(), "../modelsaves/autoencoder_v0.pth")
+    torch.save(autoencoder.state_dict(), "../modelsaves/autoencoder_v1.pth")
 
 if __name__ == "__main__":
     main()
