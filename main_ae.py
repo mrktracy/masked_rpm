@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import numpy as np
 import random
 import time
+import re
 
 seed = 42
 random.seed(seed)
@@ -20,6 +21,24 @@ def gather_files(root_dir):
                 all_files.append(os.path.join(dirpath, filename))
     random.shuffle(all_files)
     return all_files
+
+def gather_files_pgm(root_dir):
+    all_files = []
+    for dirpath, _, filenames in os.walk(root_dir):
+        for filename in filenames:
+            if filename.endswith('.npz'):
+                all_files.append(os.path.join(dirpath, filename))
+    random.shuffle(all_files)
+
+    train_pattern = "train"
+    val_pattern = "val"
+    test_pattern = "test"
+
+    train_files = [filename for filename in all_files if re.search(train_pattern, filename)]
+    val_files = [filename for filename in all_files if re.search(val_pattern, filename)]
+    test_files = [filename for filename in all_files if re.search(test_pattern, filename)]
+
+    return train_files, val_files, test_files
 
 class RPMPanels(Dataset):
     def __init__(self, files):
@@ -146,19 +165,23 @@ def main():
     # Initialize device, data loader, model, optimizer, and loss function
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    root_dir = '../RAVEN-10000'
-    all_files = gather_files(root_dir)
-    num_files = len(all_files)
-    train_proportion = 0.7
-    val_proportion = 0.15
-    # test proportion is 1 - train_proportion - val_proportion
-    train_files = all_files[:int(num_files*train_proportion)]
-    val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion+val_proportion))]
-    test_files = all_files[int(num_files * (train_proportion+val_proportion)):]
+    root_dir = '../pgm/neutral/'
+
+    train_files, val_files, test_files = gather_files_pgm(root_dir)
+
+    # # Uncomment if using RAVEN data
+    # all_files = gather_files(root_dir)
+    # num_files = len(all_files)
+    # train_proportion = 0.7
+    # val_proportion = 0.15
+    # # test proportion is 1 - train_proportion - val_proportion
+    # train_files = all_files[:int(num_files*train_proportion)]
+    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion+val_proportion))]
+    # test_files = all_files[int(num_files * (train_proportion+val_proportion)):]
 
     train_dataset = RPMPanels(train_files)
     val_dataset = RPMPanels(val_files)
-    test_dataset = RPMPanels(test_files)
+    # test_dataset = RPMPanels(test_files)
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -199,7 +222,7 @@ def main():
     avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v1')
     print(f"Average validation loss: {avg_val_loss}")
 
-    torch.save(autoencoder.state_dict(), "../modelsaves/autoencoder_v1.pth")
+    torch.save(autoencoder.state_dict(), "../modelsaves/autoencoder_v2.pth")
 
 if __name__ == "__main__":
     main()

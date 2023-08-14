@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from main_ae import ResNetAutoencoder, gather_files
+from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
 from evaluate import evaluate_model
@@ -26,15 +26,19 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    root_dir = '../RAVEN-10000'
-    all_files = gather_files(root_dir)
-    num_files = len(all_files)
-    train_proportion = 0.7
-    val_proportion = 0.15
-    # test proportion is 1 - train_proportion - val_proportion
-    train_files = all_files[:int(num_files * train_proportion)]
-    val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
-    # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
+    root_dir = '../pgm/neutral/'
+    train_files, val_files, test_files = gather_files_pgm(root_dir)
+
+    # # Uncomment if using RAVEN dataset
+    # root_dir = '../RAVEN-10000'
+    # all_files = gather_files(root_dir)
+    # num_files = len(all_files)
+    # train_proportion = 0.7
+    # val_proportion = 0.15
+    # # test proportion is 1 - train_proportion - val_proportion
+    # train_files = all_files[:int(num_files * train_proportion)]
+    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
+    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
     # initialize autoencoder
     autoencoder = ResNetAutoencoder().to(device)
@@ -44,7 +48,6 @@ def main():
 
     train_dataset = RPMSentences(train_files, autoencoder, embed_dim=256, device=device)
     val_dataset = RPMFullSentences(val_files, autoencoder, embed_dim=256, device=device)
-    # test_dataset = RPMPanels(test_files)
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
