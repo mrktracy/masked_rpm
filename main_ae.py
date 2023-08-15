@@ -225,12 +225,12 @@ def main():
                 print(f"Most recent batch loss: {loss.item()}\n")
 
         print("Epoch [{}/{}], Loss: {:.4f}\n".format(epoch + 1, EPOCHS, loss.item()))
-        torch.save(autoencoder.state_dict(), f"../modelsaves/autoencoder_v2_ep{epoch+1}.pth")
+        torch.save(autoencoder.state_dict(), f"../modelsaves/autoencoder_v1_ep{epoch+1}.pth")
 
     # Evaluate the model
-    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v2')
+    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v1')
 
-    output_file_path = "../ae_results/v2/avg_val_loss.txt"
+    output_file_path = "../ae_results/v1/avg_val_loss.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Average validation loss: {avg_val_loss}")
 
