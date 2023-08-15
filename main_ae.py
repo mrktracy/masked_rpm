@@ -93,12 +93,12 @@ class ResNetAutoencoder(nn.Module):
             ResidualBlock(64, 128, 2), # N, 128, 20, 20
             ResidualBlock(128, 256, 2), # N, 256, 10, 10
             nn.Flatten(), # N, 256*10*10
-            nn.Linear(256*10*10, 256), # N, 256
+            nn.Linear(256*10*10, 512), # N, 512
             nn.Sigmoid()
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(256, 256*10*10),
+            nn.Linear(512, 256*10*10),
             nn.Unflatten(1, (256,10,10)),
             nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 128, 20, 20
             nn.ReLU(),
@@ -119,7 +119,7 @@ class ResNetAutoencoder(nn.Module):
 
     def get_embedding(self, x):
         x = self.encoder(x)
-        return x  # reshaping to (batch_size, 256)
+        return x  # reshaping to (batch_size, embed_dim)
 
     def decode(self,x):
         x = self.decoder(x)
