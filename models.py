@@ -29,8 +29,8 @@ class TransformerModelNew(nn.Module):
                                     norm_layer=norm_layer)
 
         self.guess_blocks = nn.ModuleList([
-            Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
-            Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            [Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)]
             for _ in range(guess_depth)])
 
         self.norm = norm_layer(embed_dim)
