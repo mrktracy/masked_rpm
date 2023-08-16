@@ -145,6 +145,8 @@ def evaluate_model(model, dataloader, device, save_path):
             total_loss += loss.item()
             idx = 0
             for image,output in zip(images,outputs):
+                if imgnum % 50 == 0:
+                    start_time = time.time()
                 if idx >= 1: # only save first image from each mini-batch
                     break
                 image = image.cpu().numpy()
@@ -153,6 +155,10 @@ def evaluate_model(model, dataloader, device, save_path):
                 np.savez(os.path.join(save_path,filename), image=image, output=output)
                 imgnum += 1
                 idx += 1
+                if imgnum % 50 == 49:
+                    end_time = time.time()
+                    run_time = end_time - start_time
+                    print(f"50 images processed in {run_time} seconds\n")
 
     return total_loss/len(dataloader.dataset)
 
