@@ -69,7 +69,7 @@ class TransformerModelNew(nn.Module):
         y = self.last_can_block(x_q=candidates, x_kv=candidates)
 
         for blk1, blk2 in self.guess_blocks:
-            y = blk1(x_q=y, x_kv=y, use_mlp_layer=False)
+            y = blk1(x_q=y, x_kv=y)
             y = blk2(x_q=y, x_kv=context)
 
         y = self.flatten(y)
@@ -202,6 +202,9 @@ class Block(nn.Module):
         self.drop_path2 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
     def forward(self, x_q, x_kv, use_mlp_layer=True):
+
+        print("Input x_q device: ", x_q.device)
+        print("Input x_kv device: ", x_kv.device)
 
         x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_kv))))
         if use_mlp_layer:
