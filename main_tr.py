@@ -78,7 +78,7 @@ def main():
             inputs = inputs.to(device)
             targets_onehot = targets_onehot.to(device)
 
-            outputs = transformer_model.forward(inputs) # (B,8)
+            outputs = transformer_model.module.forward(inputs) if num_gpus > 1 else transformer_model.forward(inputs) # (B,8)
             loss = criterion(outputs,targets_onehot)
 
             loss.backward()
