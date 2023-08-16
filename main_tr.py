@@ -26,6 +26,24 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
+    # initialize both stages of model
+    transformer_model = TransformerModelNew().to(device)  # instantiate model
+    # initialize autoencoder
+    autoencoder = ResNetAutoencoder().to(device)
+
+    if num_gpus > 1:  # use multiple GPUs
+        transformer_model = nn.DataParallel(transformer_model)
+        autoencoder = nn.DataParallel(autoencoder)
+
+    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
+    autoencoder.load_state_dict(state_dict)
+    autoencoder.eval()
+
+    # # comment out this block if training
+    # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
+    # transformer_model.load_state_dict(state_dict_tr)
+    # transformer_model.eval()
+
     root_dir = '../pgm/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
@@ -45,24 +63,6 @@ def main():
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
-
-    # initialize both stages of model
-    transformer_model = TransformerModelNew().to(device) # instantiate model
-    # initialize autoencoder
-    autoencoder = ResNetAutoencoder().to(device)
-
-    if num_gpus > 1: # use multiple GPUs
-        transformer_model = nn.DataParallel(transformer_model)
-        autoencoder = nn.DataParallel(autoencoder)
-
-    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
-    autoencoder.load_state_dict(state_dict)
-    autoencoder.eval()
-
-    # # comment out this block if training
-    # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
-    # transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
 
     optimizer = torch.optim.Adam(list(transformer_model.parameters()),
                                  lr=LEARNING_RATE)
