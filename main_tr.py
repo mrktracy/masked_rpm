@@ -40,23 +40,24 @@ def main():
     # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
-    # initialize autoencoder
-    autoencoder = ResNetAutoencoder().to(device)
-    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
-    autoencoder.load_state_dict(state_dict)
-    autoencoder.eval()
-
     train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
     val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    # # Used for transformer model v1-itr2
+    # initialize both stages of model
     transformer_model = TransformerModelNew().to(device) # instantiate model
+    # initialize autoencoder
+    autoencoder = ResNetAutoencoder().to(device)
 
     if num_gpus > 1: # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
+        autoencoder = nn.DataParallel(autoencoder)
+
+    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
+    autoencoder.load_state_dict(state_dict)
+    autoencoder.eval()
 
     # # comment out this block if training
     # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
