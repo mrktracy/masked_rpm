@@ -28,11 +28,11 @@ class TransformerModelNew(nn.Module):
         self.last_can_block = Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True,\
                                     norm_layer=norm_layer)
 
-        self.guess_blocks = [nn.ModuleList([
+        self.guess_blocks = nn.ModuleList([nn.ModuleList([
             Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
             Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
             for _ in range(guess_depth)
-                             ]
+                             ])
 
         self.norm = norm_layer(embed_dim)
 
@@ -69,7 +69,7 @@ class TransformerModelNew(nn.Module):
         y = self.last_can_block(x_q=candidates, x_kv=candidates)
 
         for blk1, blk2 in self.guess_blocks:
-            y = blk1(x_q=y, x_kv=y)
+            y = blk1(x_q=y, x_kv=y, use_mlp_layer=False)
             y = blk2(x_q=y, x_kv=context)
 
         y = self.flatten(y)
