@@ -76,6 +76,8 @@ class TransformerModelNew(nn.Module):
         y = self.relu(self.lin1(y))
         y = self.lin2(y)
 
+        return y
+
 """ Modification of "Vision Transformer (ViT) in PyTorch"
 https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py
 A PyTorch implement of Vision Transformers as described in:
