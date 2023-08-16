@@ -203,9 +203,6 @@ class Block(nn.Module):
 
     def forward(self, x_q, x_kv, use_mlp_layer=True):
 
-        print("Input x_q device: ", x_q.device)
-        print("Input x_kv device: ", x_kv.device)
-
         x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_kv))))
         if use_mlp_layer:
             x = x + self.drop_path2(self.ls2(self.mlp(self.norm2(x))))
