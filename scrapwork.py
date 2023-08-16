@@ -3,8 +3,8 @@ import random
 import os
 import matplotlib.pyplot as plt
 
-def displayresults():
-    filepath = "../results/ae_results/"
+def displayresults_ae():
+    filepath = "../results/ae_results/v1/"
     files = os.listdir(filepath)
     random.shuffle(files)
 
@@ -18,8 +18,6 @@ def displayresults():
         axs[idx, 0].imshow(image, cmap='gray')
         axs[idx, 1].imshow(output, cmap='gray')
         idx += 1
-
-    fig.show()
 
 def displayresults_tr():
     filepath = "../results/tr_results/v2"
@@ -41,7 +39,6 @@ def displayresults_tr():
 
         idx += 1
 
-    fig.show()
     print(np.allclose(guesses, guesses[0]*len(guesses)))
 
 def displayresults_tr_grid():
@@ -77,7 +74,7 @@ def displayresults_tr_grid():
     axs4.imshow(target.squeeze(0), cmap='gray')
 
 if __name__ == "__main__":
-    displayresults()
+    displayresults_ae()
     # displayresults_tr_grid()
     plt.show()
     while plt.get_fignums():
