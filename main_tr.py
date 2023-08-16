@@ -18,7 +18,7 @@ torch.manual_seed(seed)
 def main():
     # Define Hyperparameters
     EPOCHS = 10
-    BATCH_SIZE = 32
+    BATCH_SIZE = 64
     LEARNING_RATE = 0.01
     # VERSION = 'v2'
 
@@ -72,7 +72,7 @@ def main():
     for epoch in range(EPOCHS):
         for idx, (inputs, targets_onehot, _) in enumerate(train_dataloader):
 
-            if idx%72 == 0:
+            if idx%50 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
@@ -85,20 +85,23 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%72 == 71:
+            if idx%50 == 49:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"72 mini-batches processed in {batch_time} seconds")
+                print(f"50 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
-        torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v4_ep{epoch+1}.pth")
+            # save twice per epoch
+            if idx%9375 == 9374:
+                torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v2-itr0_ep{epoch + 1}_sv{idx//9375+1}.pth")
+
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v2/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v2-itr0/', device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v2/proportion_correct.txt"
+    output_file_path = "../tr_results/v2-itr0/proportion_correct.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
 
