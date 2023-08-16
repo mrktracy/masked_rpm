@@ -68,9 +68,10 @@ class TransformerModelNew(nn.Module):
 
         y = self.last_can_block(x_q=candidates, x_kv=candidates)
 
-        for blk1, blk2 in self.guess_blocks:
-            y = blk1(x_q=y, x_kv=y, use_mlp_layer=False)
-            y = blk2(x_q=y, x_kv=context)
+        for block in self.guess_blocks:
+            for blk1, blk2 in block:
+                y = blk1(x_q=y, x_kv=y, use_mlp_layer=False)
+                y = blk2(x_q=y, x_kv=context)
 
         y = self.flatten(y)
         y = self.relu(self.lin1(y))
