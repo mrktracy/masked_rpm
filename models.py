@@ -69,7 +69,7 @@ class TransformerModelNew(nn.Module):
         y = self.last_can_block(x_q=candidates, x_kv=candidates)
 
         for blk1, blk2 in self.guess_blocks:
-            y = blk1(x_q=y, x_kv=y,use_mlp_layer=False)
+            y = blk1(x_q=y, x_kv=y, use_mlp_layer=False)
             y = blk2(x_q=y, x_kv=context)
 
         y = self.flatten(y)
@@ -176,7 +176,8 @@ class Block(nn.Module):
             mlp_layer=Mlp,
     ):
         super().__init__()
-        self.norm1 = norm_layer(dim)
+        self.norm1a = norm_layer(dim)
+        self.norm1b = norm_layer(dim)
         self.attn = Attention(
             dim,
             num_heads=num_heads,
@@ -202,7 +203,7 @@ class Block(nn.Module):
         self.drop_path2 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
     def forward(self, x_q, x_kv, use_mlp_layer=True):
-        x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_kv))))
+        x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1a(x_q), self.norm1b(x_kv))))
         if use_mlp_layer:
             x = x + self.drop_path2(self.ls2(self.mlp(self.norm2(x))))
         else:
