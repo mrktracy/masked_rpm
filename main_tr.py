@@ -42,7 +42,7 @@ def main():
 
     # initialize autoencoder
     autoencoder = ResNetAutoencoder().to(device)
-    state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
+    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
     autoencoder.load_state_dict(state_dict)
     autoencoder.eval()
 
@@ -53,7 +53,7 @@ def main():
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     # # Used for transformer model v1-itr2
-    transformer_model = TransformerModelNew(depth=12).to(device) # instantiate model TODO: update initialization
+    transformer_model = TransformerModelNew().to(device) # instantiate model
 
     if num_gpus > 1: # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
@@ -75,7 +75,7 @@ def main():
                 start_time = time.time()
 
             inputs = inputs.to(device)
-            targets = targets_onehot.to(device)
+            targets_onehot = targets_onehot.to(device)
 
             outputs = transformer_model.forward(inputs) # (B,8)
             loss = criterion(outputs,targets_onehot)

@@ -195,37 +195,42 @@ def main():
     if num_gpus > 1: # use multiple GPUs
         autoencoder = nn.DataParallel(autoencoder)
 
-    optimizer = torch.optim.Adam(list(autoencoder.parameters()),
-                                 lr=LEARNING_RATE)
-    criterion = nn.MSELoss()
+    # Comment out if training
+    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
+    autoencoder.load_state_dict(state_dict)
+    autoencoder.eval()
 
-    # Training loop
-    for epoch in range(EPOCHS):
-        for idx, (images,_) in enumerate(train_dataloader):
-
-            if idx%150 == 0:
-                start_time = time.time()
-
-            # move images to the device, reshape them and ensure channel dimension is present
-            images = images.to(device)
-
-            # forward pass
-            outputs = autoencoder(images)
-            loss = criterion(outputs, images)
-
-            # backward pass and optimization
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-
-            if idx%150==149:
-                end_time = time.time()
-                batch_time = end_time - start_time
-                print(f"150 mini-batches took {batch_time} seconds")
-                print(f"Most recent batch loss: {loss.item()}\n")
-
-        print("Epoch [{}/{}], Loss: {:.4f}\n".format(epoch + 1, EPOCHS, loss.item()))
-        torch.save(autoencoder.state_dict(), f"../modelsaves/autoencoder_v1_ep{epoch+1}.pth")
+    # optimizer = torch.optim.Adam(list(autoencoder.parameters()),
+    #                              lr=LEARNING_RATE)
+    # criterion = nn.MSELoss()
+    #
+    # # Training loop
+    # for epoch in range(EPOCHS):
+    #     for idx, (images,_) in enumerate(train_dataloader):
+    #
+    #         if idx%150 == 0:
+    #             start_time = time.time()
+    #
+    #         # move images to the device, reshape them and ensure channel dimension is present
+    #         images = images.to(device)
+    #
+    #         # forward pass
+    #         outputs = autoencoder(images)
+    #         loss = criterion(outputs, images)
+    #
+    #         # backward pass and optimization
+    #         loss.backward()
+    #         optimizer.step()
+    #         optimizer.zero_grad()
+    #
+    #         if idx%150==149:
+    #             end_time = time.time()
+    #             batch_time = end_time - start_time
+    #             print(f"150 mini-batches took {batch_time} seconds")
+    #             print(f"Most recent batch loss: {loss.item()}\n")
+    #
+    #     print("Epoch [{}/{}], Loss: {:.4f}\n".format(epoch + 1, EPOCHS, loss.item()))
+    #     torch.save(autoencoder.state_dict(), f"../modelsaves/autoencoder_v1_ep{epoch+1}.pth")
 
     # Evaluate the model
     avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v1')
