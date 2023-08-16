@@ -8,7 +8,7 @@ from timm.layers import Mlp, DropPath, use_fused_attn
 
 # Previous Transformer Model, relying on Block class from timm
 class TransformerModelNew(nn.Module):
-    def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=6,
+    def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=6,\
                  can_depth=4, guess_depth=4):
         super(TransformerModelNew, self).__init__()
 
@@ -68,10 +68,9 @@ class TransformerModelNew(nn.Module):
 
         y = self.last_can_block(x_q=candidates, x_kv=candidates)
 
-        for block in self.guess_blocks:
-            for blk1, blk2 in block:
-                y = blk1(x_q=y, x_kv=y, use_mlp_layer=False)
-                y = blk2(x_q=y, x_kv=context)
+        for blk1, blk2 in self.guess_blocks:
+            y = blk1(x_q=y, x_kv=y, use_mlp_layer=False)
+            y = blk2(x_q=y, x_kv=context)
 
         y = self.flatten(y)
         y = self.relu(self.lin1(y))
