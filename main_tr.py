@@ -72,7 +72,7 @@ def main():
     for epoch in range(EPOCHS):
         for idx, (inputs, targets_onehot, _) in enumerate(train_dataloader):
 
-            if idx%100 == 0:
+            if idx%2 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
@@ -85,10 +85,10 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%100 == 99:
+            if idx%2 == 1:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"100 mini-batches processed in {batch_time} seconds")
+                print(f"2 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
         torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v4_ep{epoch+1}.pth")
