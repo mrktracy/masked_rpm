@@ -18,8 +18,12 @@ torch.manual_seed(seed)
 def main():
     # Define Hyperparameters
     EPOCHS = 10
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     LEARNING_RATE = 0.01
+    TOTAL_DATA = 1200000 # data set size
+    SAVES_PER_EPOCH = 4
+    BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
+
     # VERSION = 'v2'
 
     # Initialize device, data loader, model, optimizer, and loss function
@@ -91,9 +95,10 @@ def main():
                 print(f"50 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
-            # save twice per epoch
-            if idx%9375 == 9374:
-                torch.save(transformer_model.state_dict(), f"../modelsaves/transformer_v2-itr0_ep{epoch + 1}_sv{idx//9375+1}.pth")
+            # save four times per epoch
+            if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
+                model_path = f"../modelsaves/v2-itr0/transformer_v2-itr0_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+                torch.save(transformer_model.state_dict(), model_path)
 
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
