@@ -1,3 +1,5 @@
+import numpy as np
+
 # 2 Positional encodings: from FAIR's 'Masked Autoencoders...'
 def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False):
     """
@@ -25,7 +27,6 @@ def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
 
     emb = np.concatenate([emb_h, emb_w], axis=1) # (H*W, D)
     return emb
-
 
 def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     """
