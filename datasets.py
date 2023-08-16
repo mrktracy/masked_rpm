@@ -16,7 +16,9 @@ class RPMSentencesNew(Dataset):
         imagetensor = torch.from_numpy(image).float() / 255 # convert context panels to tensor
         imagetensor = imagetensor.unsqueeze(1).to(self.device)
 
-        embeddings = self.autoencoder.get_embedding(imagetensor) # get panel embeddings
+        # get panel embeddings
+        num_gpus = torch.cuda.device_count()
+        embeddings = self.autoencoder.module.get_embedding(imagetensor) if num_gpus > 1 else self.autoencoder.get_embedding()
 
         target = data['target'].item()
         target_onehot = torch.zeros(8)
