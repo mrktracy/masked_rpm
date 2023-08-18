@@ -9,17 +9,24 @@ import random
 from evaluate import evaluate_model
 from datasets import RPMSentencesNew
 from models import TransformerModelNew
+import os
 
 seed = 42
 random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 
+def initialize_weights_he(m):
+    if isinstance(m, nn.Linear):
+        nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+
 def main():
     # Define Hyperparameters
     EPOCHS = 10
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
     TOTAL_DATA = 1200000 # data set size
     SAVES_PER_EPOCH = 4
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
@@ -31,7 +38,12 @@ def main():
     num_gpus = torch.cuda.device_count()
 
     # initialize both stages of model
-    transformer_model = TransformerModelNew().to(device)  # instantiate model
+    # instantiate model
+    transformer_model = TransformerModelNew(num_heads=16, con_depth=10, can_depth=8,\
+                                            guess_depth=6, cat=False).to(device)
+    # initialize weights
+    transformer_model.apply(initialize_weights_he)
+
     # initialize autoencoder
     autoencoder = ResNetAutoencoder().to(device)
 
@@ -74,16 +86,17 @@ def main():
 
     # Training loop
     for epoch in range(EPOCHS):
-        for idx, (inputs, targets_onehot, _) in enumerate(train_dataloader):
+        for idx, (inputs, _, targets) in enumerate(train_dataloader):
 
             if idx%50 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
-            targets_onehot = targets_onehot.to(device)
+            # targets_onehot = targets_onehot.to(device)
+            targets = targets.to(device)
 
             outputs = transformer_model(inputs) # (B,8)
-            loss = criterion(outputs,targets_onehot)
+            loss = criterion(outputs,targets)
 
             loss.backward()
             optimizer.step()
@@ -97,16 +110,18 @@ def main():
 
             # save four times per epoch
             if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
-                model_path = f"../modelsaves/v2-itr0/transformer_v2-itr0_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+                model_path = f"../modelsaves/v2-itr1/transformer_v2-itr1_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+                os.makedirs(os.path.dirname(model_path), exist_ok=True)
                 torch.save(transformer_model.state_dict(), model_path)
 
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
-    proportion_correct = evaluate_model(transformer_model, val_dataloader, autoencoder, save_path='../tr_results/v2-itr0/', device=device)
+    proportion_correct = evaluate_model(transformer_model, val_dataloader, device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v2-itr0/proportion_correct.txt"
+    output_file_path = "../tr_results/v2-itr1/proportion_correct.txt"
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
 

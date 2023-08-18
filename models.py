@@ -5,12 +5,17 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
-
-# Previous Transformer Model, relying on Block class from timm
 class TransformerModelNew(nn.Module):
     def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=6,\
-                 can_depth=4, guess_depth=4):
+                 can_depth=4, guess_depth=4, cat=True):
         super(TransformerModelNew, self).__init__()
+
+        self.cat = cat
+
+        if self.cat == True:
+            self.model_dim = 2*embed_dim
+        else:
+            self.model_dim = embed_dim
 
         # initialize and retrieve positional embeddings
         self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
@@ -18,29 +23,31 @@ class TransformerModelNew(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.con_blocks = nn.ModuleList([
-            Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
             for _ in range(con_depth)])
 
         self.can_blocks = nn.ModuleList([
-            Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
             for _ in range(can_depth-1)])
 
-        self.last_can_block = Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True,\
+        self.last_can_block = Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True,\
                                     norm_layer=norm_layer)
 
         self.guess_blocks = nn.ModuleList([nn.ModuleList([
-            Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
-            Block(embed_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
             for _ in range(guess_depth)
                              ])
 
-        self.norm = norm_layer(embed_dim)
+        self.norm = norm_layer(self.model_dim)
 
         self.flatten = nn.Flatten()
 
-        self.lin1 = nn.Linear(embed_dim*8, 64*8)
+        self.lin1 = nn.Linear(self.model_dim*8, self.model_dim)
 
-        self.lin2 = nn.Linear(64*8, 8)
+        self.lin2 = nn.Linear(self.model_dim, 64)
+
+        self.lin3 = nn.Linear(64, 8)
 
         self.relu = nn.ReLU()
 
@@ -50,15 +57,14 @@ class TransformerModelNew(nn.Module):
         context = x[:,0:8,:] # x is (B, 16, embed_dim)
         candidates = x[:,8:,:]
 
-        # context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
-        #                     dim=2)  # add positional embeddings
-        #
-        # candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
-        #                     dim=2)  # add 9th positional embedding to all candidates
-
-        context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
-
-        candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
+        if self.cat == True:
+            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
+                                dim=2)  # add positional embeddings
+            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
+                                dim=2)  # add 9th positional embedding to all candidates
+        else:
+            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
 
         for blk in self.con_blocks: # multi-headed self-attention layer
             context = blk(x_q=context,x_kv=context)
@@ -74,7 +80,8 @@ class TransformerModelNew(nn.Module):
 
         y = self.flatten(y)
         y = self.relu(self.lin1(y))
-        y = self.lin2(y)
+        y = self.relu(self.lin2(y))
+        y = self.lin3(y)
 
         return y
 
