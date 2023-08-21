@@ -24,7 +24,7 @@ def initialize_weights_he(m):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 10
+    EPOCHS = 100
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
     TOTAL_DATA = 1200000 # data set size
@@ -62,7 +62,8 @@ def main():
 
     root_dir = '../pgm/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-
+    train_files = train_files[0:1000] # delete this after test
+    val_files = train_files[0:1000] # delete this after test
     # # Uncomment if using RAVEN dataset
     # root_dir = '../RAVEN-10000'
     # all_files = gather_files(root_dir)
@@ -109,10 +110,10 @@ def main():
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
             # save four times per epoch
-            if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
-                model_path = f"../modelsaves/v2-itr1/transformer_v2-itr1_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
-                os.makedirs(os.path.dirname(model_path), exist_ok=True)
-                torch.save(transformer_model.state_dict(), model_path)
+            # if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
+            #     model_path = f"../modelsaves/v2-itr1/transformer_v2-itr1_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+            #     os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            #     torch.save(transformer_model.state_dict(), model_path)
 
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
@@ -120,7 +121,7 @@ def main():
     proportion_correct = evaluate_model(transformer_model, val_dataloader, device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v2-itr1/proportion_correct.txt"
+    output_file_path = "../tr_results/v2-itr1/proportion_correct_test.txt"
     os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
