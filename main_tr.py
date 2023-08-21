@@ -24,7 +24,7 @@ def initialize_weights_he(m):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 100
+    EPOCHS = 2000
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
     TOTAL_DATA = 1200000 # data set size
@@ -62,8 +62,8 @@ def main():
 
     root_dir = '../pgm/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[0:1000] # delete this after test
-    val_files = train_files[0:1000] # delete this after test
+    train_files = train_files[0:100] # delete this after test
+    val_files = train_files[0:100] # delete this after test
     # # Uncomment if using RAVEN dataset
     # root_dir = '../RAVEN-10000'
     # all_files = gather_files(root_dir)
