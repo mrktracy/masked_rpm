@@ -38,14 +38,14 @@ def visualizedata():
 
     for idx, (inputs, _, targets) in enumerate(train_dataloader):
         if num_gpus > 1:
-            images = autoencoder.module.decode(inputs.permute(1,0,2,3))
+            images = autoencoder.module.decode(inputs.squeeze(0))
         else:
-            images = autoencoder.decode(inputs.permute(1, 0, 2, 3))
+            images = autoencoder.decode(inputs.squeeze(0))
 
         fig, axs = plt.subplots(4, 4)
         for i in range(4):
             for j in range(4):
-                axs[i,j].imshow(images[i*4+j].squeeze().cpu().detach().numpy(), cmap="gray")
+                axs[i,j].imshow(images[i*4+j, :, :, :].squeeze().cpu().detach().numpy(), cmap="gray")
                 axs.axis('off')
 
         save_path = os.path.join(save_dir, f'image_{idx}.png')
