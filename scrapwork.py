@@ -10,7 +10,7 @@ import torch
 def visualizedata():
 
     save_dir = "../visualize_data/"
-    os.makedirs(save_dir, exists_ok=True)
+    os.makedirs(save_dir, exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
