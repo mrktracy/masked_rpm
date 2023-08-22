@@ -46,7 +46,7 @@ def visualizedata():
         for i in range(4):
             for j in range(4):
                 axs[i,j].imshow(images[i*4+j, :, :, :].squeeze().cpu().detach().numpy(), cmap="gray")
-                axs.axis('off')
+                axs[i,j].axis('off')
 
         save_path = os.path.join(save_dir, f'image_{idx}.png')
         plt.savefig(save_path, bbox_inches='tight')
