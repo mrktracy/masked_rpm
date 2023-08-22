@@ -1,12 +1,14 @@
 import numpy as np
 import random
 import os
+import matplotlib
 import matplotlib.pyplot as plt
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 from datasets import RPMSentencesNew
 import torch.nn as nn
 import torch
 from torch.utils.data import DataLoader
+matplotlib.use('Agg')
 
 def visualizedata():
 
@@ -35,7 +37,11 @@ def visualizedata():
     train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
     for idx, (inputs, _, targets) in enumerate(train_dataloader):
-        images = autoencoder.decode(inputs.permute(1,0,2,3))
+        if num_gpus > 1:
+            images = autoencoder.module.decode(inputs.permute(1,0,2,3))
+        else:
+            images = autoencoder.decode(inputs.permute(1, 0, 2, 3))
+
         fig, axs = plt.subplots(4, 4)
         for i in range(4):
             for j in range(4):
