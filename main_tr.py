@@ -62,8 +62,8 @@ def main():
 
     root_dir = '../pgm/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[0:2] # delete this after test
-    val_files = train_files[0:2] # delete this after test
+    train_files = train_files[0:10] # delete this after test
+    val_files = train_files[0:10] # delete this after test
 
     # # Uncomment if using RAVEN dataset
     # root_dir = '../RAVEN-10000'
