@@ -30,9 +30,10 @@ class TransformerModelNew(nn.Module):
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
             for _ in range(can_depth)])
 
-        self.first_guess_block = nn.ModuleList([
+        self.first_guess_block = nn.ModuleList([nn.ModuleList([
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            ])
 
         self.guess_blocks = nn.ModuleList([nn.ModuleList([
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
