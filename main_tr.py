@@ -24,11 +24,11 @@ def initialize_weights_he(m):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 200000
+    EPOCHS = 10
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
-    TOTAL_DATA = 1200000 # data set size
-    SAVES_PER_EPOCH = 4
+    TOTAL_DATA = 49000 # data set size
+    SAVES_PER_EPOCH = 1
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
 
     # VERSION = 'v2'
@@ -76,8 +76,6 @@ def main():
     train_files = all_files[:int(num_files * train_proportion)]
     val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
-    train_files = train_files[0:32] # delete this after test
-    val_files = train_files[0:32] # delete this after test
 
     train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
     val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
@@ -114,13 +112,13 @@ def main():
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
             # save four times per epoch
-            # if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
-            #     model_path = f"../modelsaves/v2-itr1/transformer_v2-itr1_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
-            #     os.makedirs(os.path.dirname(model_path), exist_ok=True)
-            #     torch.save(transformer_model.state_dict(), model_path)
+            if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
+                model_path = f"../modelsaves/v3-itr0/transformer_v3-itr0_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+                os.makedirs(os.path.dirname(model_path), exist_ok=True)
+                torch.save(transformer_model.state_dict(), model_path)
 
-        if epoch%10 == 9: # comment out after test
-            print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
+        # if epoch%10 == 9: # comment out after test
+        print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
 
     # Evaluate the model
     proportion_correct = evaluate_model(transformer_model, val_dataloader, device=device)
