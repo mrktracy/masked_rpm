@@ -42,15 +42,28 @@ def visualizedata():
         else:
             images = autoencoder.decode(inputs.squeeze(0))
 
-        fig, axs = plt.subplots(4, 4)
-        for i in range(4):
-            for j in range(4):
-                axs[i,j].imshow(images[i*4+j, :, :, :].squeeze().cpu().detach().numpy(), cmap="gray")
-                axs[i,j].axis('off')
+        fig1, axs1 = plt.subplots(3, 3)
+        for i in range(3):
+            for j in range(3):
+                if i==3 & j==3:
+                    axs1[i,j].imshow(np.zeros([160,160]), cmap="gray")
+                    axs1[i,j].axis('off')
+                else:
+                    axs1[i,j].imshow(images[i*3+j, :, :, :].squeeze().cpu().detach().numpy(), cmap="gray")
+                    axs1[i,j].axis('off')
 
-        save_path = os.path.join(save_dir, f'image_{idx}.png')
-        plt.savefig(save_path, bbox_inches='tight')
-        plt.close(fig)
+        fig2, axs2 = plt.subplots(2, 4)
+        for i in range(2):
+            for j in range(4):
+                axs2[i,j].imshow(images[8 + i*2 + j, :, :, :].squeeze().cpu().detach().numpy(), cmap="gray")
+                axs2[i,j].axis('off')
+
+        save_q_path = os.path.join(save_dir, f'context_{idx}.png')
+        save_a_path = os.path.join(save_dir, f'candidates_{idx}.png')
+        fig1.savefig(save_q_path, bbox_inches='tight')
+        fig2.savefig(save_a_path, bbox_inches='tight')
+        plt.close(fig1)
+        plt.close(fig2)
 
 def displayresults_ae():
     filepath = "../results/ae_results/v1/"
