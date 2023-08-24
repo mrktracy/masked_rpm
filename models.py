@@ -28,15 +28,16 @@ class TransformerModelNew(nn.Module):
 
         self.can_blocks = nn.ModuleList([
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
-            for _ in range(can_depth-1)])
+            for _ in range(can_depth)])
 
-        self.last_can_block = Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True,\
-                                    norm_layer=norm_layer)
+        self.first_guess_block = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
 
         self.guess_blocks = nn.ModuleList([nn.ModuleList([
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
-            for _ in range(guess_depth)
+            for _ in range(guess_depth-1)
                              ])
 
         self.norm = norm_layer(self.model_dim)
@@ -67,16 +68,18 @@ class TransformerModelNew(nn.Module):
             candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
 
         for blk in self.con_blocks: # multi-headed self-attention layer
-            context = blk(x_q=context,x_kv=context)
+            context = blk(x_q=context, x_k=context, x_v=context)
 
         for blk in self.can_blocks:
-            candidates = blk(x_q=candidates,x_kv=candidates)
+            candidates = blk(x_q=candidates, x_k=candidates, x_v=candidates)
 
-        y = self.last_can_block(x_q=candidates, x_kv=candidates)
+        for blk1,blk2 in self.first_guess_block:
+            y = blk1(x_q=context, x_k=candidates, x_v=candidates)
+            y = blk2(x_q=candidates, x_k=context, x_v=y)
 
         for blk1, blk2 in self.guess_blocks:
-            y = blk1(x_q=y, x_kv=y, use_mlp_layer=False)
-            y = blk2(x_q=y, x_kv=context)
+            y = blk1(x_q=context, x_k=y, x_v=y)
+            y = blk2(x_q=candidates, x_k=context, x_v=y)
 
         y = self.flatten(y)
         y = self.relu(self.lin1(y))
@@ -125,15 +128,15 @@ class Attention(nn.Module):
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
-    def forward(self, x_q, x_kv):
+    def forward(self, x_q, x_k, x_v):
 
-        batch_size, len_q, len_kv, c = x_q.size(0), x_q.size(1), x_kv.size(1), self.dim
+        batch_size, len_q, len_k, len_v, c = x_q.size(0), x_q.size(1), x_k.size(1), x_v.size(1), self.dim
 
         # Pass through the pre-attention projection: b x lq x (n*dv)
         # Separate different heads: b x lq x n x dv
         q = self.w_qs(x_q).view(batch_size, self.num_heads, len_q, self.head_dim)
-        k = self.w_ks(x_kv).view(batch_size, self.num_heads, len_kv, self.head_dim)
-        v = self.w_vs(x_kv).view(batch_size, self.num_heads, len_kv, self.head_dim)
+        k = self.w_ks(x_k).view(batch_size, self.num_heads, len_k, self.head_dim)
+        v = self.w_vs(x_v).view(batch_size, self.num_heads, len_v, self.head_dim)
 
         q, k = self.q_norm(q), self.k_norm(k)
 
@@ -184,6 +187,8 @@ class Block(nn.Module):
     ):
         super().__init__()
         self.norm1 = norm_layer(dim)
+        self.norm2 = norm_layer(dim)
+        self.norm3 = norm_layer(dim)
         self.attn = Attention(
             dim,
             num_heads=num_heads,
@@ -197,8 +202,6 @@ class Block(nn.Module):
         )
         self.ls1 = LayerScale(dim, init_values=init_values) if init_values else nn.Identity()
         self.drop_path1 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
-
-        self.norm2 = norm_layer(dim)
         self.mlp = mlp_layer(
             in_features=dim,
             hidden_features=int(dim * mlp_ratio),
@@ -208,11 +211,11 @@ class Block(nn.Module):
         self.ls2 = LayerScale(dim, init_values=init_values) if init_values else nn.Identity()
         self.drop_path2 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
-    def forward(self, x_q, x_kv, use_mlp_layer=True):
+    def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
 
-        x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_kv))))
+        x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1(x_v))))
         if use_mlp_layer:
-            x = x + self.drop_path2(self.ls2(self.mlp(self.norm2(x))))
+            x = self.norm3(x + self.drop_path2(self.ls2(self.mlp(self.norm2(x)))))
         else:
             x = self.norm2(x)
 

@@ -39,8 +39,8 @@ def main():
 
     # initialize both stages of model
     # instantiate model
-    transformer_model = TransformerModelNew(num_heads=16, con_depth=10, can_depth=8,\
-                                            guess_depth=6, cat=False).to(device)
+    transformer_model = TransformerModelNew(num_heads=16, con_depth=10, can_depth=10,\
+                                            guess_depth=10, cat=False).to(device)
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
@@ -62,8 +62,8 @@ def main():
 
     root_dir = '../pgm/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[0:20] # delete this after test
-    val_files = train_files[0:20] # delete this after test
+    train_files = train_files[0:32] # delete this after test
+    val_files = train_files[0:32] # delete this after test
 
     # # Uncomment if using RAVEN dataset
     # root_dir = '../RAVEN-10000'
@@ -123,7 +123,7 @@ def main():
     proportion_correct = evaluate_model(transformer_model, val_dataloader, device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v2-itr1/proportion_correct_test.txt"
+    output_file_path = "../tr_results/v3-itr0/proportion_correct_test.txt"
     os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
