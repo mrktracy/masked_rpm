@@ -125,6 +125,51 @@ class ResNetAutoencoder(nn.Module):
         x = self.decoder(x)
         return x
 
+class ResNetAutoencoder(nn.Module):
+    def __init__(self, embed_dim):
+        super(ResNetAutoencoder, self).__init__()
+
+        self.embed_dim = embed_dim
+
+        self.encoder = nn.Sequential(
+            ResidualBlock(1, 16), # N, 16, 160, 160
+            ResidualBlock(16, 32, 2), # N, 32, 80, 80
+            ResidualBlock(32, 64, 2), # N, 64, 40, 40
+            ResidualBlock(64, 128, 2), # N, 128, 20, 20
+            ResidualBlock(128, 256, 2), # N, 256, 10, 10
+            nn.Flatten(), # N, 256*10*10
+            nn.Linear(256*10*10, self.embed_dim), # N, 512
+            nn.Sigmoid()
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(self.embed_dim, 256*10*10),
+            nn.Unflatten(1, (256,10,10)),
+            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 128, 20, 20
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 64, 40, 40
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 32, 80, 80
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 16, 160, 160
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding=1), # N, 1, 160, 160
+            nn.Sigmoid()  # to ensure the output is in [0, 1] as image pixel intensities
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+
+    def get_embedding(self, x):
+        x = self.encoder(x)
+        return x  # reshaping to (batch_size, embed_dim)
+
+    def decode(self,x):
+        x = self.decoder(x)
+        return x
+
 def evaluate_model(model, dataloader, device, save_path):
 
     os.makedirs(save_path, exist_ok=True) # make file path if it doesn't exist, do nothing otherwise

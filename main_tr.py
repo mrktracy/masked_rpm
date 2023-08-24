@@ -26,7 +26,7 @@ def main():
     # Define Hyperparameters
     EPOCHS = 200000
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.1
+    LEARNING_RATE = 0.001
     TOTAL_DATA = 1200000 # data set size
     SAVES_PER_EPOCH = 4
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
@@ -39,19 +39,20 @@ def main():
 
     # initialize both stages of model
     # instantiate model
-    transformer_model = TransformerModelNew(num_heads=16, con_depth=10, can_depth=10,\
+    transformer_model = TransformerModelNew(embed_dim=256, num_heads=16, con_depth=10, can_depth=10,\
                                             guess_depth=10, cat=False).to(device)
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
     # initialize autoencoder
-    autoencoder = ResNetAutoencoder().to(device)
+    autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
         autoencoder = nn.DataParallel(autoencoder)
 
-    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
+    # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
+    state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
     autoencoder.load_state_dict(state_dict)
     autoencoder.eval()
 
@@ -60,21 +61,23 @@ def main():
     # transformer_model.load_state_dict(state_dict_tr)
     # transformer_model.eval()
 
-    root_dir = '../pgm/neutral/'
-    train_files, val_files, test_files = gather_files_pgm(root_dir)
+    # root_dir = '../pgm/neutral/'
+    # train_files, val_files, test_files = gather_files_pgm(root_dir)
+    # train_files = train_files[0:32] # delete this after test
+    # val_files = train_files[0:32] # delete this after test
+
+    # Uncomment if using RAVEN dataset
+    root_dir = '../RAVEN-10000'
+    all_files = gather_files(root_dir)
+    num_files = len(all_files)
+    train_proportion = 0.7
+    val_proportion = 0.15
+    # test proportion is 1 - train_proportion - val_proportion
+    train_files = all_files[:int(num_files * train_proportion)]
+    val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
+    # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
     train_files = train_files[0:32] # delete this after test
     val_files = train_files[0:32] # delete this after test
-
-    # # Uncomment if using RAVEN dataset
-    # root_dir = '../RAVEN-10000'
-    # all_files = gather_files(root_dir)
-    # num_files = len(all_files)
-    # train_proportion = 0.7
-    # val_proportion = 0.15
-    # # test proportion is 1 - train_proportion - val_proportion
-    # train_files = all_files[:int(num_files * train_proportion)]
-    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
-    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
     train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
     val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
