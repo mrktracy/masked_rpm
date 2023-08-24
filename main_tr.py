@@ -49,7 +49,7 @@ def main():
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
-        autoencoder = nn.DataParallel(autoencoder)
+        # autoencoder = nn.DataParallel(autoencoder)
 
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
     state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
