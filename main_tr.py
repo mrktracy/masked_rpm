@@ -26,7 +26,7 @@ def main():
     # Define Hyperparameters
     EPOCHS = 200000
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.1
     TOTAL_DATA = 1200000 # data set size
     SAVES_PER_EPOCH = 4
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
