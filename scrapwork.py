@@ -72,7 +72,7 @@ def visualizedata():
     save_sol_path = os.path.join(save_dir, 'solutions.txt')
     with open(save_sol_path, "w") as file:
         for idx, sol in enumerate(solutions):
-            file.write(f"Solution to problem {idx}: {sol}")
+            file.write(f"Solution to problem {idx}: {sol}\n")
 
 def displayresults_ae():
     filepath = "../results/ae_results/v1/"
