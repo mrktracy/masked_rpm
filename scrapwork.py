@@ -49,7 +49,7 @@ def visualizedata():
         fig1, axs1 = plt.subplots(3, 3)
         for i in range(3):
             for j in range(3):
-                if i==3 & j==3:
+                if i==2 & j==2:
                     axs1[i,j].imshow(np.zeros([160,160]), cmap="gray")
                     axs1[i,j].axis('off')
                 else:
