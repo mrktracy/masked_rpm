@@ -36,7 +36,11 @@ def visualizedata():
 
     train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
+    solutions = []
     for idx, (inputs, _, targets) in enumerate(train_dataloader):
+
+        solutions.extend(targets.tolist())
+
         if num_gpus > 1:
             images = autoencoder.module.decode(inputs.squeeze(0))
         else:
@@ -58,12 +62,17 @@ def visualizedata():
                 axs2[i,j].imshow(images[8 + i*2 + j, :, :, :].squeeze().cpu().detach().numpy(), cmap="gray")
                 axs2[i,j].axis('off')
 
-        save_q_path = os.path.join(save_dir, f'context_{idx}.png')
-        save_a_path = os.path.join(save_dir, f'candidates_{idx}.png')
-        fig1.savefig(save_q_path, bbox_inches='tight')
-        fig2.savefig(save_a_path, bbox_inches='tight')
+        save_con_path = os.path.join(save_dir, f'context_{idx}.png')
+        save_can_path = os.path.join(save_dir, f'candidates_{idx}.png')
+        fig1.savefig(save_con_path, bbox_inches='tight')
+        fig2.savefig(save_can_path, bbox_inches='tight')
         plt.close(fig1)
         plt.close(fig2)
+
+    save_sol_path = os.path.join(save_dir, 'solutions.txt')
+    with open(save_sol_path, "w") as file:
+        for idx, sol in enumerate(solutions):
+            file.write(f"Solution to problem {idx}: {sol}")
 
 def displayresults_ae():
     filepath = "../results/ae_results/v1/"
