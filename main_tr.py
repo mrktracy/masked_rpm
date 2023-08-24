@@ -39,7 +39,7 @@ def main():
 
     # initialize both stages of model
     # instantiate model
-    transformer_model = TransformerModelNew(embed_dim=256, num_heads=16, con_depth=10, can_depth=10,\
+    transformer_model = TransformerModelNew(embed_dim=256, num_heads=32, con_depth=10, can_depth=10,\
                                             guess_depth=10, cat=False).to(device)
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -49,7 +49,7 @@ def main():
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
-        # autoencoder = nn.DataParallel(autoencoder)
+        # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
     state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
