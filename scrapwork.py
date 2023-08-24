@@ -59,7 +59,7 @@ def visualizedata():
         fig2, axs2 = plt.subplots(2, 4)
         for i in range(2):
             for j in range(4):
-                axs2[i,j].imshow(images[8 + i*2 + j, :, :, :].squeeze().cpu().detach().numpy(), cmap="gray")
+                axs2[i,j].imshow(images[8 + i*4 + j, :, :, :].squeeze().cpu().detach().numpy(), cmap="gray")
                 axs2[i,j].axis('off')
 
         save_con_path = os.path.join(save_dir, f'context_{idx}.png')
