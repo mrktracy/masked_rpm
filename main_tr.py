@@ -24,7 +24,7 @@ def initialize_weights_he(m):
 
 def main():
     # Define Hyperparameters
-    EPOCHS = 10
+    EPOCHS = 25
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
     TOTAL_DATA = 49000 # data set size
