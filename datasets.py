@@ -2,6 +2,29 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+class RPMSentencesRaw(Dataset):
+    def __init__(self, files, device):
+        self.files = files
+        self.device = device
+
+    def __getitem__(self, idx):
+
+        filename = self.files[idx]
+        data = np.load(filename)
+        image = data['image'].reshape(16,160,160)
+        imagetensor = torch.from_numpy(image).float() / 255 # convert context panels to tensor
+        imagetensor = imagetensor.unsqueeze(1).to(self.device)
+
+        target = data['target'].item()
+        target_onehot = torch.zeros(8)
+        target_onehot[target] = 1
+
+        return imagetensor, target_onehot, target
+
+    def __len__(self):
+        length = len(self.files)
+        return length
+
 class RPMSentencesNew(Dataset):
     def __init__(self, files, ResNetAutoencoder, device):
         self.files = files

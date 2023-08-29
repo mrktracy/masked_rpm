@@ -6,10 +6,144 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
-class TransformerModelNew16(nn.Module):
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
+
+    def forward(self, x):
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        out = self.relu(out)
+        return out
+
+class ResNetEncoder(nn.Module):
+    def __init__(self, embed_dim):
+        super(ResNetEncoder, self).__init__()
+
+        self.embed_dim = embed_dim
+
+        self.encoder = nn.Sequential( # from N, 1, 160, 160
+            ResidualBlock(1, 16), # N, 16, 160, 160
+            ResidualBlock(16, 32, 2), # N, 32, 80, 80
+            ResidualBlock(32, 64, 2), # N, 64, 40, 40
+            ResidualBlock(64, 128, 2), # N, 128, 20, 20
+            ResidualBlock(128, 256, 2), # N, 256, 10, 10
+            nn.Flatten(), # N, 256*10*10
+            nn.Linear(256*10*10, self.embed_dim), # N, embed_dim
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        return x
+
+class TransformerModelv5(nn.Module):
     def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, \
                  abstr_depth=12, reas_depth=12, cat=True):
-        super(TransformerModelNew16, self).__init__()
+        super(TransformerModelv5, self).__init__()
+
+        self.cat = cat
+
+        if self.cat == True:
+            self.model_dim = 2*embed_dim
+        else:
+            self.model_dim = embed_dim
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.perception = ResNetEncoder(embed_dim=embed_dim)
+
+        self.abstr_blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(abstr_depth)])
+
+        self.first_reas_block = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+        ])
+
+        self.reas_blocks = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            for _ in range(reas_depth-1)
+                             ])
+
+        self.norm = norm_layer(self.model_dim)
+
+        self.flatten = nn.Flatten()
+
+        self.lin1 = nn.Linear(self.model_dim*8, self.model_dim)
+
+        self.lin2 = nn.Linear(self.model_dim, 64)
+
+        self.lin3 = nn.Linear(64, 8)
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        batch_size = x.size(0)  # Get the batch size from the first dimension of x
+
+        # apply perception module to all images
+        x_reshaped = x.view(-1,1,160,160) # x is (B, 16, 1, 160, 160)
+        y_reshaped = self.perception(x_reshaped)
+        y = y_reshaped.view(batch_size,16,-1)
+
+        context = y[:,0:8,:] # y is (B, 16, embed_dim)
+        candidates = y[:,8:,:]
+
+        if self.cat == True:
+            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
+                                dim=2)  # add positional embeddings
+            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
+                                dim=2)  # add 9th positional embedding to all candidates
+        else:
+            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
+
+        y = torch.cat([context,candidates], dim=1)
+
+        for blk in self.abstr_blocks: # multi-headed self-attention layer
+            y = blk(x_q=y, x_k=y, x_v=y)
+
+        context_enc = y[:, 0:8, :]  # x is (B, 16, embed_dim)
+        candidates_enc = y[:, 8:, :]
+
+        # possibility two
+        for blk1,blk2 in self.first_reas_block:
+            z = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc, use_mlp_layer=False)
+            z = blk2(x_q=candidates_enc, x_k=context_enc, x_v=z)
+
+        for blk1, blk2 in self.reas_blocks:
+            z = blk1(x_q=context_enc, x_k=z, x_v=z, use_mlp_layer=False)
+            z = blk2(x_q=candidates_enc, x_k=context_enc, x_v=z)
+
+        z = self.flatten(z)
+        z = self.relu(self.lin1(z))
+        z = self.relu(self.lin2(z))
+        z = self.lin3(z)
+
+        return z
+
+class TransformerModelv4(nn.Module):
+    def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, \
+                 abstr_depth=12, reas_depth=12, cat=True):
+        super(TransformerModelv4, self).__init__()
 
         self.cat = cat
 
@@ -89,90 +223,6 @@ class TransformerModelNew16(nn.Module):
         for blk1, blk2 in self.reas_blocks:
             y = blk1(x_q=context_enc, x_k=y, x_v=y, use_mlp_layer=False)
             y = blk2(x_q=candidates_enc, x_k=context_enc, x_v=y)
-
-        y = self.flatten(y)
-        y = self.relu(self.lin1(y))
-        y = self.relu(self.lin2(y))
-        y = self.lin3(y)
-
-        return y
-
-class TransformerModelNew(nn.Module):
-    def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=6,\
-                 can_depth=4, guess_depth=4, cat=True):
-        super(TransformerModelNew, self).__init__()
-
-        self.cat = cat
-
-        if self.cat == True:
-            self.model_dim = 2*embed_dim
-        else:
-            self.model_dim = embed_dim
-
-        # initialize and retrieve positional embeddings
-        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
-        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
-        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
-
-        self.con_blocks = nn.ModuleList([
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
-            for _ in range(con_depth)])
-
-        self.can_blocks = nn.ModuleList([
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
-            for _ in range(can_depth)])
-
-        self.first_guess_block = nn.ModuleList([nn.ModuleList([
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
-            ])
-
-        self.guess_blocks = nn.ModuleList([nn.ModuleList([
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
-            for _ in range(guess_depth-1)
-                             ])
-
-        self.norm = norm_layer(self.model_dim)
-
-        self.flatten = nn.Flatten()
-
-        self.lin1 = nn.Linear(self.model_dim*8, self.model_dim)
-
-        self.lin2 = nn.Linear(self.model_dim, 64)
-
-        self.lin3 = nn.Linear(64, 8)
-
-        self.relu = nn.ReLU()
-
-    def forward(self, x):
-        batch_size = x.size(0)  # Get the batch size from the first dimension of x
-
-        context = x[:,0:8,:] # x is (B, 16, embed_dim)
-        candidates = x[:,8:,:]
-
-        if self.cat == True:
-            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
-                                dim=2)  # add positional embeddings
-            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
-                                dim=2)  # add 9th positional embedding to all candidates
-        else:
-            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
-            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
-
-        for blk in self.con_blocks: # multi-headed self-attention layer
-            context = blk(x_q=context, x_k=context, x_v=context)
-
-        for blk in self.can_blocks:
-            candidates = blk(x_q=candidates, x_k=candidates, x_v=candidates)
-
-        for blk1,blk2 in self.first_guess_block:
-            y = blk1(x_q=context, x_k=candidates, x_v=candidates)
-            y = blk2(x_q=candidates, x_k=context, x_v=y)
-
-        for blk1, blk2 in self.guess_blocks:
-            y = blk1(x_q=context, x_k=y, x_v=y)
-            y = blk2(x_q=candidates, x_k=context, x_v=y)
 
         y = self.flatten(y)
         y = self.relu(self.lin1(y))
@@ -314,10 +364,96 @@ class Block(nn.Module):
 
         return x
 
+
+'''' Previous Transformer Models '''''
+class TransformerModelv3(nn.Module):
+    def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=6,\
+                 can_depth=4, guess_depth=4, cat=True):
+        super(TransformerModelv3, self).__init__()
+
+        self.cat = cat
+
+        if self.cat == True:
+            self.model_dim = 2*embed_dim
+        else:
+            self.model_dim = embed_dim
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.con_blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(con_depth)])
+
+        self.can_blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(can_depth)])
+
+        self.first_guess_block = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            ])
+
+        self.guess_blocks = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            for _ in range(guess_depth-1)
+                             ])
+
+        self.norm = norm_layer(self.model_dim)
+
+        self.flatten = nn.Flatten()
+
+        self.lin1 = nn.Linear(self.model_dim*8, self.model_dim)
+
+        self.lin2 = nn.Linear(self.model_dim, 64)
+
+        self.lin3 = nn.Linear(64, 8)
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        batch_size = x.size(0)  # Get the batch size from the first dimension of x
+
+        context = x[:,0:8,:] # x is (B, 16, embed_dim)
+        candidates = x[:,8:,:]
+
+        if self.cat == True:
+            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
+                                dim=2)  # add positional embeddings
+            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
+                                dim=2)  # add 9th positional embedding to all candidates
+        else:
+            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
+
+        for blk in self.con_blocks: # multi-headed self-attention layer
+            context = blk(x_q=context, x_k=context, x_v=context)
+
+        for blk in self.can_blocks:
+            candidates = blk(x_q=candidates, x_k=candidates, x_v=candidates)
+
+        for blk1,blk2 in self.first_guess_block:
+            y = blk1(x_q=context, x_k=candidates, x_v=candidates)
+            y = blk2(x_q=candidates, x_k=context, x_v=y)
+
+        for blk1, blk2 in self.guess_blocks:
+            y = blk1(x_q=context, x_k=y, x_v=y)
+            y = blk2(x_q=candidates, x_k=context, x_v=y)
+
+        y = self.flatten(y)
+        y = self.relu(self.lin1(y))
+        y = self.relu(self.lin2(y))
+        y = self.lin3(y)
+
+        return y
+
 '''' Previous Transformer Model, relying on Block class from timm '''''
-class TransformerModel(nn.Module):
+class TransformerModelv1(nn.Module):
     def __init__(self, embed_dim=256, grid_size = 3, num_heads=16, mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4):
-        super(TransformerModel, self).__init__()
+        super(TransformerModelv1, self).__init__()
 
         # initialize and retrieve positional embeddings
         self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)

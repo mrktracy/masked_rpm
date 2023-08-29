@@ -42,23 +42,23 @@ def main():
     # transformer_model = TransformerModelNew(embed_dim=256, num_heads=32, con_depth=10, can_depth=10,\
     #                                         guess_depth=10, cat=False).to(device)
 
-    transformer_model = TransformerModelNew16(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
+    transformer_model = TransformerModelv5(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
                                             cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
-    # initialize autoencoder
-    autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
+    # # initialize autoencoder
+    # autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
         # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
-    state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
-    autoencoder.load_state_dict(state_dict)
-    autoencoder.eval()
+    # state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
+    # autoencoder.load_state_dict(state_dict)
+    # autoencoder.eval()
 
     # # comment out this block if training
     # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
@@ -81,11 +81,14 @@ def main():
     val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
-    train_files = train_files[0:256]
-    val_files = train_files[0:256]
+    train_files = train_files[0:10]
+    val_files = train_files[0:10]
 
-    train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
-    val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
+    # train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
+    # val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
+
+    train_dataset = RPMSentencesRaw(train_files, device=device)
+    val_dataset = RPMSentencesRaw(val_files, device=device)
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
