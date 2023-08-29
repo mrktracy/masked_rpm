@@ -8,7 +8,7 @@ import time
 import random
 from evaluate import evaluate_model
 from datasets import RPMSentencesNew
-from models import TransformerModelNew
+from models import TransformerModelNew, TransformerModelNew16
 import os
 
 seed = 42
