@@ -7,8 +7,8 @@ from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
 from evaluate import evaluate_model
-from datasets import RPMSentencesNew
-from models import TransformerModelNew, TransformerModelNew16
+from datasets import RPMSentencesNew, RPMSentencesRaw
+from models import TransformerModelv4, TransformerModelv5
 import os
 
 seed = 42
