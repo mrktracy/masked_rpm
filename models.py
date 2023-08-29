@@ -5,6 +5,98 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
+
+class TransformerModelNew16(nn.Module):
+    def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, \
+                 abstr_depth=12, reas_depth=12, cat=True):
+        super(TransformerModelNew16, self).__init__()
+
+        self.cat = cat
+
+        if self.cat == True:
+            self.model_dim = 2*embed_dim
+        else:
+            self.model_dim = embed_dim
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.abstr_blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(abstr_depth)])
+
+        self.first_reas_block = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+        ])
+
+        self.reas_blocks = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            for _ in range(reas_depth-1)
+                             ])
+
+        self.norm = norm_layer(self.model_dim)
+
+        self.flatten = nn.Flatten()
+
+        self.lin1 = nn.Linear(self.model_dim*8, self.model_dim)
+
+        self.lin2 = nn.Linear(self.model_dim, 64)
+
+        self.lin3 = nn.Linear(64, 8)
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        batch_size = x.size(0)  # Get the batch size from the first dimension of x
+
+        context = x[:,0:8,:] # x is (B, 16, embed_dim)
+        candidates = x[:,8:,:]
+
+        if self.cat == True:
+            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
+                                dim=2)  # add positional embeddings
+            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
+                                dim=2)  # add 9th positional embedding to all candidates
+        else:
+            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
+
+        x = torch.cat([context,candidates], dim=1)
+
+        for blk in self.abstr_blocks: # multi-headed self-attention layer
+            x = blk(x_q=x, x_k=x, x_v=x)
+
+        context_enc = x[:, 0:8, :]  # x is (B, 16, embed_dim)
+        candidates_enc = x[:, 8:, :]
+
+        # for blk1,blk2 in self.first_reas_block:
+        #     y = blk1(x_q=candidates_enc, x_k=candidates_enc, x_v=candidates_enc, use_mlp_layer=False)
+        #     y = blk2(x_q=y, x_k=context_enc, x_v=context_enc)
+        #
+        # for blk1, blk2 in self.reas_blocks:
+        #     y = blk1(x_q=y, x_k=y, x_v=y, use_mlp_layer=False)
+        #     y = blk2(x_q=y, x_k=context_enc, x_v=context_enc)
+
+        # possibility two
+        for blk1,blk2 in self.first_reas_block:
+            y = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc, use_mlp_layer=False)
+            y = blk2(x_q=candidates_enc, x_k=context_enc, x_v=y)
+
+        for blk1, blk2 in self.reas_blocks:
+            y = blk1(x_q=context_enc, x_k=y, x_v=y, use_mlp_layer=False)
+            y = blk2(x_q=candidates_enc, x_k=context_enc, x_v=y)
+
+        y = self.flatten(y)
+        y = self.relu(self.lin1(y))
+        y = self.relu(self.lin2(y))
+        y = self.lin3(y)
+
+        return y
+
 class TransformerModelNew(nn.Module):
     def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=6,\
                  can_depth=4, guess_depth=4, cat=True):
