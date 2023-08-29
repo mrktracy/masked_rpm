@@ -42,7 +42,7 @@ def main():
     # transformer_model = TransformerModelNew(embed_dim=256, num_heads=32, con_depth=10, can_depth=10,\
     #                                         guess_depth=10, cat=False).to(device)
 
-    transformer_model = TransformerModelNew(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
+    transformer_model = TransformerModelNew16(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
                                             cat=True).to(device)
 
     # initialize weights
