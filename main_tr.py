@@ -4,6 +4,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
+from torchvision import transforms
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
