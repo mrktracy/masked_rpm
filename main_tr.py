@@ -113,13 +113,12 @@ def main():
 
     # Training loop
     for epoch in range(EPOCHS):
-        for idx, (inputs, _, targets) in enumerate(train_dataloader):
+        for idx, (inputs, targets) in enumerate(train_dataloader):
 
             if idx%10 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
-            # targets_onehot = targets_onehot.to(device)
             targets = targets.to(device)
 
             outputs = transformer_model(inputs) # (B,8)

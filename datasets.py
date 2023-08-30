@@ -44,10 +44,8 @@ class RPMSentencesRaw(Dataset):
         imagetensor = imagetensor.unsqueeze(1).to(self.device)
 
         target = data['target'].item()
-        target_onehot = torch.zeros(8)
-        target_onehot[target] = 1
 
-        return imagetensor, target_onehot, target
+        return imagetensor, target
 
     def __len__(self):
         length = len(self.files)
