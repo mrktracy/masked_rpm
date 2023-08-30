@@ -6,49 +6,77 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+class TransformerModelMNIST(nn.Module):
+    def __init__(self, embed_dim=512, num_heads=16, mlp_ratio=4., \
+                 norm_layer=nn.LayerNorm, con_depth=8, can_depth=8, guess_depth=8, cat=True):
+        super(TransformerModelMNIST, self).__init__()
 
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_channels != out_channels:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
-            )
+        self.model_dim = embed_dim
+
+        self.perception = ResNetEncoder(embed_dim=self.model_dim)
+
+        self.con_blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(con_depth)])
+
+        self.can_blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(can_depth)])
+
+        self.first_guess_block = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            ])
+
+        self.guess_blocks = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            for _ in range(guess_depth-1)
+                             ])
+
+        self.norm = norm_layer(self.model_dim)
+
+        self.flatten = nn.Flatten()
+
+        self.lin1 = nn.Linear(self.model_dim*8, self.model_dim)
+
+        self.lin2 = nn.Linear(self.model_dim, 64)
+
+        self.lin3 = nn.Linear(64, 8)
+
+        self.relu = nn.ReLU()
 
     def forward(self, x):
-        out = self.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        out += self.shortcut(x)
-        out = self.relu(out)
-        return out
+        batch_size = x.size(0)  # Get the batch size from the first dimension of x
 
-class ResNetEncoder(nn.Module):
-    def __init__(self, embed_dim):
-        super(ResNetEncoder, self).__init__()
+        # apply perception module to all images
+        x_reshaped = x.view(-1, 1, 160, 160)  # x is (B, 16, 1, 160, 160)
+        y_reshaped = self.perception(x_reshaped)
+        y = y_reshaped.view(batch_size, 16, -1)
 
-        self.embed_dim = embed_dim
+        context = y[:,0:8,:] # x is (B, 16, embed_dim)
+        candidates = y[:,8:,:]
 
-        self.encoder = nn.Sequential( # from N, 1, 160, 160
-            ResidualBlock(1, 16), # N, 16, 160, 160
-            ResidualBlock(16, 32, 2), # N, 32, 80, 80
-            ResidualBlock(32, 64, 2), # N, 64, 40, 40
-            ResidualBlock(64, 128, 2), # N, 128, 20, 20
-            ResidualBlock(128, 256, 2), # N, 256, 10, 10
-            nn.Flatten(), # N, 256*10*10
-            nn.Linear(256*10*10, self.embed_dim), # N, embed_dim
-            nn.Sigmoid()
-        )
+        for blk in self.con_blocks: # multi-headed self-attention layer
+            context = blk(x_q=context, x_k=context, x_v=context)
 
-    def forward(self, x):
-        x = self.encoder(x)
-        return x
+        for blk in self.can_blocks:
+            candidates = blk(x_q=candidates, x_k=candidates, x_v=candidates)
+
+        for blk1,blk2 in self.first_guess_block:
+            z = blk1(x_q=context, x_k=candidates, x_v=candidates)
+            z = blk2(x_q=candidates, x_k=context, x_v=z)
+
+        for blk1, blk2 in self.guess_blocks:
+            z = blk1(x_q=context, x_k=z, x_v=z)
+            z = blk2(x_q=candidates, x_k=context, x_v=z)
+
+        z = self.flatten(z)
+        z = self.relu(self.lin1(z))
+        z = self.relu(self.lin2(z))
+        z = self.lin3(z)
+
+        return z
 
 class TransformerModelv5(nn.Module):
     def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, \
@@ -124,7 +152,6 @@ class TransformerModelv5(nn.Module):
         context_enc = y[:, 0:8, :]  # x is (B, 16, embed_dim)
         candidates_enc = y[:, 8:, :]
 
-        # possibility two
         for blk1,blk2 in self.first_reas_block:
             z = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc, use_mlp_layer=False)
             z = blk2(x_q=candidates_enc, x_k=context_enc, x_v=z)
@@ -230,6 +257,51 @@ class TransformerModelv4(nn.Module):
         y = self.lin3(y)
 
         return y
+
+''' ResNet Encoder '''
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
+
+    def forward(self, x):
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        out = self.relu(out)
+        return out
+
+class ResNetEncoder(nn.Module):
+    def __init__(self, embed_dim):
+        super(ResNetEncoder, self).__init__()
+
+        self.embed_dim = embed_dim
+
+        self.encoder = nn.Sequential( # from N, 1, 160, 160
+            ResidualBlock(1, 16), # N, 16, 160, 160
+            ResidualBlock(16, 32, 2), # N, 32, 80, 80
+            ResidualBlock(32, 64, 2), # N, 64, 40, 40
+            ResidualBlock(64, 128, 2), # N, 128, 20, 20
+            ResidualBlock(128, 256, 2), # N, 256, 10, 10
+            nn.Flatten(), # N, 256*10*10
+            nn.Linear(256*10*10, self.embed_dim), # N, embed_dim
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        return x
 
 """ Modification of "Vision Transformer (ViT) in PyTorch"
 https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py

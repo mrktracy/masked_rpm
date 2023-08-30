@@ -10,7 +10,7 @@ import time
 import random
 from evaluate import evaluate_model
 from datasets import RPMSentencesNew, RPMSentencesRaw, CustomMNIST
-from models import TransformerModelv4, TransformerModelv5
+from models import TransformerModelv4, TransformerModelv5, TransformerModelMNIST
 import os
 
 seed = 42
@@ -30,9 +30,9 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    # initialize both stages of model
-    transformer_model = TransformerModelv5(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
-                                            cat=True).to(device)
+    # transformer_model = TransformerModelv5(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
+    #                                         cat=True).to(device)
+    transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -91,7 +91,7 @@ def main():
     # train_dataset = RPMSentencesRaw(train_files, device=device)
     # val_dataset = RPMSentencesRaw(val_files, device=device)
 
-    # MNIST problem
+    ''' MNIST transformer model '''
     train_dataset = CustomMNIST(mnist_train, num_samples=100000)
     val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
