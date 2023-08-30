@@ -28,7 +28,9 @@ class CustomMNIST(Dataset):
         else:
             question_imgs = high_imgs[0:8] + low_imgs[0:8]
 
-        return question_imgs, random_num
+        target = random_num - 1
+
+        return question_imgs, target
 
 class RPMSentencesRaw(Dataset):
     def __init__(self, files, device):
