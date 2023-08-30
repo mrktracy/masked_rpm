@@ -74,7 +74,7 @@ class TransformerModelMNIST(nn.Module):
 
         z_reshaped = z.view(-1,self.model_dim)
         guess_reshaped = self.lin(z_reshaped)
-        guess = guess_reshaped.view(batch_size,8,1)
+        guess = guess_reshaped.view(batch_size,8)
 
         return guess
 
