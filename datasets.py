@@ -35,9 +35,10 @@ class CustomMNIST(Dataset):
         else:
             question_imgs = high_imgs[0:8] + low_imgs[0:8]
 
+        question_tensor = torch.stack(question_imgs)
         target = random_num - 1
 
-        return question_imgs, target
+        return question_tensor, target
 
 class RPMSentencesRaw(Dataset):
     def __init__(self, files, device):
