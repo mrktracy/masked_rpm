@@ -102,6 +102,7 @@ def main():
     TOTAL_DATA = len(train_dataset)  # training dataset size
     SAVES_PER_EPOCH = 2
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
+    VERSION = "v3-itr0"
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -136,7 +137,7 @@ def main():
 
             # save four times per epoch
             if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
-                model_path = f"../modelsaves/v5-itr0/MNIST/transformer_v5-itr0_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+                model_path = f"../modelsaves/{VERSION}/MNIST/transformer_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
                 os.makedirs(os.path.dirname(model_path), exist_ok=True)
                 torch.save(transformer_model.state_dict(), model_path)
 
@@ -147,7 +148,7 @@ def main():
     proportion_correct = evaluate_model(transformer_model, val_dataloader, device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v5-itr0/MNIST/proportion_correct_test.txt"
+    output_file_path = f"../tr_results/{VERSION}/MNIST/proportion_correct_test.txt"
     os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
