@@ -4,25 +4,31 @@ from torch.utils.data import Dataset
 import random
 
 class CustomMNIST(Dataset):
-    def __init__(self, mnist_data):
+    def __init__(self, mnist_data, num_samples):
         self.mnist_data = mnist_data
-        self.num_samples = len(mnist_data)
+        self.num_samples = num_samples
+
+        self.label_to_images = defaultdict(list)
+        for img, label in mnist_data:
+            self.label_to_images[label].append(img)
+
+        self.random_nums = [random.randint(1,8) for _ in range(num_samples)]
+        self.random_order = [random.randint(0, 1) for _ in range(num_samples)]
 
     def __len__(self):
         return self.num_samples
 
     def __getitem__(self, idx):
-        random_num = random.randint(1, 8)
+
+        random_num = self.random_nums[idx]
+        random_order = self.random_order[idx]
+
         low_num = random_num - 1
         high_num = random_num + 1
 
-        low_imgs = [self.mnist_data[i][0] for i in range(len(self.mnist_data)) if self.mnist_data[i][1] == low_num]
-        high_imgs = [self.mnist_data[i][0] for i in range(len(self.mnist_data)) if self.mnist_data[i][1] == high_num]
+        low_imgs = random.sample(self.label_to_images[low_num],8)
+        high_imgs = random.sample(self.label_to_images[high_num],8)
 
-        random.shuffle(low_imgs)
-        random.shuffle(high_imgs)
-
-        random_order = random.randint(0, 1)
         if random_order == 0:
             question_imgs = low_imgs[0:8] + high_imgs[0:8]
         else:
