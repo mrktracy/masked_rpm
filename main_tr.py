@@ -93,7 +93,7 @@ def main():
 
     # MNIST problem
     train_dataset = CustomMNIST(mnist_train, num_samples=100000)
-    val_dataset = CustomMNIST(mnist_val=10000)
+    val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
     EPOCHS = 25
