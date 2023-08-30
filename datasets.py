@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import random
+from collections import defaultdict
 
 class CustomMNIST(Dataset):
     def __init__(self, mnist_data, num_samples):
