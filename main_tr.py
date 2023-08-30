@@ -115,7 +115,7 @@ def main():
     for epoch in range(EPOCHS):
         for idx, (inputs, targets) in enumerate(train_dataloader):
 
-            if idx%2 == 0:
+            if idx%10 == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
@@ -128,10 +128,10 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx%2 == 1:
+            if idx%10 == 9:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"2 mini-batches processed in {batch_time} seconds")
+                print(f"10 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
             # save four times per epoch
