@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
+from torchvision.datasets import MNIST
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
@@ -23,25 +24,12 @@ def initialize_weights_he(m):
             nn.init.constant_(m.bias, 0)
 
 def main():
-    # Define Hyperparameters
-    EPOCHS = 25
-    BATCH_SIZE = 32
-    LEARNING_RATE = 0.001
-    TOTAL_DATA = 49000 # data set size
-    SAVES_PER_EPOCH = 1
-    BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
 
-    # VERSION = 'v2'
-
-    # Initialize device, data loader, model, optimizer, and loss function
+    # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
     # initialize both stages of model
-    # instantiate model
-    # transformer_model = TransformerModelNew(embed_dim=256, num_heads=32, con_depth=10, can_depth=10,\
-    #                                         guess_depth=10, cat=False).to(device)
-
     transformer_model = TransformerModelv5(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
                                             cat=True).to(device)
 
@@ -60,33 +48,61 @@ def main():
     # autoencoder.load_state_dict(state_dict)
     # autoencoder.eval()
 
-    # # comment out this block if training
+    ''' Load saved model '''
     # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
     # transformer_model.load_state_dict(state_dict_tr)
     # transformer_model.eval()
 
+    ''' Use PGM dataset '''
     # root_dir = '../pgm/neutral/'
     # train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files = train_files[0:32] # delete this after test
     # val_files = train_files[0:32] # delete this after test
 
-    # Uncomment if using RAVEN dataset
-    root_dir = '../RAVEN-10000'
-    all_files = gather_files(root_dir)
-    num_files = len(all_files)
-    train_proportion = 0.7
-    val_proportion = 0.15
-    # test proportion is 1 - train_proportion - val_proportion
-    train_files = all_files[:int(num_files * train_proportion)]
-    val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
-    # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
+    ''' Use RAVEN dataset '''
+    # root_dir = '../RAVEN-10000'
+    # all_files = gather_files(root_dir)
+    # num_files = len(all_files)
+    # train_proportion = 0.7
+    # val_proportion = 0.15
+    # # test proportion is 1 - train_proportion - val_proportion
+    # train_files = all_files[:int(num_files * train_proportion)]
+    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
+    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
+    ''' Use MNIST dataset '''
+    train_proportion = 0.85
+    val_proportion = 0.15
+    mnist_data = MNIST(root='../MNIST/', train=True, download=True, \
+                       transform=transforms.Compose([transforms.Resize((160, 160)), transforms.ToTensor()]))
+    mnist_len = len(mnist_data)
+    train_len = int(mnist_len*train_proportion)
+    val_len = int(mnist_len*val_proportion)
+
+    mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
+
+    ''' Transformer model v2 to v4 '''
     # train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
     # val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
 
-    train_dataset = RPMSentencesRaw(train_files, device=device)
-    val_dataset = RPMSentencesRaw(val_files, device=device)
+    ''' Transformer model v5 '''
+    # # RPM problem
+    # train_dataset = RPMSentencesRaw(train_files, device=device)
+    # val_dataset = RPMSentencesRaw(val_files, device=device)
 
+    # MNIST problem
+    train_dataset = CustomMNIST(mnist_train)
+    val_dataset = CustomMNIST(mnist_train)
+
+    ''' Define Hyperparameters '''
+    EPOCHS = 25
+    BATCH_SIZE = 32
+    LEARNING_RATE = 0.001
+    TOTAL_DATA = len(train_dataset)  # training dataset size
+    SAVES_PER_EPOCH = 2
+    BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
+
+    ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
@@ -120,7 +136,7 @@ def main():
 
             # save four times per epoch
             if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
-                model_path = f"../modelsaves/v5-itr0/transformer_v5-itr0_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+                model_path = f"../modelsaves/v5-itr0/MNIST/transformer_v5-itr0_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
                 os.makedirs(os.path.dirname(model_path), exist_ok=True)
                 torch.save(transformer_model.state_dict(), model_path)
 
@@ -131,7 +147,7 @@ def main():
     proportion_correct = evaluate_model(transformer_model, val_dataloader, device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = "../tr_results/v5-itr0/proportion_correct_test.txt"
+    output_file_path = "../tr_results/v5-itr0/MNIST/proportion_correct_test.txt"
     os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")

@@ -1,6 +1,34 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+import random
+
+class CustomMNIST(Dataset):
+    def __init__(self, mnist_data):
+        self.mnist_data = mnist_data
+        self.num_samples = len(mnist_data)
+
+    def __len__(self):
+        return self.num_samples
+
+    def __getitem__(self, idx):
+        random_num = random.randint(1, 8)
+        low_num = random_num - 1
+        high_num = random_num + 1
+
+        low_imgs = [self.mnist_data[i][0] for i in range(len(self.mnist_data)) if self.mnist_data[i][1] == low_num]
+        high_imgs = [self.mnist_data[i][0] for i in range(len(self.mnist_data)) if self.mnist_data[i][1] == high_num]
+
+        random.shuffle(low_imgs)
+        random.shuffle(high_imgs)
+
+        random_order = random.randint(0, 1)
+        if random_order == 0:
+            question_imgs = low_imgs[0:8] + high_imgs[0:8]
+        else:
+            question_imgs = high_imgs[0:8] + low_imgs[0:8]
+
+        return question_imgs, random_num
 
 class RPMSentencesRaw(Dataset):
     def __init__(self, files, device):
