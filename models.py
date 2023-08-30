@@ -36,15 +36,8 @@ class TransformerModelMNIST(nn.Module):
 
         self.norm = norm_layer(self.model_dim)
 
-        self.flatten = nn.Flatten()
+        self.lin = nn.Linear(self.model_dim, 1)
 
-        self.lin1 = nn.Linear(self.model_dim*8, self.model_dim)
-
-        self.lin2 = nn.Linear(self.model_dim, 64)
-
-        self.lin3 = nn.Linear(64, 8)
-
-        self.relu = nn.ReLU()
 
     def forward(self, x):
         batch_size = x.size(0)  # Get the batch size from the first dimension of x
@@ -63,6 +56,14 @@ class TransformerModelMNIST(nn.Module):
         for blk in self.can_blocks:
             candidates = blk(x_q=candidates, x_k=candidates, x_v=candidates)
 
+        # for blk1,blk2 in self.first_guess_block:
+        #     z = blk1(x_q=context, x_k=candidates, x_v=candidates)
+        #     z = blk2(x_q=candidates, x_k=context, x_v=z)
+        #
+        # for blk1, blk2 in self.guess_blocks:
+        #     z = blk1(x_q=context, x_k=z, x_v=z)
+        #     z = blk2(x_q=candidates, x_k=context, x_v=z)
+
         for blk1,blk2 in self.first_guess_block:
             z = blk1(x_q=context, x_k=candidates, x_v=candidates)
             z = blk2(x_q=candidates, x_k=context, x_v=z)
@@ -71,12 +72,11 @@ class TransformerModelMNIST(nn.Module):
             z = blk1(x_q=context, x_k=z, x_v=z)
             z = blk2(x_q=candidates, x_k=context, x_v=z)
 
-        z = self.flatten(z)
-        z = self.relu(self.lin1(z))
-        z = self.relu(self.lin2(z))
-        z = self.lin3(z)
+        z_reshaped = z.view(-1,self.model_dim)
+        guess_reshaped = self.lin(z_reshaped)
+        guess = guess_reshaped.view(batch_size,8,1)
 
-        return z
+        return guess
 
 class TransformerModelv5(nn.Module):
     def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, \
