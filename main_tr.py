@@ -111,8 +111,8 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()),
-                                 lr=LEARNING_RATE)
+    optimizer = torch.optim.SGD(list(transformer_model.parameters()),
+                                 lr=LEARNING_RATE, momentum=0.9)
     criterion = nn.CrossEntropyLoss()
 
     # Training loop
