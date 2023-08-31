@@ -30,9 +30,9 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    # transformer_model = TransformerModelv5(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
-    #                                         cat=True).to(device)
-    transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
+    transformer_model = TransformerModelv5(embed_dim=512, num_heads=64, abstr_depth=20, reas_depth=20, \
+                                            cat=False).to(device)
+    # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -61,38 +61,38 @@ def main():
     # val_files = train_files[0:32] # delete this after test
 
     ''' Use RAVEN dataset '''
-    # root_dir = '../RAVEN-10000'
-    # all_files = gather_files(root_dir)
-    # num_files = len(all_files)
-    # train_proportion = 0.7
-    # val_proportion = 0.15
-    # # test proportion is 1 - train_proportion - val_proportion
-    # train_files = all_files[:int(num_files * train_proportion)]
-    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
-    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
+    root_dir = '../RAVEN-10000'
+    all_files = gather_files(root_dir)
+    num_files = len(all_files)
+    train_proportion = 0.7
+    val_proportion = 0.15
+    # test proportion is 1 - train_proportion - val_proportion
+    train_files = all_files[:int(num_files * train_proportion)]
+    val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
+    # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
     ''' Use MNIST dataset '''
-    train_proportion = 0.85
-    val_proportion = 0.15
-    mnist_data = MNIST(root='../MNIST/', train=True, download=True, \
-                       transform=transforms.Compose([transforms.Resize((160, 160)), transforms.ToTensor()]))
-    mnist_len = len(mnist_data)
-    train_len = int(mnist_len*train_proportion)
-    val_len = int(mnist_len*val_proportion)
-
-    mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
+    # train_proportion = 0.85
+    # val_proportion = 0.15
+    # mnist_data = MNIST(root='../MNIST/', train=True, download=True, \
+    #                    transform=transforms.Compose([transforms.Resize((160, 160)), transforms.ToTensor()]))
+    # mnist_len = len(mnist_data)
+    # train_len = int(mnist_len*train_proportion)
+    # val_len = int(mnist_len*val_proportion)
+    #
+    # mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
 
     ''' Transformer model v2 to v4 '''
     # train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
     # val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
 
     ''' Transformer model v5 '''
-    # train_dataset = RPMSentencesRaw(train_files, device=device)
-    # val_dataset = RPMSentencesRaw(val_files, device=device)
+    train_dataset = RPMSentencesRaw(train_files, device=device)
+    val_dataset = RPMSentencesRaw(val_files, device=device)
 
     ''' MNIST transformer model '''
-    train_dataset = CustomMNIST(mnist_train, num_samples=100000)
-    val_dataset = CustomMNIST(mnist_val, num_samples=10000)
+    # train_dataset = CustomMNIST(mnist_train, num_samples=100000)
+    # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
     EPOCHS = 25
@@ -101,8 +101,8 @@ def main():
     TOTAL_DATA = len(train_dataset)  # training dataset size
     SAVES_PER_EPOCH = 2
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
-    VERSION = "v3-itr0"
-    MNIST_FOLDER = "MNIST/" # "MNIST/" or ""
+    VERSION = "v5-itr0"
+    MNIST_FOLDER = "" # "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
