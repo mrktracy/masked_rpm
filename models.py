@@ -155,7 +155,7 @@ class TransformerModelv5(nn.Module):
         # guess_reshaped = self.lin(z_reshaped)
         # guess = guess_reshaped.view(batch_size, 8)
 
-        z_reshaped = candidates_enc.view(-1,self.model_dim)
+        z_reshaped = candidates_enc.contiguous().view(-1,self.model_dim)
         guess_reshaped = self.lin(z_reshaped)
         guess = guess_reshaped.view(batch_size, 8)
 
