@@ -30,9 +30,9 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    transformer_model = TransformerModelv5(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
-                                            cat=True).to(device)
-    # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
+    # transformer_model = TransformerModelv5(embed_dim=256, num_heads=32, abstr_depth=14, reas_depth=10, \
+    #                                         cat=True).to(device)
+    transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
