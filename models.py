@@ -89,10 +89,10 @@ class TransformerModelv5(nn.Module):
         else:
             self.model_dim = embed_dim
 
-        # # initialize and retrieve positional embeddings
-        # self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
-        # pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
-        # self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.perception = ResNetEncoder(embed_dim=embed_dim)
 
@@ -126,14 +126,14 @@ class TransformerModelv5(nn.Module):
         context = y[:,0:8,:] # y is (B, 16, embed_dim)
         candidates = y[:,8:,:]
 
-        # if self.cat == True:
-        #     context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
-        #                         dim=2)  # add positional embeddings
-        #     candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
-        #                         dim=2)  # add 9th positional embedding to all candidates
-        # else:
-        #     context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
-        #     candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
+        if self.cat == True:
+            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
+                                dim=2)  # add positional embeddings
+            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
+                                dim=2)  # add 9th positional embedding to all candidates
+        else:
+            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
 
         y = torch.cat([context,candidates], dim=1)
 
