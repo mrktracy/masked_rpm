@@ -66,11 +66,11 @@ class TransformerModelMNIST(nn.Module):
 
         for blk1,blk2 in self.first_guess_block:
             z = blk1(x_q=context, x_k=candidates, x_v=candidates)
-            z = blk2(x_q=candidates, x_k=context, x_v=z)
+            z = blk2(x_q=candidates, x_k=z, x_v=z)
 
         for blk1, blk2 in self.guess_blocks:
             z = blk1(x_q=context, x_k=z, x_v=z)
-            z = blk2(x_q=candidates, x_k=context, x_v=z)
+            z = blk2(x_q=candidates, x_k=z, x_v=z)
 
         z_reshaped = z.view(-1,self.model_dim)
         guess_reshaped = self.lin(z_reshaped)
@@ -146,11 +146,11 @@ class TransformerModelv5(nn.Module):
 
         for blk1,blk2 in self.first_reas_block:
             z = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc, use_mlp_layer=False)
-            z = blk2(x_q=candidates_enc, x_k=context_enc, x_v=z)
+            z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
 
         for blk1, blk2 in self.reas_blocks:
             z = blk1(x_q=context_enc, x_k=z, x_v=z, use_mlp_layer=False)
-            z = blk2(x_q=candidates_enc, x_k=context_enc, x_v=z)
+            z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
 
         z_reshaped = z.view(-1, self.model_dim)
         guess_reshaped = self.lin(z_reshaped)
