@@ -100,7 +100,7 @@ def main():
     ''' Define Hyperparameters '''
     EPOCHS = 100000
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.0001
     TOTAL_DATA = len(train_dataset)  # training dataset size
     SAVES_PER_EPOCH = 2
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
@@ -111,8 +111,8 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    optimizer = torch.optim.SGD(list(transformer_model.parameters()),
-                                 lr=LEARNING_RATE, momentum=0.9)
+    optimizer = torch.optim.Adam(list(transformer_model.parameters()),
+                                 lr=LEARNING_RATE)
     criterion = nn.CrossEntropyLoss()
 
     # Training loop

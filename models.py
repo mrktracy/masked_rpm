@@ -143,15 +143,19 @@ class TransformerModelv5(nn.Module):
         context_enc = y[:, 0:8, :]  # x is (B, 16, embed_dim)
         candidates_enc = y[:, 8:, :]
 
-        for blk1,blk2 in self.first_reas_block:
-            z = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc)
-            z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
+        # for blk1,blk2 in self.first_reas_block:
+        #     z = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc)
+        #     z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
+        #
+        # for blk1, blk2 in self.reas_blocks:
+        #     z = blk1(x_q=context_enc, x_k=z, x_v=z)
+        #     z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
+        #
+        # z_reshaped = z.view(-1, self.model_dim)
+        # guess_reshaped = self.lin(z_reshaped)
+        # guess = guess_reshaped.view(batch_size, 8)
 
-        for blk1, blk2 in self.reas_blocks:
-            z = blk1(x_q=context_enc, x_k=z, x_v=z)
-            z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
-
-        z_reshaped = z.view(-1, self.model_dim)
+        z_reshaped = candidates_enc.view(-1,self.model_dim)
         guess_reshaped = self.lin(z_reshaped)
         guess = guess_reshaped.view(batch_size, 8)
 
