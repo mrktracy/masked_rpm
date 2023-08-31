@@ -71,8 +71,8 @@ def main():
     val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
-    train_files = train_files[0:32]
-    val_files = train_files[0:32]
+    train_files = train_files[0:20]
+    val_files = train_files[0:20]
 
     ''' Use MNIST dataset '''
     # train_proportion = 0.85
