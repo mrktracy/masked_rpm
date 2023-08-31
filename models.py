@@ -38,7 +38,6 @@ class TransformerModelMNIST(nn.Module):
 
         self.lin = nn.Linear(self.model_dim, 1)
 
-
     def forward(self, x):
         batch_size = x.size(0)  # Get the batch size from the first dimension of x
 
@@ -145,11 +144,11 @@ class TransformerModelv5(nn.Module):
         candidates_enc = y[:, 8:, :]
 
         for blk1,blk2 in self.first_reas_block:
-            z = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc, use_mlp_layer=False)
+            z = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc)
             z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
 
         for blk1, blk2 in self.reas_blocks:
-            z = blk1(x_q=context_enc, x_k=z, x_v=z, use_mlp_layer=False)
+            z = blk1(x_q=context_enc, x_k=z, x_v=z)
             z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
 
         z_reshaped = z.view(-1, self.model_dim)
