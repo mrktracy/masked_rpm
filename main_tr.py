@@ -71,6 +71,9 @@ def main():
     val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
+    train_files = train_files[0:32]
+    val_files = train_files[0:32]
+
     ''' Use MNIST dataset '''
     # train_proportion = 0.85
     # val_proportion = 0.15
@@ -95,14 +98,14 @@ def main():
     # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 25
+    EPOCHS = 100000
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
     TOTAL_DATA = len(train_dataset)  # training dataset size
     SAVES_PER_EPOCH = 2
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
     VERSION = "v5-itr0"
-    MNIST_FOLDER = "" # "MNIST/" or ""
+    VERSION_SUBFOLDER = "test/" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -135,11 +138,11 @@ def main():
                 print(f"10 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
-            # save four times per epoch
-            if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
-                model_path = f"../modelsaves/{VERSION}/{MNIST_FOLDER}transformer_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
-                os.makedirs(os.path.dirname(model_path), exist_ok=True)
-                torch.save(transformer_model.state_dict(), model_path)
+            # save multiple times per epoch
+            # if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
+            #     model_path = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}transformer_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+            #     os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            #     torch.save(transformer_model.state_dict(), model_path)
 
         # if epoch%10 == 9: # comment out after test
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
@@ -148,7 +151,7 @@ def main():
     proportion_correct = evaluate_model(transformer_model, val_dataloader, device=device)
     print(f"Proportion of answers correct: {proportion_correct}")
 
-    output_file_path = f"../tr_results/{VERSION}/{MNIST_FOLDER}proportion_correct_test.txt"
+    output_file_path = f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}proportion_correct_test.txt"
     os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
     with open(output_file_path, "w") as file:
         file.write(f"Proportion of answers correct: {proportion_correct}.")
