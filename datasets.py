@@ -41,17 +41,16 @@ class CustomMNIST(Dataset):
         return question_tensor, target
 
 class RPMSentencesRaw(Dataset):
-    def __init__(self, files, device):
+    def __init__(self, files):
         self.files = files
-        self.device = device
 
     def __getitem__(self, idx):
 
         filename = self.files[idx]
         data = np.load(filename)
-        image = data['image'].reshape(16,160,160)
+        image = data['image']
         imagetensor = torch.from_numpy(image).float() / 255 # convert context panels to tensor
-        imagetensor = imagetensor.unsqueeze(1).to(self.device)
+        imagetensor = imagetensor.unsqueeze(1)
 
         target = data['target'].item()
 

@@ -90,8 +90,8 @@ def main():
     # val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
 
     ''' Transformer model v5 '''
-    train_dataset = RPMSentencesRaw(train_files, device=device)
-    val_dataset = RPMSentencesRaw(val_files, device=device)
+    train_dataset = RPMSentencesRaw(train_files)
+    val_dataset = RPMSentencesRaw(val_files)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)

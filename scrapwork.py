@@ -12,27 +12,27 @@ matplotlib.use('Agg')
 
 def visualizedata():
 
-    save_dir = "../visualize_data/"
+    save_dir = "../visualize_data/RAVEN/"
     os.makedirs(save_dir, exist_ok=True)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    num_gpus = torch.cuda.device_count()
-
-    # initialize autoencoder
-    autoencoder = ResNetAutoencoder().to(device)
-
-    if num_gpus > 1:  # use multiple GPUs
-        autoencoder = nn.DataParallel(autoencoder)
-
-    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
-    autoencoder.load_state_dict(state_dict)
-    autoencoder.eval()
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # num_gpus = torch.cuda.device_count()
+    #
+    # # initialize autoencoder
+    # autoencoder = ResNetAutoencoder().to(device)
+    #
+    # if num_gpus > 1:  # use multiple GPUs
+    #     autoencoder = nn.DataParallel(autoencoder)
+    #
+    # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
+    # autoencoder.load_state_dict(state_dict)
+    # autoencoder.eval()
 
     root_dir = '../pgm/neutral/'
     train_files, _, _ = gather_files_pgm(root_dir)
     train_files = train_files[0:32]  # delete this after test
 
-    train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
+    train_dataset = RPMSentencesRaw(train_files, device=device)
 
     train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
