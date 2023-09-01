@@ -4,7 +4,7 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
-from datasets import RPMSentencesNew
+from datasets import RPMSentencesRaw
 import torch.nn as nn
 import torch
 from torch.utils.data import DataLoader
