@@ -137,7 +137,7 @@ def main():
                 print(f"10 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
-            save multiple times per epoch
+            # save multiple times per epoch
             if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
                 model_path = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}transformer_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
                 os.makedirs(os.path.dirname(model_path), exist_ok=True)
