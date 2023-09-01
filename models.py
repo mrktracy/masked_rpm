@@ -8,7 +8,7 @@ from timm.layers import Mlp, DropPath, use_fused_attn
 
 class TransformerModelMNIST(nn.Module):
     def __init__(self, embed_dim=512, num_heads=16, mlp_ratio=4., \
-                 norm_layer=nn.LayerNorm, con_depth=8, can_depth=8, guess_depth=8, cat=True):
+                 norm_layer=nn.LayerNorm, con_depth=8, can_depth=8, guess_depth=8):
         super(TransformerModelMNIST, self).__init__()
 
         self.model_dim = embed_dim

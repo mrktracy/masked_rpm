@@ -33,7 +33,8 @@ def main():
     # transformer_model = TransformerModelv5(embed_dim=512, num_heads=64, abstr_depth=20, reas_depth=20, \
     #                                         cat=False).to(device)
     # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
-    transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, cat=True).to(device)
+    transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, con_depth=8, can_depth=8, \
+                                           guess_depth=8, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
