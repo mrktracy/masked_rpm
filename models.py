@@ -55,14 +55,6 @@ class TransformerModelMNIST(nn.Module):
         for blk in self.can_blocks:
             candidates = blk(x_q=candidates, x_k=candidates, x_v=candidates)
 
-        # for blk1,blk2 in self.first_guess_block:
-        #     z = blk1(x_q=context, x_k=candidates, x_v=candidates)
-        #     z = blk2(x_q=candidates, x_k=context, x_v=z)
-        #
-        # for blk1, blk2 in self.guess_blocks:
-        #     z = blk1(x_q=context, x_k=z, x_v=z)
-        #     z = blk2(x_q=candidates, x_k=context, x_v=z)
-
         for blk1,blk2 in self.first_guess_block:
             z = blk1(x_q=context, x_k=candidates, x_v=candidates)
             z = blk2(x_q=candidates, x_k=z, x_v=z)
@@ -100,15 +92,10 @@ class TransformerModelv5(nn.Module):
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
             for _ in range(abstr_depth)])
 
-        self.first_reas_block = nn.ModuleList([nn.ModuleList([
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
-        ])
-
         self.reas_blocks = nn.ModuleList([nn.ModuleList([
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
-            for _ in range(reas_depth-1)
+            for _ in range(reas_depth)
                              ])
 
         self.norm = norm_layer(self.model_dim)
@@ -123,39 +110,32 @@ class TransformerModelv5(nn.Module):
         y_reshaped = self.perception(x_reshaped)
         y = y_reshaped.view(batch_size,16,-1)
 
-        context = y[:,0:8,:] # y is (B, 16, embed_dim)
-        candidates = y[:,8:,:]
-
-        if self.cat == True:
-            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
-                                dim=2)  # add positional embeddings
-            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
-                                dim=2)  # add 9th positional embedding to all candidates
-        else:
-            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
-            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
-
-        y = torch.cat([context,candidates], dim=1)
+        # context = y[:,0:8,:] # y is (B, 16, embed_dim)
+        # candidates = y[:,8:,:]
+        #
+        # if self.cat == True:
+        #     context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
+        #                         dim=2)  # add positional embeddings
+        #     candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
+        #                         dim=2)  # add 9th positional embedding to all candidates
+        # else:
+        #     context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+        #     candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
+        #
+        # y = torch.cat([context,candidates], dim=1)
 
         for blk in self.abstr_blocks: # multi-headed self-attention layer
             y = blk(x_q=y, x_k=y, x_v=y)
 
         context_enc = y[:, 0:8, :]  # x is (B, 16, embed_dim)
         candidates_enc = y[:, 8:, :]
+        z = candidates_enc.clone()
 
-        # for blk1,blk2 in self.first_reas_block:
-        #     z = blk1(x_q=context_enc, x_k=candidates_enc, x_v=candidates_enc)
-        #     z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
-        #
         # for blk1, blk2 in self.reas_blocks:
         #     z = blk1(x_q=context_enc, x_k=z, x_v=z)
         #     z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
-        #
-        # z_reshaped = z.view(-1, self.model_dim)
-        # guess_reshaped = self.lin(z_reshaped)
-        # guess = guess_reshaped.view(batch_size, 8)
 
-        z_reshaped = candidates_enc.contiguous().view(-1,self.model_dim)
+        z_reshaped = z.view(-1, self.model_dim)
         guess_reshaped = self.lin(z_reshaped)
         guess = guess_reshaped.view(batch_size, 8)
 

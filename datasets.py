@@ -48,7 +48,7 @@ class RPMSentencesRaw(Dataset):
 
         filename = self.files[idx]
         data = np.load(filename)
-        image = data['image']
+        image = data['image'].reshape(16,160,160)
         imagetensor = torch.from_numpy(image).float() / 255 # convert context panels to tensor
         imagetensor = imagetensor.unsqueeze(1)
 
