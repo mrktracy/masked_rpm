@@ -36,7 +36,7 @@ def visualizedata():
     all_files = gather_files(root_dir)
     train_files = all_files[0:32]
 
-    train_dataset = RPMSentencesRaw(train_files, device=device)
+    train_dataset = RPMSentencesRaw(train_files)
 
     train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
