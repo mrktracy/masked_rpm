@@ -30,24 +30,25 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    transformer_model = TransformerModelv5(embed_dim=512, num_heads=64, abstr_depth=20, reas_depth=20, \
-                                            cat=False).to(device)
+    # transformer_model = TransformerModelv5(embed_dim=512, num_heads=64, abstr_depth=20, reas_depth=20, \
+    #                                         cat=False).to(device)
     # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
+    transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
     # # initialize autoencoder
-    # autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
+    autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
-        # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
+        autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
-    # state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
-    # autoencoder.load_state_dict(state_dict)
-    # autoencoder.eval()
+    state_dict = torch.load('../modelsaves/autoencoder_v0.pth')
+    autoencoder.load_state_dict(state_dict)
+    autoencoder.eval()
 
     ''' Load saved model '''
     # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
@@ -71,8 +72,8 @@ def main():
     val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
-    train_files = train_files[0:1]
-    val_files = train_files[0:1]
+    train_files = train_files[0:20]
+    val_files = train_files[0:20]
 
     ''' Use MNIST dataset '''
     # train_proportion = 0.85
@@ -86,12 +87,12 @@ def main():
     # mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
 
     ''' Transformer model v2 to v4 '''
-    # train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
-    # val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
+    train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
+    val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
 
     ''' Transformer model v5 '''
-    train_dataset = RPMSentencesRaw(train_files)
-    val_dataset = RPMSentencesRaw(val_files)
+    # train_dataset = RPMSentencesRaw(train_files)
+    # val_dataset = RPMSentencesRaw(val_files)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)

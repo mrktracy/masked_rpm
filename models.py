@@ -110,19 +110,19 @@ class TransformerModelv5(nn.Module):
         y_reshaped = self.perception(x_reshaped)
         y = y_reshaped.view(batch_size,16,-1)
 
-        # context = y[:,0:8,:] # y is (B, 16, embed_dim)
-        # candidates = y[:,8:,:]
-        #
-        # if self.cat == True:
-        #     context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
-        #                         dim=2)  # add positional embeddings
-        #     candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
-        #                         dim=2)  # add 9th positional embedding to all candidates
-        # else:
-        #     context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
-        #     candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
-        #
-        # y = torch.cat([context,candidates], dim=1)
+        context = y[:,0:8,:] # y is (B, 16, embed_dim)
+        candidates = y[:,8:,:]
+
+        if self.cat == True:
+            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
+                                dim=2)  # add positional embeddings
+            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
+                                dim=2)  # add 9th positional embedding to all candidates
+        else:
+            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
+
+        y = torch.cat([context,candidates], dim=1)
 
         for blk in self.abstr_blocks: # multi-headed self-attention layer
             y = blk(x_q=y, x_k=y, x_v=y)
@@ -131,9 +131,9 @@ class TransformerModelv5(nn.Module):
         candidates_enc = y[:, 8:, :]
         z = candidates_enc.clone()
 
-        # for blk1, blk2 in self.reas_blocks:
-        #     z = blk1(x_q=context_enc, x_k=z, x_v=z)
-        #     z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
+        for blk1, blk2 in self.reas_blocks:
+            z = blk1(x_q=context_enc, x_k=z, x_v=z)
+            z = blk2(x_q=candidates_enc, x_k=z, x_v=z)
 
         z_reshaped = z.view(-1, self.model_dim)
         guess_reshaped = self.lin(z_reshaped)
@@ -437,28 +437,15 @@ class TransformerModelv3(nn.Module):
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
             for _ in range(can_depth)])
 
-        self.first_guess_block = nn.ModuleList([nn.ModuleList([
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
-            ])
-
         self.guess_blocks = nn.ModuleList([nn.ModuleList([
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
-            for _ in range(guess_depth-1)
+            for _ in range(guess_depth)
                              ])
 
         self.norm = norm_layer(self.model_dim)
 
-        self.flatten = nn.Flatten()
-
-        self.lin1 = nn.Linear(self.model_dim*8, self.model_dim)
-
-        self.lin2 = nn.Linear(self.model_dim, 64)
-
-        self.lin3 = nn.Linear(64, 8)
-
-        self.relu = nn.ReLU()
+        self.lin = nn.Linear(self.model_dim, 1)
 
     def forward(self, x):
         batch_size = x.size(0)  # Get the batch size from the first dimension of x
@@ -481,20 +468,17 @@ class TransformerModelv3(nn.Module):
         for blk in self.can_blocks:
             candidates = blk(x_q=candidates, x_k=candidates, x_v=candidates)
 
-        for blk1,blk2 in self.first_guess_block:
-            y = blk1(x_q=context, x_k=candidates, x_v=candidates)
-            y = blk2(x_q=candidates, x_k=context, x_v=y)
+        y = candidates.clone()
 
         for blk1, blk2 in self.guess_blocks:
             y = blk1(x_q=context, x_k=y, x_v=y)
-            y = blk2(x_q=candidates, x_k=context, x_v=y)
+            y = blk2(x_q=candidates, x_k=y, x_v=y)
 
-        y = self.flatten(y)
-        y = self.relu(self.lin1(y))
-        y = self.relu(self.lin2(y))
-        y = self.lin3(y)
+        y_reshaped = y.view(-1, self.model_dim)
+        guess_reshaped = self.lin(y_reshaped)
+        guess = guess_reshaped.view(batch_size, 8)
 
-        return y
+        return guess
 
 '''' Previous Transformer Model, relying on Block class from timm '''''
 class TransformerModelv1(nn.Module):
