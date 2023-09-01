@@ -28,23 +28,23 @@ def visualizedata():
     # autoencoder.load_state_dict(state_dict)
     # autoencoder.eval()
 
-    root_dir = '../pgm/neutral/'
-    train_files, _, _ = gather_files_pgm(root_dir)
-    train_files = train_files[0:32]  # delete this after test
+    # root_dir = '../pgm/neutral/'
+    # train_files, _, _ = gather_files_pgm(root_dir)
+    # train_files = train_files[0:32]  # delete this after test
+
+    root_dir = '../RAVEN-10000'
+    all_files = gather_files(root_dir)
+    train_files = all_files[0:32]
 
     train_dataset = RPMSentencesRaw(train_files, device=device)
 
     train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
     solutions = []
-    for idx, (inputs, _, targets) in enumerate(train_dataloader):
+    for idx, (inputs, targets) in enumerate(train_dataloader):
 
         solutions.extend(targets.tolist())
-
-        if num_gpus > 1:
-            images = autoencoder.module.decode(inputs.squeeze(0))
-        else:
-            images = autoencoder.decode(inputs.squeeze(0))
+        images = inputs.squeeze(0)
 
         fig1, axs1 = plt.subplots(3, 3)
         for i in range(3):
