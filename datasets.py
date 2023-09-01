@@ -80,10 +80,8 @@ class RPMSentencesNew(Dataset):
         embeddings = self.autoencoder.get_embedding(imagetensor)
 
         target = data['target'].item()
-        target_onehot = torch.zeros(8)
-        target_onehot[target] = 1
 
-        return embeddings, target_onehot, target
+        return embeddings, target
 
     def __len__(self):
         length = len(self.files)
