@@ -33,8 +33,8 @@ def main():
     # transformer_model = TransformerModelv5(embed_dim=512, num_heads=64, abstr_depth=20, reas_depth=20, \
     #                                         cat=False).to(device)
     # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
-    transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, con_depth=8, can_depth=8, \
-                                           guess_depth=8, cat=True).to(device)
+    transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, con_depth=20, can_depth=20, \
+                                           guess_depth=20, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -73,9 +73,6 @@ def main():
     val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
-    train_files = train_files[0:20]
-    val_files = train_files[0:20]
-
     ''' Use MNIST dataset '''
     # train_proportion = 0.85
     # val_proportion = 0.15
@@ -100,14 +97,14 @@ def main():
     # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 100000
+    EPOCHS = 25
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     TOTAL_DATA = len(train_dataset)  # training dataset size
     SAVES_PER_EPOCH = 2
     BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
     VERSION = "v3-itr1"
-    VERSION_SUBFOLDER = "test/" # e.g. "MNIST/" or ""
+    VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -140,11 +137,11 @@ def main():
                 print(f"10 mini-batches processed in {batch_time} seconds")
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
-            # save multiple times per epoch
-            # if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
-            #     model_path = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}transformer_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
-            #     os.makedirs(os.path.dirname(model_path), exist_ok=True)
-            #     torch.save(transformer_model.state_dict(), model_path)
+            save multiple times per epoch
+            if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
+                model_path = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}transformer_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+                os.makedirs(os.path.dirname(model_path), exist_ok=True)
+                torch.save(transformer_model.state_dict(), model_path)
 
         # if epoch%10 == 9: # comment out after test
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
