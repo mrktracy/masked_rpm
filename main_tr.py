@@ -73,6 +73,9 @@ def main():
     val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
+    train_files = train_files[0:150]
+    val_files = train_files[0:150]
+
     ''' Use MNIST dataset '''
     # train_proportion = 0.85
     # val_proportion = 0.15
@@ -138,10 +141,10 @@ def main():
                 print(f"Most recent batch total loss: {loss.item()}\n")
 
             # save multiple times per epoch
-            if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
-                model_path = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}transformer_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
-                os.makedirs(os.path.dirname(model_path), exist_ok=True)
-                torch.save(transformer_model.state_dict(), model_path)
+            # if idx%BATCHES_PER_SAVE == BATCHES_PER_SAVE - 1:
+            #     model_path = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}transformer_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+            #     os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            #     torch.save(transformer_model.state_dict(), model_path)
 
         # if epoch%10 == 9: # comment out after test
         print(f"Epoch {epoch+1}/{EPOCHS} completed: loss = {loss.item()}\n")
