@@ -7,7 +7,7 @@ from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
 class TransformerModelv6(nn.Module):
-    def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=8,\
+    def __init__(self, embed_dim=256, grid_size=3, num_heads=32, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=8,\
                  can_depth=8, guess_depth=8, cat=True):
         super(TransformerModelv6, self).__init__()
 
