@@ -75,9 +75,6 @@ def main():
     val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
-    train_files = train_files[0:150]
-    val_files = train_files[0:150]
-
     ''' Use MNIST dataset '''
     # train_proportion = 0.85
     # val_proportion = 0.15
@@ -102,7 +99,7 @@ def main():
     # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 100000
+    EPOCHS = 50
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     TOTAL_DATA = len(train_dataset)  # training dataset size
