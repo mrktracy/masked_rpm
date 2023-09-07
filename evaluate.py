@@ -7,7 +7,7 @@ def evaluate_model(model, dataloader, device):
     with torch.no_grad():
 
         num_correct = 0
-        for _, (inputs, _, targets) in enumerate(dataloader):
+        for _, (inputs, targets) in enumerate(dataloader):
 
             # move images to the device
             inputs = inputs.to(device)
