@@ -99,7 +99,7 @@ def main():
     # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 50
+    EPOCHS = 72
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     TOTAL_DATA = len(train_dataset)  # training dataset size
@@ -115,7 +115,7 @@ def main():
     optimizer = torch.optim.Adam(list(transformer_model.parameters()),
                                  lr=LEARNING_RATE)
 
-    scheduler = StepLR(optimizer, step_size=2, gamma=0.9)
+    scheduler = StepLR(optimizer, step_size=1, gamma=0.95)
     criterion = nn.CrossEntropyLoss()
 
     log_file_path = f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}runlog.txt"
