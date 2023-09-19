@@ -39,7 +39,8 @@ def main():
     # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
     # transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, con_depth=20, can_depth=20, \
     #                                        guess_depth=20, cat=True).to(device)
-    transformer_model = TransformerModelv6(embed_dim=256, cat=True).to(device)
+    transformer_model = TransformerModelv6(embed_dim=512, con_depth=10, can_depth=10, \
+                                           guess_depth=10, cat=False).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -105,9 +106,7 @@ def main():
     EPOCHS = 72
     BATCH_SIZE = 64
     LEARNING_RATE = 0.0001
-    TOTAL_DATA = len(train_dataset)  # training dataset size
     SAVES_PER_EPOCH = 2
-    BATCHES_PER_SAVE = TOTAL_DATA // BATCH_SIZE // SAVES_PER_EPOCH
     BATCHES_PER_PRINT = 50
     VERSION = "v6-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
@@ -116,6 +115,7 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
     train_length = len(train_dataloader)
+    batches_per_save = train_length // SAVES_PER_EPOCH
 
     optimizer = torch.optim.Adam(list(transformer_model.parameters()),
                                  lr=LEARNING_RATE)
@@ -145,13 +145,13 @@ def main():
                 batch_time = end_time - start_time
                 print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds.")
 
-            if idx % (BATCHES_PER_SAVE-1) == 0:
+            if (idx+1) % batches_per_save == 0:
                 val_loss = evaluate_model(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch} - {idx}/{train_length}. loss: {loss.item():.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {loss.item():.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
                 print(output)
                 logging.info(output)
 
-                save_file = f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}_sv{idx//BATCHES_PER_SAVE+1}.pth"
+                save_file = f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}_sv{idx//batches_per_save+1}.pth"
                 os.makedirs(os.path.dirname(save_file), exist_ok=True)
                 torch.save(transformer_model.state_dict(), save_file)
 
