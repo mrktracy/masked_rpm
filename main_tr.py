@@ -106,7 +106,7 @@ def main():
     EPOCHS = 72
     BATCH_SIZE = 64
     LEARNING_RATE = 0.0001
-    SAVES_PER_EPOCH = 2
+    SAVES_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
     VERSION = "v6-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
