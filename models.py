@@ -5,6 +5,73 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
+class TransformerModelv7(nn.Module):
+    def __init__(self, embed_dim=512, grid_size=3, num_heads=16, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=6,\
+                 can_depth=4, guess_depth=4, cat=True):
+        super(TransformerModelv7, self).__init__()
+
+        self.cat = cat
+
+        if self.cat == True:
+            self.model_dim = 2*embed_dim
+        else:
+            self.model_dim = embed_dim
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.con_blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(con_depth)])
+
+        self.can_blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(can_depth)])
+
+        self.guess_blocks = nn.ModuleList([nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer),
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)])
+            for _ in range(guess_depth)
+                             ])
+
+        self.norm = norm_layer(self.model_dim)
+
+        self.lin = nn.Linear(self.model_dim, 1)
+
+    def forward(self, x):
+        batch_size = x.size(0)  # Get the batch size from the first dimension of x
+
+        context = x[:,0:8,:] # x is (B, 16, embed_dim)
+        candidates = x[:,8:,:]
+
+        if self.cat == True:
+            context = torch.cat([context, self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)],\
+                                dim=2)  # add positional embeddings
+            candidates = torch.cat([candidates, self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)],\
+                                dim=2)  # add 9th positional embedding to all candidates
+        else:
+            context = context + self.pos_embed[0:8].unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+            candidates = candidates + self.pos_embed[8].unsqueeze(0).expand(batch_size, 8, -1)  # add 9th positional embedding to all candidates
+
+        for blk in self.con_blocks: # multi-headed self-attention layer
+            context = blk(x_q=context, x_k=context, x_v=context)
+
+        for blk in self.can_blocks:
+            candidates = blk(x_q=candidates, x_k=candidates, x_v=candidates)
+
+        y = candidates.clone()
+
+        for blk1, blk2 in self.guess_blocks:
+            y = blk1(x_q=y, x_k=y, x_v=y, use_mlp_layer = False)
+            y = blk2(x_q=y, x_k=context, x_v=context)
+
+        y_reshaped = y.view(-1, self.model_dim)
+        guess_reshaped = self.lin(y_reshaped)
+        guess = guess_reshaped.view(batch_size, 8)
+
+        return guess
 
 class TransformerModelv6(nn.Module):
     def __init__(self, embed_dim=256, grid_size=3, num_heads=32, mlp_ratio=4., norm_layer=nn.LayerNorm, con_depth=8,\

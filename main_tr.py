@@ -11,11 +11,13 @@ import time
 import random
 from evaluate import evaluate_model
 from datasets import RPMSentencesNew, RPMSentencesRaw, CustomMNIST
-from models import TransformerModelv6, TransformerModelv4, TransformerModelv5, TransformerModelMNIST
+from models import TransformerModelv7, TransformerModelv4, TransformerModelv5, TransformerModelMNIST
 import os
 import logging
 
-logging.basicConfig(filename='../tr_results/runlog.log',level=logging.INFO)
+logfile = "../tr_results/v7-itr0/runlog.log"
+os.makedirs(os.path.dirname(logfile), exist_ok=True)
+logging.basicConfig(filename=logfile,level=logging.INFO)
 
 seed = 42
 random.seed(seed)
@@ -39,23 +41,23 @@ def main():
     # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
     # transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, con_depth=20, can_depth=20, \
     #                                        guess_depth=20, cat=True).to(device)
-    transformer_model = TransformerModelv6(embed_dim=512, con_depth=10, can_depth=10, \
-                                           guess_depth=10, cat=False).to(device)
+    transformer_model = TransformerModelv7(embed_dim=256, con_depth=20, can_depth=20, \
+                                           guess_depth=20, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
     # # initialize autoencoder
-    # autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
+    autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model, device_ids=[2,3])
         # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
-    # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
-    # autoencoder.load_state_dict(state_dict)
-    # autoencoder.eval()
+    state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
+    autoencoder.load_state_dict(state_dict)
+    autoencoder.eval()
 
     ''' Load saved model '''
     # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
@@ -90,13 +92,13 @@ def main():
     #
     # mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
 
-    ''' Transformer model v2 to v4 '''
-    # train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
-    # val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
+    ''' Transformer model v2 to v4, v7 '''
+    train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
+    val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
 
     ''' Transformer model v5, v6 '''
-    train_dataset = RPMSentencesRaw(train_files)
-    val_dataset = RPMSentencesRaw(val_files)
+    # train_dataset = RPMSentencesRaw(train_files)
+    # val_dataset = RPMSentencesRaw(val_files)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)
@@ -108,7 +110,7 @@ def main():
     LEARNING_RATE = 0.0001
     SAVES_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
-    VERSION = "v6-itr0"
+    VERSION = "v7-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -151,7 +153,7 @@ def main():
                 print(output)
                 logging.info(output)
 
-                save_file = f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}_sv{idx//batches_per_save+1}.pth"
+                save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}_sv{idx//batches_per_save+1}.pth"
                 os.makedirs(os.path.dirname(save_file), exist_ok=True)
                 torch.save(transformer_model.state_dict(), save_file)
 
