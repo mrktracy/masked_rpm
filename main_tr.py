@@ -33,7 +33,7 @@ def initialize_weights_he(m):
 def main():
 
     # Initialize device, model
-    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
     # transformer_model = TransformerModelv5(embed_dim=512, num_heads=64, abstr_depth=20, reas_depth=20, \
@@ -51,7 +51,7 @@ def main():
     autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
 
     if num_gpus > 1:  # use multiple GPUs
-        transformer_model = nn.DataParallel(transformer_model, device_ids=[2,3])
+        transformer_model = nn.DataParallel(transformer_model)
         # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
