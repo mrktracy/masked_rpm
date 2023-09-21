@@ -145,7 +145,7 @@ def main():
             if idx % BATCHES_PER_PRINT == BATCHES_PER_PRINT-1:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds.")
+                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {loss.item()}")
 
             if (idx+1) % batches_per_save == 0:
                 val_loss = evaluate_model(transformer_model, val_dataloader, device, max_batches=150)
