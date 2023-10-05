@@ -64,22 +64,21 @@ def main():
     # transformer_model.load_state_dict(state_dict_tr)
     # transformer_model.eval()
 
-    ''' Use PGM dataset '''
+    ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
-    # train_files, val_files, test_files = gather_files_pgm(root_dir)
-    # train_files = train_files[0:32] # delete this after test
-    # val_files = train_files[0:32] # delete this after test
+    root_dir = '../i_raven_data/'
+    train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     ''' Use RAVEN dataset '''
-    root_dir = '../i_raven_data'
-    all_files = gather_files(root_dir)
-    num_files = len(all_files)
-    train_proportion = 0.7
-    val_proportion = 0.15
-    # test proportion is 1 - train_proportion - val_proportion
-    train_files = all_files[:int(num_files * train_proportion)]
-    val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
-    # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
+    # root_dir = '../RAVEN-10000'
+    # all_files = gather_files(root_dir)
+    # num_files = len(all_files)
+    # train_proportion = 0.7
+    # val_proportion = 0.15
+    # # test proportion is 1 - train_proportion - val_proportion
+    # train_files = all_files[:int(num_files * train_proportion)]
+    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
+    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
     ''' Use MNIST dataset '''
     # train_proportion = 0.85
@@ -105,11 +104,11 @@ def main():
     # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 70
+    EPOCHS = 60
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00001
     LOGS_PER_EPOCH = 4
-    BATCHES_PER_PRINT = 35
+    BATCHES_PER_PRINT = 100
     EPOCHS_PER_SAVE = 5
     VERSION = "v6-itr1"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""

@@ -12,7 +12,7 @@ matplotlib.use('Agg')
 
 def visualizedata():
 
-    save_dir = "../visualize_data/i_raven/"
+    save_dir = "../data/visualize_data/i_raven/"
     os.makedirs(save_dir, exist_ok=True)
 
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,9 +32,9 @@ def visualizedata():
     # train_files, _, _ = gather_files_pgm(root_dir)
     # train_files = train_files[0:32]  # delete this after test
 
-    root_dir = '../i_raven_data'
-    all_files = gather_files(root_dir)
-    train_files = all_files[0:32]
+    root_dir = '../data/i_raven_data/distribute_four'
+    train_files, val_files, test_files  = gather_files_pgm(root_dir)
+    train_files = train_files[0:32]
 
     train_dataset = RPMSentencesRaw(train_files)
 
