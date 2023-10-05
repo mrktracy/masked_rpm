@@ -11,7 +11,7 @@ import time
 import random
 from evaluate import evaluate_model
 from datasets import RPMSentencesNew, RPMSentencesRaw, CustomMNIST
-from models import TransformerModelv7, TransformerModelv4, TransformerModelv5, TransformerModelMNIST
+from models import TransformerModelv6, TransformerModelv4, TransformerModelv5, TransformerModelMNIST
 import os
 import logging
 
