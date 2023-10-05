@@ -15,7 +15,7 @@ from models import TransformerModelv7, TransformerModelv4, TransformerModelv5, T
 import os
 import logging
 
-logfile = "../tr_results/v7-itr0/runlog.log"
+logfile = "../tr_results/v6-itr1/runlog.log"
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO)
 
@@ -41,23 +41,23 @@ def main():
     # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
     # transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, con_depth=20, can_depth=20, \
     #                                        guess_depth=20, cat=True).to(device)
-    transformer_model = TransformerModelv7(embed_dim=256, con_depth=20, can_depth=20, \
-                                           guess_depth=20, cat=True).to(device)
+    transformer_model = TransformerModelv6(embed_dim=512, con_depth=10, can_depth=10, \
+                                           guess_depth=10, cat=False).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
     # # initialize autoencoder
-    autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
+    # autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
 
     if num_gpus > 1:  # use multiple GPUs
-        transformer_model = nn.DataParallel(transformer_model)
+        transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
         # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
-    state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
-    autoencoder.load_state_dict(state_dict)
-    autoencoder.eval()
+    # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
+    # autoencoder.load_state_dict(state_dict)
+    # autoencoder.eval()
 
     ''' Load saved model '''
     # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
@@ -71,7 +71,7 @@ def main():
     # val_files = train_files[0:32] # delete this after test
 
     ''' Use RAVEN dataset '''
-    root_dir = '../RAVEN-10000'
+    root_dir = '../i_raven_data'
     all_files = gather_files(root_dir)
     num_files = len(all_files)
     train_proportion = 0.7
@@ -93,31 +93,32 @@ def main():
     # mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
 
     ''' Transformer model v2 to v4, v7 '''
-    train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
-    val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
+    # train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
+    # val_dataset = RPMSentencesNew(val_files, autoencoder, device=device)
 
     ''' Transformer model v5, v6 '''
-    # train_dataset = RPMSentencesRaw(train_files)
-    # val_dataset = RPMSentencesRaw(val_files)
+    train_dataset = RPMSentencesRaw(train_files)
+    val_dataset = RPMSentencesRaw(val_files)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)
     # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 25
+    EPOCHS = 50
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00001
-    SAVES_PER_EPOCH = 2
+    LOGS_PER_EPOCH = 4
     BATCHES_PER_PRINT = 35
-    VERSION = "v7-itr0"
+    EPOCHS_PER_SAVE = 5
+    VERSION = "v6-itr1"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
     train_length = len(train_dataloader)
-    batches_per_save = train_length // SAVES_PER_EPOCH
+    batches_per_log = train_length // LOGS_PER_EPOCH
 
     optimizer = torch.optim.Adam(list(transformer_model.parameters()),
                                  lr=LEARNING_RATE)
@@ -142,20 +143,21 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
-            if idx % BATCHES_PER_PRINT == BATCHES_PER_PRINT-1:
+            if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
                 batch_time = end_time - start_time
                 print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {loss.item()}")
 
-            if (idx+1) % batches_per_save == 0:
+            if (idx+1) % batches_per_log == 0:
                 val_loss = evaluate_model(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {loss.item():.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
                 print(output)
                 logging.info(output)
 
-                save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}_sv{idx//batches_per_save+1}.pth"
-                os.makedirs(os.path.dirname(save_file), exist_ok=True)
-                torch.save(transformer_model.state_dict(), save_file)
+        if (epoch+1) % EPOCHS_PER_SAVE == 0:
+            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+            os.makedirs(os.path.dirname(save_file), exist_ok=True)
+            torch.save(transformer_model.state_dict(), save_file)
 
         scheduler.step()
 
