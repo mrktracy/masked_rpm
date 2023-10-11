@@ -3,6 +3,43 @@ import torch
 from torch.utils.data import Dataset
 import random
 from collections import defaultdict
+from transformers import ViTFeatureExtractor, ViTModel
+
+class RPMSentencesViT(Dataset):
+    def __init__(self, files, ViT_model_name, device):
+        self.files = files
+        self.device = device
+
+        # Initialize feature extractor and ViT model
+        self.feature_extractor = ViTFeatureExtractor.from_pretrained(ViT_model_name)
+        self.encoder = ViTModel.from_pretrained(ViT_model_name).to(device)
+
+        # Ensure encoder is in eval mode and gradients are not computed
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+        self.encoder.eval()
+
+    def __getitem__(self, idx):
+        filename = self.files[idx]
+        data = np.load(filename)
+        image = data['image'].reshape(16, 160, 160)
+        image = torch.from_numpy(image).float() / 255 # convert context panels to tensor
+
+        # Preprocessing for ViT
+        inputs = self.feature_extractor(images=image, return_tensors="pt")
+        inputs = {key: val.to(self.device) for key, val in inputs.items()}
+
+        # Get embeddings using Vision Transformer
+        with torch.no_grad():
+            vit_outputs = self.encoder(**inputs)
+        # Extract embedding of the 'CLS' token
+        embeddings = vit_outputs.last_hidden_state[:, 0, :]
+
+        target = data['target'].item()
+        return embeddings, target
+
+    def __len__(self):
+        return len(self.files)
 
 class CustomMNIST(Dataset):
     def __init__(self, mnist_data, num_samples):
