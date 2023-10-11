@@ -26,7 +26,7 @@ class RPMSentencesViT(Dataset):
         image = torch.from_numpy(image).float() / 255 # convert context panels to tensor
 
         # Preprocessing for ViT
-        inputs = self.feature_extractor(images=image, return_tensors="pt")
+        inputs = self.feature_extractor(images=image, return_tensors="pt", do_rescale=False)
         inputs = {key: val.to(self.device) for key, val in inputs.items()}
 
         # Get embeddings using Vision Transformer
