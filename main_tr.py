@@ -50,7 +50,8 @@ def main():
     # autoencoder = ResNetAutoencoder(embed_dim=256).to(device)
 
     if num_gpus > 1:  # use multiple GPUs
-        transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
+        transformer_model = nn.DataParallel(transformer_model)
+        # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
         # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
