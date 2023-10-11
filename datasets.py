@@ -22,7 +22,7 @@ class RPMSentencesViT(Dataset):
     def __getitem__(self, idx):
         filename = self.files[idx]
         data = np.load(filename)
-        image = data['image'].reshape(16, 160, 160)
+        image = data['image'].reshape(16, 1, 160, 160)
         image = torch.from_numpy(image).float() / 255 # convert context panels to tensor
 
         # Preprocessing for ViT
