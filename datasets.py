@@ -12,7 +12,7 @@ class RPMSentencesViT(Dataset):
 
         # Initialize feature extractor and ViT model
         configuration = ViTConfig.from_pretrained(ViT_model_name, num_channels=1)
-        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, return_tensors="pt", \
+        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, \
                                                                    do_rescale=False, \
                                                                    image_mean=0.9031295340401794, \
                                                                    image_std=0.263461851960206)
@@ -29,8 +29,8 @@ class RPMSentencesViT(Dataset):
         images = data['image'].reshape(16, 1, 160, 160).astype(np.float32) / 255
 
         # Preprocessing for ViT
-        inputs = self.feature_extractor(images=images)
-        inputs = inputs.to(self.device)
+        inputs = self.feature_extractor(images=images, return_tensors="pt")
+        inputs = {key:val.to(self.device) for key,val in inputs.item()}
 
         # Get embeddings using Vision Transformer
         with torch.no_grad():
