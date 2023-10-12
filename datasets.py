@@ -10,9 +10,13 @@ class RPMSentencesViT(Dataset):
         self.files = files
         self.device = device
 
+        # set separately calculated mean and std of pixel values
+        mean = np.array([0.90312])
+        std = np.array([0.26346])
+
         # Initialize feature extractor and ViT model
         configuration = ViTConfig.from_pretrained(ViT_model_name, num_channels=1)
-        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, do_rescale=False, image_mean=0.90312, image_std=0.26346)
+        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, do_rescale=False, image_mean=mean, image_std=std)
         self.encoder = ViTModel(configuration).to(device)
 
         # Ensure encoder is in eval mode and gradients are not computed
