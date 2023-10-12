@@ -10,6 +10,51 @@ import torch
 from torch.utils.data import DataLoader
 matplotlib.use('Agg')
 
+def calc_mean_std():
+
+    write_file = '../visualize_data/i_raven/mean_std.txt'
+    os.makedirs(os.path.dirname(write_file),exist_ok=True)
+
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # root_dir = '../pgm/neutral/'
+    # train_files, _, _ = gather_files_pgm(root_dir)
+    # train_files = train_files[0:32]  # delete this after test
+
+    root_dir = '../data/i_raven_data/distribute_four'
+    train_files, val_files, test_files = gather_files_pgm(root_dir)
+
+    train_dataset = RPMSentencesRaw(train_files)
+
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+
+    n = 0
+    mean = 0
+    M2 = 0
+
+    for idx, (inputs, targets) in enumerate(train_dataloader):
+
+        inputs = torch.reshape(inputs, shape=(-1,))
+        for pixel in inputs:
+            n += 1
+            delta = pixel - mean
+            mean += delta / n
+            delta2 = pixel - mean
+            M2 += delta * delta2
+
+    if n < 2:
+        return float('nan')
+    else:
+        variance = M2 / (n - 1)
+
+    std = math.sqrt(variance)
+
+    print(f"mean: {mean}")
+    print(f"std: {std}")
+
+    with open(write_file, "w") as file:
+        file.write(f"mean: {mean}\n")
+        file.write(f"std: {std}")
 def visualizedata():
 
     save_dir = "../data/visualize_data/i_raven/"
@@ -145,7 +190,8 @@ def displayresults_tr_grid():
     axs4.imshow(target.squeeze(0), cmap='gray')
 
 if __name__ == "__main__":
-    visualizedata()
+    calc_mean_std()
+    # visualizedata()
     # displayresults_ae()
     # displayresults_tr_grid()
     # plt.show()
