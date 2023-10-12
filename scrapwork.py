@@ -37,12 +37,16 @@ def calc_mean_std():
 
         inputs = inputs.to(device)
         inputs = torch.reshape(inputs, shape=(-1,))
-        for pixel in inputs:
-            n += 1
-            delta = pixel - mean
-            mean += delta / n
-            delta2 = pixel - mean
-            M2 += delta * delta2
+
+        # Calculate the batch statistics
+        batch_mean = inputs.mean().item()
+        batch_var = inputs.var().item()
+        batch_size = inputs.size(0)
+
+        delta = batch_mean - mean
+        mean = mean + delta * batch_size / (n + batch_size)
+        M2 = M2 + batch_size * (batch_var + delta * (batch_mean - mean))
+        n = n + batch_size
 
         if idx % 50 == 0:
             print(f"Batch {idx}/{num_batches} complete.")
