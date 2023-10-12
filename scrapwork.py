@@ -21,7 +21,7 @@ def calc_mean_std():
     # train_files, _, _ = gather_files_pgm(root_dir)
     # train_files = train_files[0:32]  # delete this after test
 
-    root_dir = '../data/i_raven_data/distribute_four'
+    root_dir = '../data/i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     train_dataset = RPMSentencesRaw(train_files)
@@ -47,7 +47,7 @@ def calc_mean_std():
     else:
         variance = M2 / (n - 1)
 
-    std = math.sqrt(variance)
+    std = np.sqrt(variance)
 
     print(f"mean: {mean}")
     print(f"std: {std}")
