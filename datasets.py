@@ -28,9 +28,7 @@ class RPMSentencesViT(Dataset):
         image = image.unsqueeze(1) # add channel dimension
 
         # Preprocessing for ViT
-        inputs = self.feature_extractor(images=image, return_tensors="pt", \
-                                        do_rescale=False, image_mean=[0.9031295340401794], \
-                                        image_std=[0.263461851960206])
+        inputs = self.feature_extractor(images=image, return_tensors="pt", do_rescale=False, image_mean=[0.9031295340401794], image_std=[0.263461851960206])
         inputs = {key: val.to(self.device) for key, val in inputs.items()}
 
         # Get embeddings using Vision Transformer
