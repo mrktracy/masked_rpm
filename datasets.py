@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import Dataset
 import random
 from collections import defaultdict
-from transformers import ViTImageProcessor, ViTModel
+from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
 class RPMSentencesViT(Dataset):
     def __init__(self, files, ViT_model_name, device):
@@ -11,8 +11,9 @@ class RPMSentencesViT(Dataset):
         self.device = device
 
         # Initialize feature extractor and ViT model
+        configuration = ViTConfig(num_channels=1)
         self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name)
-        self.encoder = ViTModel.from_pretrained(ViT_model_name).to(device)
+        self.encoder = ViTModel(configuration).from_pretrained(ViT_model_name).to(device)
 
         # Ensure encoder is in eval mode and gradients are not computed
         for param in self.encoder.parameters():
