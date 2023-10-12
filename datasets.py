@@ -11,12 +11,14 @@ class RPMSentencesViT(Dataset):
         self.device = device
 
         # set separately calculated mean and std of pixel values
-        mean = np.array([0.90312])
-        std = np.array([0.26346])
+        self.mean = np.array([0.9031295340401794], dtype=np.float32)
+        self.std = np.array([0.263461851960206], dtype=np.float32)
 
         # Initialize feature extractor and ViT model
         configuration = ViTConfig.from_pretrained(ViT_model_name, num_channels=1)
-        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, do_rescale=False, image_mean=mean, image_std=std)
+        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, \
+                                                                   do_rescale=False, \
+                                                                   do_normalize=False)
         self.encoder = ViTModel(configuration).to(device)
 
         # Ensure encoder is in eval mode and gradients are not computed
@@ -28,9 +30,10 @@ class RPMSentencesViT(Dataset):
         filename = self.files[idx]
         data = np.load(filename)
         images = data['image'].reshape(16, 1, 160, 160).astype(np.float32) / 255
+        images_normed = (images - self.mean)/self.std
 
         # Preprocessing for ViT
-        inputs = self.feature_extractor(images=images, return_tensors="pt")
+        inputs = self.feature_extractor(images=images_normed, return_tensors="pt")
         inputs = {key:val.to(self.device) for key,val in inputs.items()}
 
         # Get embeddings using Vision Transformer
