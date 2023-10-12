@@ -30,10 +30,7 @@ class RPMSentencesViT(Dataset):
 
         # Preprocessing for ViT
         inputs = self.feature_extractor(images=images)
-
-        for key,val in inputs.items():
-            if isinstance(val,torch.Tensor):
-                inputs[key] = val.to(self.device)
+        inputs = {key: torch.tensor(val).to(self.device) for key, val in inputs.items()}
 
         # Get embeddings using Vision Transformer
         with torch.no_grad():
