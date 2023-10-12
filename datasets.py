@@ -23,7 +23,7 @@ class RPMSentencesViT(Dataset):
     def __getitem__(self, idx):
         filename = self.files[idx]
         data = np.load(filename)
-        image = data['image'].reshape(16, np.newaxis, 160, 160) / 255
+        image = data['image'].reshape(16, 1, 160, 160) / 255
 
         # Preprocessing for ViT
         inputs = self.feature_extractor(images=image, return_tensors="pt", do_rescale=False, image_mean=0.9031295340401794, image_std=0.263461851960206)
