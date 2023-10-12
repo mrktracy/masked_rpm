@@ -27,6 +27,7 @@ def calc_mean_std():
     train_dataset = RPMSentencesRaw(train_files)
 
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    num_batches = len(train_dataloader)
 
     n = 0
     mean = 0
@@ -41,6 +42,9 @@ def calc_mean_std():
             mean += delta / n
             delta2 = pixel - mean
             M2 += delta * delta2
+
+        if idx % 500 == 0:
+            print(f"Batch {idx}/{num_batches} complete.")
 
     if n < 2:
         return float('nan')
