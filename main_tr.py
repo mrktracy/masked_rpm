@@ -102,21 +102,21 @@ def main():
     ''' Transformer model v2 to v4, v7 with ViT '''
     train_dataset = RPMSentencesViT(train_files, \
                                     ViT_model_name="google/vit-base-patch16-224-in21k", \
-                                    device = device)
+                                    device = device, num_gpus = num_gpus)
     val_dataset = RPMSentencesViT(val_files, \
                                   ViT_model_name="google/vit-base-patch16-224-in21k", \
-                                  device = device)
+                                  device = device, num_gpus = num_gpus)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)
     # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 60
+    EPOCHS = 25
     BATCH_SIZE = 32
     LEARNING_RATE = 1e-4
     LOGS_PER_EPOCH = 4
-    BATCHES_PER_PRINT = 100
+    BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
     VERSION = "v7-itr1"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""

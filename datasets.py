@@ -6,7 +6,7 @@ from collections import defaultdict
 from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
 class RPMSentencesViT(Dataset):
-    def __init__(self, files, ViT_model_name, device):
+    def __init__(self, files, ViT_model_name, device, num_gpus):
         self.files = files
         self.device = device
 
@@ -20,7 +20,10 @@ class RPMSentencesViT(Dataset):
                                                                    do_rescale=False, \
                                                                    image_mean = mean, \
                                                                    image_std = std)
-        self.encoder = ViTModel(configuration).to(device)
+        encoder = ViTModel(configuration).to(device)
+        if num_gpus > 1:  # use multiple GPUs
+            encoder = nn.DataParallel(encoder)
+        self.encoder = encoder
 
         # Ensure encoder is in eval mode and gradients are not computed
         for param in self.encoder.parameters():
