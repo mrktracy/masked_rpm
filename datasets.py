@@ -31,7 +31,7 @@ class RPMSentencesViT(Dataset):
         # Preprocessing for ViT
         inputs = self.feature_extractor(images=images)
 
-        for key,val in inputs.items:
+        for key,val in inputs.items():
             if isinstance(val,torch.Tensor):
                 inputs[key] = val.to(self.device)
 
