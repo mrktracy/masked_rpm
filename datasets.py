@@ -12,10 +12,7 @@ class RPMSentencesViT(Dataset):
 
         # Initialize feature extractor and ViT model
         configuration = ViTConfig.from_pretrained(ViT_model_name, num_channels=1)
-        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, \
-                                                                   do_rescale=False, \
-                                                                   image_mean=0.9031295340401794, \
-                                                                   image_std=0.263461851960206)
+        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, do_rescale=False, image_mean=0.90312, image_std=0.26346)
         self.encoder = ViTModel(configuration).to(device)
 
         # Ensure encoder is in eval mode and gradients are not computed
