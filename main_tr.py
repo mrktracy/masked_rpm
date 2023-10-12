@@ -113,9 +113,9 @@ def main():
     # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 10
+    EPOCHS = 15
     BATCH_SIZE = 32
-    LEARNING_RATE = 1e-3
+    LEARNING_RATE = 1e-2
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 5
     EPOCHS_PER_SAVE = 1
