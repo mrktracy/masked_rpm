@@ -15,7 +15,7 @@ def calc_mean_std():
     write_file = '../visualize_data/i_raven/mean_std.txt'
     os.makedirs(os.path.dirname(write_file),exist_ok=True)
 
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # root_dir = '../pgm/neutral/'
     # train_files, _, _ = gather_files_pgm(root_dir)
@@ -35,6 +35,7 @@ def calc_mean_std():
 
     for idx, (inputs, targets) in enumerate(train_dataloader):
 
+        inputs = inputs.to(device)
         inputs = torch.reshape(inputs, shape=(-1,))
         for pixel in inputs:
             n += 1
@@ -43,7 +44,7 @@ def calc_mean_std():
             delta2 = pixel - mean
             M2 += delta * delta2
 
-        if idx % 500 == 0:
+        if idx % 50 == 0:
             print(f"Batch {idx}/{num_batches} complete.")
 
     if n < 2:
