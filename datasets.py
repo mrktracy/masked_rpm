@@ -30,11 +30,12 @@ class RPMSentencesViT(Dataset):
 
         # Preprocessing for ViT
         inputs = self.feature_extractor(images=images)
-        inputs = {key: torch.tensor(val).to(self.device) for key, val in inputs.items()}
+        inputs = inputs.to(self.device)
 
         # Get embeddings using Vision Transformer
         with torch.no_grad():
             vit_outputs = self.encoder(**inputs)
+
         # Extract embedding of the 'CLS' token
         embeddings = vit_outputs.last_hidden_state[:, 0, :]
 
