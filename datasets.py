@@ -31,7 +31,6 @@ class RPMSentencesViT(Dataset):
         filename = self.files[idx]
         data = np.load(filename)
         images = data['image'].reshape(16, 1, 160, 160)
-        # images_normed = (images - self.mean)/self.std
 
         # Preprocessing for ViT
         inputs = self.feature_extractor(images=images, return_tensors="pt")
