@@ -11,9 +11,9 @@ class RPMSentencesViT(Dataset):
         self.device = device
 
         # Initialize feature extractor and ViT model
-        configuration = ViTConfig(num_channels=1)
+        configuration = ViTConfig.from_pretrained(ViT_model_name, num_channels=1)
         self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name)
-        self.encoder = ViTModel(configuration).from_pretrained(ViT_model_name).to(device)
+        self.encoder = ViTModel(configuration).to(device)
 
         # Ensure encoder is in eval mode and gradients are not computed
         for param in self.encoder.parameters():
@@ -23,7 +23,7 @@ class RPMSentencesViT(Dataset):
     def __getitem__(self, idx):
         filename = self.files[idx]
         data = np.load(filename)
-        image = data['image'].reshape(16, 1, 160, 160)
+        image = data['image'].reshape(16, 160, 160).unsqueeze(1)
         image = torch.from_numpy(image).float() / 255 # convert context panels to tensor
 
         # Preprocessing for ViT
