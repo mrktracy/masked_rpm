@@ -1,4 +1,3 @@
-## Use transformer output directly, without subsequent MLP layers
 import numpy as np
 import torch
 from torch import nn
@@ -11,11 +10,11 @@ import time
 import random
 from evaluate import evaluate_model
 from datasets import RPMSentencesNew, RPMSentencesRaw, CustomMNIST, RPMSentencesViT
-from models import TransformerModelv7, TransformerModelv4, TransformerModelv5, TransformerModelMNIST
+from models import TransformerModelv7, TransformerModelMNISTv6, TransformerModelv5
 import os
 import logging
 
-logfile = "../tr_results/v7-itr1/runlog.log"
+logfile = "../tr_results/v6-itr1/MNIST/runlog.log"
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO)
 
@@ -38,11 +37,11 @@ def main():
 
     # transformer_model = TransformerModelv5(embed_dim=512, num_heads=64, abstr_depth=20, reas_depth=20, \
     #                                         cat=False).to(device)
-    # transformer_model = TransformerModelMNIST(embed_dim=256, num_heads=16).to(device)
+    transformer_model = TransformerModelMNISTv6().to(device)
     # transformer_model = TransformerModelv3(embed_dim=256, num_heads=16, con_depth=20, can_depth=20, \
     #                                        guess_depth=20, cat=True).to(device)
-    transformer_model = TransformerModelv7(con_depth=15, can_depth=15,\
-                                           guess_depth=15, num_heads=32).to(device)
+    # transformer_model = TransformerModelv7(con_depth=15, can_depth=15,\
+    #                                        guess_depth=15, num_heads=32).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -67,8 +66,8 @@ def main():
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
-    root_dir = '../i_raven_data/'
-    train_files, val_files, test_files = gather_files_pgm(root_dir)
+    # root_dir = '../i_raven_data/'
+    # train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
@@ -82,15 +81,15 @@ def main():
     # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
 
     ''' Use MNIST dataset '''
-    # train_proportion = 0.85
-    # val_proportion = 0.15
-    # mnist_data = MNIST(root='../MNIST/', train=True, download=True, \
-    #                    transform=transforms.Compose([transforms.Resize((160, 160)), transforms.ToTensor()]))
-    # mnist_len = len(mnist_data)
-    # train_len = int(mnist_len*train_proportion)
-    # val_len = int(mnist_len*val_proportion)
-    #
-    # mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
+    train_proportion = 0.85
+    val_proportion = 0.15
+    mnist_data = MNIST(root='../MNIST/', train=True, download=True, \
+                       transform=transforms.Compose([transforms.Resize((160, 160)), transforms.ToTensor()]))
+    mnist_len = len(mnist_data)
+    train_len = int(mnist_len*train_proportion)
+    val_len = int(mnist_len*val_proportion)
+
+    mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
 
     ''' Transformer model v2 to v4, v7 '''
     # train_dataset = RPMSentencesNew(train_files, autoencoder, device=device)
@@ -101,16 +100,16 @@ def main():
     # val_dataset = RPMSentencesRaw(val_files)
 
     ''' Transformer model v2 to v4, v7 with ViT '''
-    train_dataset = RPMSentencesViT(train_files, \
-                                    ViT_model_name="google/vit-base-patch16-224-in21k", \
-                                    device = device, num_gpus = num_gpus)
-    val_dataset = RPMSentencesViT(val_files, \
-                                  ViT_model_name="google/vit-base-patch16-224-in21k", \
-                                  device = device, num_gpus = num_gpus)
+    # train_dataset = RPMSentencesViT(train_files, \
+    #                                 ViT_model_name="google/vit-base-patch16-224-in21k", \
+    #                                 device = device, num_gpus = num_gpus)
+    # val_dataset = RPMSentencesViT(val_files, \
+    #                               ViT_model_name="google/vit-base-patch16-224-in21k", \
+    #                               device = device, num_gpus = num_gpus)
 
     ''' MNIST transformer model '''
-    # train_dataset = CustomMNIST(mnist_train, num_samples=100000)
-    # val_dataset = CustomMNIST(mnist_val, num_samples=10000)
+    train_dataset = CustomMNIST(mnist_train, num_samples=100000)
+    val_dataset = CustomMNIST(mnist_val, num_samples=10000)
 
     ''' Define Hyperparameters '''
     EPOCHS = 15
@@ -119,8 +118,8 @@ def main():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 5
     EPOCHS_PER_SAVE = 1
-    VERSION = "v7-itr1"
-    VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
+    VERSION = "v6-itr1"
+    VERSION_SUBFOLDER = "MNIST/" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
