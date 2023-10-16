@@ -114,7 +114,7 @@ def main():
     ''' Define Hyperparameters '''
     EPOCHS = 15
     BATCH_SIZE = 32
-    LEARNING_RATE = 1e-2
+    LEARNING_RATE = 1e-4
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 5
     EPOCHS_PER_SAVE = 1
