@@ -7,7 +7,7 @@ from collections import defaultdict
 from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
 class RPMSentencesViT_Masked(Dataset):
-    def __init__(self, files, ViT_model_name, embed_dim=768, device, num_gpus):
+    def __init__(self, files, ViT_model_name , device, num_gpus, embed_dim=768):
         self.files = files
         self.embed_dim = embed_dim
         self.device = device
@@ -71,7 +71,7 @@ class RPMSentencesViT_Masked(Dataset):
 
 # Dataset for evaluation
 class RPMFullSentencesViT_Masked(Dataset):
-    def __init__(self, files, ViT_model_name, embed_dim=768, device, num_gpus):
+    def __init__(self, files, ViT_model_name, device, num_gpus, embed_dim=768):
         self.files = files
         self.embed_dim = embed_dim
         self.device = device
