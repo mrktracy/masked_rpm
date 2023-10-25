@@ -38,7 +38,7 @@ class TransformerModelv8(nn.Module):
             x = x + self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
 
         for blk in self.blocks: # multi-headed self-attention layer
-            x = blk(x)
+            x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
 
         guess = x[:,-1,:].squeeze() # make guess shape (batch_size, model_dim)
