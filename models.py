@@ -8,7 +8,7 @@ from timm.layers import Mlp, DropPath, use_fused_attn
 
 class TransformerModelv8(nn.Module):
     def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
-                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 15, cat=False):
+                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 20, cat=False):
         super(TransformerModelv8, self).__init__()
 
         self.cat = cat
