@@ -41,7 +41,7 @@ class RPMSentencesViT_Masked(Dataset):
 
         filename = self.files[fileidx]
         data = np.load(filename)
-        images = data['image'][0:8,:,:].unsqueeze(1)
+        images = data['image'][0:8,np.newaxis,:,:]
 
         # Preprocessing for ViT
         inputs = self.feature_extractor(images=images, return_tensors="pt")
