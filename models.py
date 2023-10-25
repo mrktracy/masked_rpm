@@ -6,6 +6,44 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
+class TransformerModelv8(nn.Module):
+    def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
+                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 15, cat=False):
+        super(TransformerModelv8, self).__init__()
+
+        self.cat = cat
+
+        if self.cat:
+            self.model_dim = 2*embed_dim
+        else:
+            self.model_dim = embed_dim
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
+            for _ in range(depth)])
+
+        self.norm = norm_layer(self.model_dim)
+
+    def forward(self, x):
+        batch_size = x.size(0)  # Get the batch size from the first dimension of x
+
+        if self.cat:
+            x = torch.cat([x, self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)], dim=2)  # add positional embeddings
+        else:
+            x = x + self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+
+        for blk in self.blocks: # multi-headed self-attention layer
+            x = blk(x)
+        x = self.norm(x)
+
+        guess = x[:,-1,:].squeeze() # make guess shape (batch_size, model_dim)
+        return guess
+
 class TransformerModelv7(nn.Module):
     def __init__(self, embed_dim=768, grid_size=3, num_heads=16, mlp_ratio=4., \
                  norm_layer=nn.LayerNorm, con_depth=10, can_depth=10, \

@@ -6,6 +6,126 @@ import random
 from collections import defaultdict
 from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
+class RPMSentencesViT_Masked(Dataset):
+    def __init__(self, files, ViT_model_name, embed_dim=768, device, num_gpus):
+        self.files = files
+        self.embed_dim = embed_dim
+        self.device = device
+
+        # set separately calculated mean and std of pixel values
+        mean = 0.9031295340401794 * 255
+        std = 0.263461851960206 * 255
+
+        # Initialize feature extractor and ViT model
+        configuration = ViTConfig.from_pretrained(ViT_model_name, num_channels=1)
+        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, \
+                                                                   do_rescale=False, \
+                                                                   image_mean=mean, \
+                                                                   image_std=std)
+        encoder = ViTModel(configuration).to(device)
+        if num_gpus > 1:  # use multiple GPUs
+            encoder = nn.DataParallel(encoder)
+        self.encoder = encoder
+
+        # Ensure encoder is in eval mode and gradients are not computed
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+        self.encoder.eval()
+
+    def __getitem__(self, idx):
+        mask = torch.ones(self.embed_dim).to(self.device) # create masking token
+        pad = torch.zeros(self.embed_dim).to(self.device) # create padding token
+
+        fileidx = idx // 4
+        panelidx = idx % 4
+
+        filename = self.files[fileidx]
+        data = np.load(filename)
+        images = data['image'][0:8,:,:].unsqueeze(1)
+
+        # Preprocessing for ViT
+        inputs = self.feature_extractor(images=images, return_tensors="pt")
+        inputs = {key: val.to(self.device) for key, val in inputs.items()}
+
+        # Get embeddings using Vision Transformer
+        with torch.no_grad():
+            vit_outputs = self.encoder(**inputs)
+
+        # Extract embedding of the 'CLS' token
+        embeddings = vit_outputs.last_hidden_state[:, 0, :]
+
+        sentence = embeddings.clone() # create masked sentence
+        sentence_data = sentence[0:4+panelidx,:]
+        sentence[:4-panelidx, :] = pad # pad back end of sentence
+        sentence[4-panelidx:, :] = sentence_data # move sentence data to the right
+        maskedsentence = torch.cat([sentence, mask], 0) # (9, embed_dim)
+
+        # rotate grid
+        target = embeddings[4+panelidx, :] # extract target panel embedding
+
+        return maskedsentence, target
+
+    def __len__(self):
+        length = len(self.files)*4
+        return length
+
+# Dataset for evaluation
+class RPMFullSentencesViT_Masked(Dataset):
+    def __init__(self, files, ViT_model_name, embed_dim=768, device, num_gpus):
+        self.files = files
+        self.embed_dim = embed_dim
+        self.device = device
+
+        # set separately calculated mean and std of pixel values
+        mean = 0.9031295340401794 * 255
+        std = 0.263461851960206 * 255
+
+        # Initialize feature extractor and ViT model
+        configuration = ViTConfig.from_pretrained(ViT_model_name, num_channels=1)
+        self.feature_extractor = ViTImageProcessor.from_pretrained(ViT_model_name, \
+                                                                   do_rescale=False, \
+                                                                   image_mean=mean, \
+                                                                   image_std=std)
+        encoder = ViTModel(configuration).to(device)
+        if num_gpus > 1:  # use multiple GPUs
+            encoder = nn.DataParallel(encoder)
+        self.encoder = encoder
+
+        # Ensure encoder is in eval mode and gradients are not computed
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+        self.encoder.eval()
+
+    def __getitem__(self, idx):
+        mask = torch.ones(self.embed_dim).to(self.device) # create masking token
+
+        filename = self.files[idx]
+        data = np.load(filename)
+        images = data['image'].reshape(16,1,160,160)
+
+        # Preprocessing for ViT
+        inputs = self.feature_extractor(images=images, return_tensors="pt")
+        inputs = {key: val.to(self.device) for key, val in inputs.items()}
+
+        # Get embeddings using Vision Transformer
+        with torch.no_grad():
+            vit_outputs = self.encoder(**inputs)
+
+        # Extract embedding of the 'CLS' token
+        embeddings = vit_outputs.last_hidden_state[:, 0, :]
+
+        sentence = embeddings.clone()[0:8,:] # slice only context panels
+        maskedsentence = torch.cat([sentence, mask], 0) # (9, embed_dim)
+
+        # rotate grid
+        candidates = embeddings[9:, :] # extract target panel embedding
+        target = data['target'].item()
+
+        return maskedsentence, candidates, target
+
+    def __len__(self):
+        length = len(self.files)*4
+        return length
 class RPMSentencesViT(Dataset):
     def __init__(self, files, ViT_model_name, device, num_gpus):
         self.files = files
