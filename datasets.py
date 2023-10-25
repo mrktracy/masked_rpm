@@ -33,7 +33,7 @@ class RPMSentencesViT_Masked(Dataset):
         self.encoder.eval()
 
     def __getitem__(self, idx):
-        mask = torch.ones(self.embed_dim).to(self.device) # create masking token
+        mask = torch.ones(1,self.embed_dim).to(self.device) # create masking token
         pad = torch.zeros(self.embed_dim).to(self.device) # create padding token
 
         fileidx = idx // 4
@@ -97,7 +97,7 @@ class RPMFullSentencesViT_Masked(Dataset):
         self.encoder.eval()
 
     def __getitem__(self, idx):
-        mask = torch.ones(self.embed_dim).to(self.device) # create masking token
+        mask = torch.ones(1,self.embed_dim).to(self.device) # create masking token
 
         filename = self.files[idx]
         data = np.load(filename)
