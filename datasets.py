@@ -55,7 +55,7 @@ class RPMSentencesViT_Masked(Dataset):
         embeddings = vit_outputs.last_hidden_state[:, 0, :]
 
         sentence = embeddings.clone() # create masked sentence
-        sentence_data = sentence[0:4+panelidx,:]
+        sentence_data = sentence[0:4+panelidx,:].clone()
         sentence[:4-panelidx, :] = pad # pad back end of sentence
         sentence[4-panelidx:, :] = sentence_data # move sentence data to the right
         maskedsentence = torch.cat([sentence, mask], 0) # (9, embed_dim)
