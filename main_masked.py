@@ -15,7 +15,7 @@ from models import TransformerModelv8, TransformerModelv7, TransformerModelMNIST
 import os
 import logging
 
-logfile = "../tr_results/v8-itr1/runlog.log"
+logfile = "../tr_results/v8-itr0/runlog.log"
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO)
 
@@ -96,7 +96,7 @@ def main():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 15
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr1"
+    VERSION = "v8-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
