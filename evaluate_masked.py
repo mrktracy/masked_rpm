@@ -20,10 +20,10 @@ def evaluate_model_masked(model, dataloader, device, max_batches = None):
             # forward pass
             outputs = model(inputs) # (batch_size,embed_dim)
 
-            print(f"{inputs.shape()=}")
-            print(f"{targets.shape()=}")
-            print(f"{candidates.shape()=}")
-            print(f"{outputs.shape()=}")
+            print(f"{inputs.shape=}")
+            print(f"{targets.shape=}")
+            print(f"{candidates.shape=}")
+            print(f"{outputs.shape=}")
 
             guesses = torch.argmin(torch.sum((candidates - outputs)**2, dim=-1), dim = -1)
             num_correct += torch.eq(guesses, targets).sum().item()
