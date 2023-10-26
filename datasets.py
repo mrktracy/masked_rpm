@@ -124,7 +124,7 @@ class RPMFullSentencesViT_Masked(Dataset):
         return maskedsentence, candidates, target
 
     def __len__(self):
-        length = len(self.files)*4
+        length = len(self.files)
         return length
 class RPMSentencesViT(Dataset):
     def __init__(self, files, ViT_model_name, device, num_gpus):
