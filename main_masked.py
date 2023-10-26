@@ -92,9 +92,9 @@ def main():
     ''' Define Hyperparameters '''
     EPOCHS = 20
     BATCH_SIZE = 32
-    LEARNING_RATE = 1e-3
+    LEARNING_RATE = 1e-2
     LOGS_PER_EPOCH = 10
-    BATCHES_PER_PRINT = 5
+    BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
     VERSION = "v8-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
