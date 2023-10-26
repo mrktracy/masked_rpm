@@ -93,7 +93,7 @@ def main():
     EPOCHS = 20
     BATCH_SIZE = 32
     LEARNING_RATE = 1e-3
-    LOGS_PER_EPOCH = 10
+    LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
     VERSION = "v8-itr0"
@@ -115,6 +115,8 @@ def main():
     for epoch in range(EPOCHS):
         count = 0
         avg_loss = 0
+        count_log = 0
+        avg_loss_log = 0
         for idx, (inputs, targets) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
@@ -125,8 +127,11 @@ def main():
 
             outputs = transformer_model(inputs) # (B,embed_dim)
             loss = criterion(outputs,targets)
-            avg_loss += loss.item()
+
+            avg_loss += loss.item() # update running averages
+            avg_loss_log += loss.item()
             count += 1
+            count_log += 1
 
             loss.backward()
             optimizer.step()
@@ -141,11 +146,11 @@ def main():
 
             if (idx+1) % batches_per_log == 0:
                 val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {avg_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {avg_loss_log/count_log:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
                 print(output)
                 logging.info(output)
-                avg_loss = 0
-                count = 0
+                avg_loss_log = 0
+                count_log = 0
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
