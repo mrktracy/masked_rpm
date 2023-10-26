@@ -118,7 +118,7 @@ class RPMFullSentencesViT_Masked(Dataset):
         maskedsentence = torch.cat([sentence, mask], 0) # (9, embed_dim)
 
         # rotate grid
-        candidates = embeddings[8:, :] # extract target panel embedding
+        candidates = embeddings[8:, :].clone() # extract target panel embedding
         target = data['target'].item()
 
         return maskedsentence, candidates, target

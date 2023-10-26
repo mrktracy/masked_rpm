@@ -133,7 +133,7 @@ def main():
                 batch_time = end_time - start_time
                 print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {loss.item()}")
 
-            if idx == 50 or (idx+1) % batches_per_log == 0:
+            if idx == 0 or (idx+1) % batches_per_log == 0:
                 val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {loss.item():.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
                 print(output)
