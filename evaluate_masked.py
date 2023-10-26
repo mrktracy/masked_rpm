@@ -9,7 +9,7 @@ def evaluate_model_masked(model, dataloader, device, max_batches = None):
         num_samples = 0
         for idx, (inputs, candidates, targets) in enumerate(dataloader):
 
-            batch_size = inputs.shape(0)
+            # batch_size = inputs.shape[0]
 
             # move images to the device
             inputs = inputs.to(device) # shape (B,9,model_dim)
