@@ -15,7 +15,7 @@ from models import TransformerModelv8, TransformerModelv7, TransformerModelMNIST
 import os
 import logging
 
-logfile = "../tr_results/v8-itr0/runlog.log"
+logfile = "../tr_results/v8-itr1/runlog.log"
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO)
 
@@ -92,11 +92,12 @@ def main():
     ''' Define Hyperparameters '''
     EPOCHS = 20
     BATCH_SIZE = 32
-    LEARNING_RATE = 1e-3
+    LEARNING_RATE = 5e-3
+    MOMENTUM = 0.75
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr0"
+    VERSION = "v8-itr1"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -105,8 +106,8 @@ def main():
     train_length = len(train_dataloader)
     batches_per_log = train_length // LOGS_PER_EPOCH
 
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()),
-                                 lr=LEARNING_RATE)
+    optimizer = torch.optim.SGD(list(transformer_model.parameters()),
+                                 lr=LEARNING_RATE, momentum = MOMENTUM)
 
     scheduler = ExponentialLR(optimizer, gamma=0.98)
     criterion = nn.MSELoss()
