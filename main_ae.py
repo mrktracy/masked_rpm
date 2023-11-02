@@ -89,7 +89,7 @@ class ResidualBlock(nn.Module):
         return out
 
 class ResNetAutoencoder(nn.Module):
-    def __init__(self, embed_dim):
+    def __init__(self, embed_dim=768):
         super(ResNetAutoencoder, self).__init__()
 
         self.embed_dim = embed_dim
