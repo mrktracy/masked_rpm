@@ -7,6 +7,12 @@ import numpy as np
 import random
 import time
 import re
+import logging
+
+VERSION = 'ae-v2-itr0'
+logfile = f"../ae_results/{VERSION}/runlog.log"
+os.makedirs(os.path.dirname(logfile), exist_ok=True)
+logging.basicConfig(filename=logfile,level=logging.INFO)
 
 seed = 42
 random.seed(seed)
@@ -169,12 +175,15 @@ def main():
     EPOCHS = 10
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
+    LOGS_PER_EPOCH = 100
+    BATCHES_PER_PRINT = 20
+    EPOCHS_PER_SAVE = 1
 
     # Initialize device, data loader, model, optimizer, and loss function
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    root_dir = '../pgm/neutral/'
+    root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     # # Uncomment if using RAVEN data
@@ -198,52 +207,69 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
+    train_length = len(train_dataloader)
+    batches_per_log = train_length // LOGS_PER_EPOCH
+
     autoencoder = ResNetAutoencoder().to(device)
 
     if num_gpus > 1: # use multiple GPUs
         autoencoder = nn.DataParallel(autoencoder)
 
     # Comment out if training
-    state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
-    autoencoder.load_state_dict(state_dict)
-    autoencoder.eval()
+    # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth')
+    # autoencoder.load_state_dict(state_dict)
+    # autoencoder.eval()
 
-    # optimizer = torch.optim.Adam(list(autoencoder.parameters()),
-    #                              lr=LEARNING_RATE)
-    # criterion = nn.MSELoss()
-    #
-    # # Training loop
-    # for epoch in range(EPOCHS):
-    #     for idx, (images,_) in enumerate(train_dataloader):
-    #
-    #         if idx%150 == 0:
-    #             start_time = time.time()
-    #
-    #         # move images to the device, reshape them and ensure channel dimension is present
-    #         images = images.to(device)
-    #
-    #         # forward pass
-    #         outputs = autoencoder(images)
-    #         loss = criterion(outputs, images)
-    #
-    #         # backward pass and optimization
-    #         loss.backward()
-    #         optimizer.step()
-    #         optimizer.zero_grad()
-    #
-    #         if idx%150==149:
-    #             end_time = time.time()
-    #             batch_time = end_time - start_time
-    #             print(f"150 mini-batches took {batch_time} seconds")
-    #             print(f"Most recent batch loss: {loss.item()}\n")
-    #
-    #     print("Epoch [{}/{}], Loss: {:.4f}\n".format(epoch + 1, EPOCHS, loss.item()))
-    #     torch.save(autoencoder.state_dict(), f"../modelsaves/autoencoder_v1_ep{epoch+1}.pth")
+    optimizer = torch.optim.Adam(list(autoencoder.parameters()),
+                                 lr=LEARNING_RATE)
+    criterion = nn.MSELoss()
+
+    # Training loop
+    for epoch in range(EPOCHS):
+        tot_loss = 0
+        count = 0
+        for idx, (images,_) in enumerate(train_dataloader):
+
+            if idx%BATCHES_PER_PRINT == 0:
+                start_time = time.time()
+
+            # move images to the device, reshape them and ensure channel dimension is present
+            images = images.to(device)
+
+            # forward pass
+            outputs = autoencoder(images)
+            loss = criterion(outputs, images)
+
+            # backward pass and optimization
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+
+            tot_loss += loss.item()
+            count += 1
+
+            if (idx + 1) % BATCHES_PER_PRINT == 0:
+                end_time = time.time()
+                batch_time = end_time - start_time
+                print(
+                    f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss / count}")
+
+            if (idx + 1) % batches_per_log == 0:
+                output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
+                print(output)
+                logging.info(output)
+                tot_loss = 0
+                count = 0
+
+        if (epoch + 1) % EPOCHS_PER_SAVE == 0:
+            save_file = f"../modelsaves/{VERSION}/{VERSION}_ep{epoch + 1}.pth"
+            os.makedirs(os.path.dirname(save_file), exist_ok=True)
+            torch.save(autoencoder.state_dict(), save_file)
 
     # Evaluate the model
-    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path='../ae_results/v1')
+    avg_val_loss = evaluate_model(autoencoder, val_dataloader, device, save_path=f"../ae_results/{VERSION}")
 
-    output_file_path = "../ae_results/v1/avg_val_loss.txt"
+    output_file_path = f"../ae_results/{VERSION}/avg_val_loss.txt"
     with open(output_file_path, "w") as file:
         file.write(f"Average validation loss: {avg_val_loss}")
 
