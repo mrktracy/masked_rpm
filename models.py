@@ -30,13 +30,13 @@ class TransformerModelv8(nn.Module):
 
         self.norm = norm_layer(self.model_dim)
 
-    def forward(self, x):
+    def forward(self, x): # TODO: correct the positional embeddings
         batch_size = x.size(0)  # Get the batch size from the first dimension of x
 
-        if self.cat:
-            x = torch.cat([x, self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)], dim=2)  # add positional embeddings
-        else:
-            x = x + self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+        # if self.cat:
+        #     x = torch.cat([x, self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)], dim=2)  # add positional embeddings
+        # else:
+        #     x = x + self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
 
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x_q=x, x_k=x, x_v=x)
