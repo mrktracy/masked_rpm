@@ -36,12 +36,13 @@ class RPMSentencesViT_Masked(Dataset):
         mask = torch.ones(1,self.embed_dim).to(self.device) # create masking token
         pad = torch.zeros(self.embed_dim).to(self.device) # create padding token
 
-        fileidx = idx // 4
-        panelidx = idx % 4
+        fileidx = idx // 5
+        panelidx = idx % 5
 
         filename = self.files[fileidx]
         data = np.load(filename)
-        images = data['image'][0:8,np.newaxis,:,:]
+        indices = list(range(8)) + [8+data['target'][0]]
+        images = data['image'][indices,np.newaxis,:,:] # shape (9,1,160,160)
 
         # Preprocessing for ViT
         inputs = self.feature_extractor(images=images, return_tensors="pt")
@@ -54,9 +55,10 @@ class RPMSentencesViT_Masked(Dataset):
         # Extract embedding of the 'CLS' token
         embeddings = vit_outputs.last_hidden_state[:, 0, :]
 
-        sentence = embeddings.clone() # create masked sentence
-        sentence_data = sentence[0:4+panelidx,:].clone()
-        sentence[:4-panelidx, :] = pad # pad back end of sentence
+        sentence = embeddings.clone()[0:8,:] # initialize masked sentence of up to 8 "words"
+        sentence_data = sentence[0:4+panelidx,:].clone() # get "words" for sentence
+        if panelidx < 4:
+            sentence[:4-panelidx, :] = pad # pad back end of sentence
         sentence[4-panelidx:, :] = sentence_data # move sentence data to the right
         maskedsentence = torch.cat([sentence, mask], 0) # (9, embed_dim)
 
@@ -66,7 +68,7 @@ class RPMSentencesViT_Masked(Dataset):
         return maskedsentence, target
 
     def __len__(self):
-        length = len(self.files)*4
+        length = len(self.files)*5
         return length
 
 # Dataset for evaluation

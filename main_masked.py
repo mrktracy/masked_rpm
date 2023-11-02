@@ -15,7 +15,7 @@ from models import TransformerModelv8, TransformerModelv7, TransformerModelMNIST
 import os
 import logging
 
-logfile = "../tr_results/v8-itr2/runlog.log"
+logfile = "../tr_results/v8-itr3/runlog.log"
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO)
 
@@ -36,7 +36,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    transformer_model = TransformerModelv8(depth=10, num_heads=16).to(device)
+    transformer_model = TransformerModelv8(depth=10, num_heads=24).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -97,7 +97,7 @@ def main():
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr2"
+    VERSION = "v8-itr3"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -106,8 +106,9 @@ def main():
     train_length = len(train_dataloader)
     batches_per_log = train_length // LOGS_PER_EPOCH
 
-    optimizer = torch.optim.SGD(list(transformer_model.parameters()),
-                                 lr=LEARNING_RATE, momentum = MOMENTUM)
+    # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
+    #                              lr=LEARNING_RATE, momentum = MOMENTUM)
+    optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
     scheduler = ExponentialLR(optimizer, gamma=0.98)
     criterion = nn.MSELoss()
@@ -116,8 +117,6 @@ def main():
     for epoch in range(EPOCHS):
         count = 0
         avg_loss = 0
-        count_log = 0
-        avg_loss_log = 0
         for idx, (inputs, targets) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
@@ -130,9 +129,7 @@ def main():
             loss = criterion(outputs,targets)
 
             avg_loss += loss.item() # update running averages
-            avg_loss_log += loss.item()
             count += 1
-            count_log += 1
 
             loss.backward()
             optimizer.step()
@@ -142,16 +139,14 @@ def main():
                 end_time = time.time()
                 batch_time = end_time - start_time
                 print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {avg_loss/count}")
-                avg_loss = 0
-                count = 0
 
             if (idx+1) % batches_per_log == 0:
                 val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {avg_loss_log/count_log:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {avg_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
                 print(output)
                 logging.info(output)
-                avg_loss_log = 0
-                count_log = 0
+                avg_loss = 0
+                count = 0
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"

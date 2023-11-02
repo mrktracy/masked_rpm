@@ -24,8 +24,9 @@ class TransformerModelv8(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer)
-            for _ in range(depth)])
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
+                  norm_layer=norm_layer, drop_path=0.5*((i+1)/depth))
+            for i in range(depth)])
 
         self.norm = norm_layer(self.model_dim)
 
