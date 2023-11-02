@@ -41,7 +41,7 @@ class RPMSentencesViT_Masked(Dataset):
 
         filename = self.files[fileidx]
         data = np.load(filename)
-        indices = list(range(8)) + [8+data['target'][0]]
+        indices = list(range(8)) + [8+data['target']]
         images = data['image'][indices,np.newaxis,:,:] # shape (9,1,160,160)
 
         # Preprocessing for ViT
