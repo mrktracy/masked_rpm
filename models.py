@@ -12,15 +12,17 @@ class TransformerModelv8(nn.Module):
         super(TransformerModelv8, self).__init__()
 
         self.cat = cat
+        self.embed_dim = embed_dim
+        self.grid_size = grid_size
 
         if self.cat:
-            self.model_dim = 2*embed_dim
+            self.model_dim = 2*self.embed_dim
         else:
-            self.model_dim = embed_dim
+            self.model_dim = self.embed_dim
 
         # initialize and retrieve positional embeddings
-        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
-        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size**2, self.embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.embed_dim, grid_size=self.grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
@@ -30,13 +32,23 @@ class TransformerModelv8(nn.Module):
 
         self.norm = norm_layer(self.model_dim)
 
-    def forward(self, x): # TODO: correct the positional embeddings
+    def forward(self, x, first_patch=None):
         batch_size = x.size(0)  # Get the batch size from the first dimension of x
 
-        # if self.cat:
-        #     x = torch.cat([x, self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)], dim=2)  # add positional embeddings
-        # else:
-        #     x = x + self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)  # add positional embeddings
+        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)
+        if first_patch is not None:
+            pad = torch.zeros(self.embed_dim).to(self.device)  # create padding token
+            int_pos_embed = final_pos_embed.clone()
+            for i in range(batch_size):
+                if first_patch[i] > 0:
+                    final_pos_embed[i,:first_patch[i],:] = pad
+                    final_pos_embed[i,first_patch[i]:,:] = \
+                        int_pos_embed[i,:self.grid_size**2 - 1 - first_patch[i],:]
+
+        if self.cat:
+            x = torch.cat([x, final_pos_embed], dim=2)  # add positional embeddings
+        else:
+            x = x + final_pos_embed  # add positional embeddings
 
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x_q=x, x_k=x, x_v=x)

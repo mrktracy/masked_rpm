@@ -6,6 +6,98 @@ import random
 from collections import defaultdict
 from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
+class RPMSentencesAE_Masked(Dataset):
+    def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768):
+        self.files = files
+        self.embed_dim = embed_dim
+        self.device = device
+        self.autoencoder = autoencoder
+        self.num_gpus = num_gpus
+
+        if self.num_gpus > 1:  # use multiple GPUs
+            self.autoencoder = nn.DataParallel(self.autoencoder)
+
+        # Ensure encoder is in eval mode and gradients are not computed
+        for param in self.autoencoder.parameters():
+            param.requires_grad = False
+        self.autoencoder.eval()
+
+    def __getitem__(self, idx):
+        mask = torch.ones(1,self.embed_dim).to(self.device) # create masking token
+        pad = torch.zeros(self.embed_dim).to(self.device) # create padding token
+
+        fileidx = idx // 5
+        panelidx = idx % 5
+
+        filename = self.files[fileidx]
+        data = np.load(filename)
+        indices = list(range(8)) + [8+data['target']]
+        images = data['image'][indices,np.newaxis,:,:] # shape (9,1,160,160)
+        imagetensor = torch.from_numpy(images).float() / 255  # convert context panels to tensor
+        imagetensor = imagetensor.to(self.device)
+
+        # get panel embeddings
+        embeddings = self.autoencoder.module.get_embedding(imagetensor) \
+            if self.num_gpus > 1 else self.autoencoder.get_embedding(imagetensor)
+
+        sentence = embeddings.clone()[0:8,:] # initialize masked sentence of up to 8 "words"
+        sentence_data = sentence[0:4+panelidx,:].clone() # get "words" for sentence
+        if panelidx < 4:
+            sentence[:4-panelidx, :] = pad # pad back end of sentence
+        sentence[4-panelidx:, :] = sentence_data # move sentence data to the right
+        maskedsentence = torch.cat([sentence, mask], 0) # (9, embed_dim)
+
+        target = embeddings[4+panelidx, :] # extract target panel embedding
+        first_patch = 4-panelidx
+
+        return maskedsentence, first_patch, target
+
+    def __len__(self):
+        length = len(self.files)*5
+        return length
+
+# Dataset for evaluation
+class RPMFullSentencesAE_Masked(Dataset):
+    def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768):
+        self.files = files
+        self.embed_dim = embed_dim
+        self.device = device
+        self.autoencoder = autoencoder
+        self.num_gpus = num_gpus
+
+        if self.num_gpus > 1:  # use multiple GPUs
+            self.autoencoder = nn.DataParallel(self.autoencoder)
+
+        # Ensure encoder is in eval mode and gradients are not computed
+        for param in self.autoencoder.parameters():
+            param.requires_grad = False
+        self.autoencoder.eval()
+
+    def __getitem__(self, idx):
+        mask = torch.ones(1,self.embed_dim).to(self.device) # create masking token
+
+        filename = self.files[idx]
+        data = np.load(filename)
+        images = data['image'].reshape(16,1,160,160)
+        imagetensor = torch.from_numpy(images).float() / 255  # convert context panels to tensor
+        imagetensor = imagetensor.to(self.device)
+
+        # get panel embeddings
+        embeddings = self.autoencoder.module.get_embedding(imagetensor) \
+            if self.num_gpus > 1 else self.autoencoder.get_embedding(imagetensor)
+
+        sentence = embeddings.clone()[0:8,:] # slice only context panels
+        maskedsentence = torch.cat([sentence, mask], 0) # (9, embed_dim)
+
+        candidates = embeddings[8:, :].clone() # extract target panel embedding
+        target = data['target'].item()
+
+        return maskedsentence, candidates, target
+
+    def __len__(self):
+        length = len(self.files)
+        return length
+
 class RPMSentencesViT_Masked(Dataset):
     def __init__(self, files, ViT_model_name , device, num_gpus, embed_dim=768):
         self.files = files

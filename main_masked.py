@@ -10,7 +10,7 @@ import time
 import random
 from evaluate import evaluate_model
 from evaluate_masked import evaluate_model_masked
-from datasets import RPMSentencesNew, RPMSentencesRaw, CustomMNIST, RPMSentencesViT_Masked, RPMFullSentencesViT_Masked
+from datasets import RPMSentencesViT_Masked, RPMFullSentencesViT_Masked, RPMSentencesAE_Masked, RPMFullSentencesAE_Masked
 from models import TransformerModelv8, TransformerModelv7, TransformerModelMNISTv6, TransformerModelv5
 import os
 import logging
@@ -41,9 +41,20 @@ def main():
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
+    # initialize autoencoder
+    autoencoder = ResNetAutoencoder(embed_dim=768).to(device)
+
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
+        autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
+
+    # load autoencoder state dict
+    state_dict = torch.load('../modelsaves/ae-v2-itr0/ae_v2-itr2_ep10.pth') # for I-RAVEN
+    # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
+    # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
+    autoencoder.load_state_dict(state_dict)
+    autoencoder.eval()
 
     ''' Load saved model '''
     # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
@@ -78,12 +89,19 @@ def main():
     # mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
 
     ''' Transformer model v8 '''
-    train_dataset = RPMSentencesViT_Masked(train_files, \
-                                    ViT_model_name="google/vit-base-patch16-224-in21k", \
-                                    device = device, num_gpus = num_gpus)
-    val_dataset = RPMFullSentencesViT_Masked(val_files, \
-                                  ViT_model_name="google/vit-base-patch16-224-in21k", \
-                                  device = device, num_gpus = num_gpus)
+    # train_dataset = RPMSentencesViT_Masked(train_files, \
+    #                                 ViT_model_name="google/vit-base-patch16-224-in21k", \
+    #                                 device = device, num_gpus = num_gpus)
+    # val_dataset = RPMFullSentencesViT_Masked(val_files, \
+    #                               ViT_model_name="google/vit-base-patch16-224-in21k", \
+    #                               device = device, num_gpus = num_gpus)
+
+    train_dataset = RPMSentencesAE_Masked(train_files, \
+                                           autoencoder = autoencoder, \
+                                           device=device, num_gpus=num_gpus)
+    val_dataset = RPMFullSentencesAE_Masked(val_files, \
+                                             autoencoder = autoencoder, \
+                                             device=device, num_gpus=num_gpus)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)
@@ -117,15 +135,16 @@ def main():
     for epoch in range(EPOCHS):
         count = 0
         avg_loss = 0
-        for idx, (inputs, targets) in enumerate(train_dataloader):
+        for idx, (inputs, first_patch, targets) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
+            first_patch = first_patch.to(device)
             targets = targets.to(device)
 
-            outputs = transformer_model(inputs) # (B,embed_dim)
+            outputs = transformer_model(inputs, first_patch) # (B,embed_dim)
             loss = criterion(outputs,targets)
 
             avg_loss += loss.item() # update running averages
