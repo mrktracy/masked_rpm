@@ -8,7 +8,7 @@ from datasets import RPMSentencesRaw
 import torch.nn as nn
 import torch
 from torch.utils.data import DataLoader
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 
 def calc_mean_std():
 
@@ -129,7 +129,7 @@ def visualizedata():
             file.write(f"Solution to problem {idx}: {sol}\n")
 
 def displayresults_ae():
-    filepath = "../results/ae_results/v1/"
+    filepath = "../ae_results/ae-v2-itr0/"
     files = os.listdir(filepath)
     random.shuffle(files)
 
@@ -199,10 +199,10 @@ def displayresults_tr_grid():
     axs4.imshow(target.squeeze(0), cmap='gray')
 
 if __name__ == "__main__":
-    calc_mean_std()
+    # calc_mean_std()
     # visualizedata()
-    # displayresults_ae()
+    displayresults_ae()
     # displayresults_tr_grid()
-    # plt.show()
-    # while plt.get_fignums():
-    #     plt.pause(0.1)
+    plt.show()
+    while plt.get_fignums():
+        plt.pause(0.1)

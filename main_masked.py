@@ -8,14 +8,15 @@ from torch.optim.lr_scheduler import StepLR, ExponentialLR
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
-from evaluate import evaluate_model
 from evaluate_masked import evaluate_model_masked
 from datasets import RPMSentencesViT_Masked, RPMFullSentencesViT_Masked, RPMSentencesAE_Masked, RPMFullSentencesAE_Masked
-from models import TransformerModelv8, TransformerModelv7, TransformerModelMNISTv6, TransformerModelv5
+from models import TransformerModelv8, TransformerModelv7
 import os
 import logging
 
-logfile = "../tr_results/v8-itr6/runlog.log"
+logfile = "../tr_results/v8-itr7/runlog.log"
+# with open(logfile, 'w'): # clear log file. This is dangerous if the path is wrong
+#     pass
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO)
 
@@ -115,7 +116,7 @@ def main():
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr6"
+    VERSION = "v8-itr7"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
