@@ -51,7 +51,7 @@ def main():
         autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # load autoencoder state dict
-    state_dict = torch.load('../modelsaves/ae-v2-itr0/ae_v2-itr2_ep9.pth') # for I-RAVEN
+    state_dict = torch.load('../modelsaves/ae-v2-itr0/ae_v2-itr0_ep9.pth') # for I-RAVEN
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
     # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
     autoencoder.load_state_dict(state_dict)
