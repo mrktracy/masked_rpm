@@ -37,8 +37,7 @@ class RPMSentencesAE_Masked(Dataset):
         imagetensor = imagetensor.to(self.device)
 
         # get panel embeddings
-        embeddings = self.autoencoder.module.get_embedding(imagetensor) \
-            if self.num_gpus > 1 else self.autoencoder.get_embedding(imagetensor)
+        embeddings = self.autoencoder.module.get_embedding(imagetensor) if self.num_gpus > 1 else self.autoencoder.get_embedding(imagetensor)
 
         sentence = embeddings.clone()[0:8,:] # initialize masked sentence of up to 8 "words"
         sentence_data = sentence[0:4+panelidx,:].clone() # get "words" for sentence
@@ -83,8 +82,7 @@ class RPMFullSentencesAE_Masked(Dataset):
         imagetensor = imagetensor.to(self.device)
 
         # get panel embeddings
-        embeddings = self.autoencoder.module.get_embedding(imagetensor) \
-            if self.num_gpus > 1 else self.autoencoder.get_embedding(imagetensor)
+        embeddings = self.autoencoder.module.get_embedding(imagetensor) if self.num_gpus > 1 else self.autoencoder.get_embedding(imagetensor)
 
         sentence = embeddings.clone()[0:8,:] # slice only context panels
         maskedsentence = torch.cat([sentence, mask], 0) # (9, embed_dim)
