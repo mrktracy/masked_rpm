@@ -35,15 +35,15 @@ class TransformerModelv8(nn.Module):
     def forward(self, x, first_patch=None):
         batch_size = x.size(0)  # Get the batch size from the first dimension of x
 
-        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)
+        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1) # expand to fit batch (B, 9, embed_dim)
         if first_patch is not None:
-            pad = torch.zeros(self.embed_dim)  # create padding token
-            int_pos_embed = final_pos_embed.clone()
+            pad = torch.zeros(self.embed_dim)  # create padding token (1, embed_dim)
+            int_pos_embed = final_pos_embed.clone() # (B, 9, embed_dim)
             for i in range(batch_size):
                 if first_patch[i] > 0:
-                    final_pos_embed[i,:first_patch[i],:] = pad
-                    final_pos_embed[i,first_patch[i]:,:] = \
-                        int_pos_embed[i,:self.grid_size**2 - 1 - first_patch[i],:]
+                    final_pos_embed[i,:first_patch[i],:] = pad # pad up to the first patch
+                    final_pos_embed[i,first_patch[i]:,:] = \ # after the first patch to the end
+                        int_pos_embed[i,:self.grid_size**2 - first_patch[i],:] # add positional embeddings
 
         if self.cat:
             x = torch.cat([x, final_pos_embed], dim=2)  # add positional embeddings
