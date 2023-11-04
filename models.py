@@ -42,8 +42,8 @@ class TransformerModelv8(nn.Module):
             for i in range(batch_size):
                 if first_patch[i] > 0:
                     final_pos_embed[i,:first_patch[i],:] = pad # pad up to the first patch
-                    final_pos_embed[i,first_patch[i]:,:] = \ # after the first patch to the end
-                        int_pos_embed[i,:self.grid_size**2 - first_patch[i],:] # add positional embeddings
+                    final_pos_embed[i,first_patch[i]:,:] = \
+                        int_pos_embed[i,:self.grid_size**2 - first_patch[i],:] # add positional embeddings from the first patch to the end
 
         if self.cat:
             x = torch.cat([x, final_pos_embed], dim=2)  # add positional embeddings
