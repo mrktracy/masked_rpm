@@ -8,6 +8,8 @@ from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
 class RPMSentencesAE_Masked(Dataset):
     def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768):
+        super(RPMSentencesAE_Masked, self).__init__()
+
         self.files = files
         self.embed_dim = embed_dim
         self.device = device
@@ -37,8 +39,8 @@ class RPMSentencesAE_Masked(Dataset):
         imagetensor = imagetensor.to(self.device)
 
         # get panel embeddings
-        # embeddings = self.autoencoder.module.get_embedding(imagetensor) if self.num_gpus > 1 else self.autoencoder.get_embedding(imagetensor)
-        embeddings = self.autoencoder.module.get_embedding(imagetensor)
+        embeddings = self.autoencoder.module.get_embedding(imagetensor) if self.num_gpus > 1 else self.autoencoder.get_embedding(imagetensor)
+        # embeddings = self.autoencoder.module.get_embedding(imagetensor)
 
         sentence = embeddings.clone()[0:8,:] # initialize masked sentence of up to 8 "words"
         sentence_data = sentence[0:4+panelidx,:].clone() # get "words" for sentence
@@ -59,6 +61,8 @@ class RPMSentencesAE_Masked(Dataset):
 # Dataset for evaluation
 class RPMFullSentencesAE_Masked(Dataset):
     def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768):
+        super(RPMFullSentencesAE_Masked, self).__init__()
+
         self.files = files
         self.embed_dim = embed_dim
         self.device = device
