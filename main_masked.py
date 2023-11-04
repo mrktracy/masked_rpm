@@ -115,7 +115,7 @@ def main():
     LEARNING_RATE = 0.1
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 20
-    BATCHES_PER_PRINT = 150
+    BATCHES_PER_PRINT = 100
     EPOCHS_PER_SAVE = 1
     VERSION = "v8-itr8"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
