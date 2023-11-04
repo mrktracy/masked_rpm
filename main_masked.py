@@ -100,10 +100,10 @@ def main():
 
     train_dataset = RPMSentencesAE_Masked(train_files, \
                                            autoencoder = autoencoder, \
-                                           device=device, num_gpus=num_gpus)
+                                           device=device)
     val_dataset = RPMFullSentencesAE_Masked(val_files, \
                                              autoencoder = autoencoder, \
-                                             device=device, num_gpus=num_gpus)
+                                             device=device)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)

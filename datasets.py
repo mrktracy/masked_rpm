@@ -14,7 +14,6 @@ class RPMSentencesAE_Masked(Dataset):
         self.embed_dim = embed_dim
         self.device = device
         self.autoencoder = autoencoder
-        self.num_gpus = num_gpus
 
         # Ensure encoder is in eval mode and gradients are not computed
         for param in self.autoencoder.parameters():
@@ -57,17 +56,13 @@ class RPMSentencesAE_Masked(Dataset):
 
 # Dataset for evaluation
 class RPMFullSentencesAE_Masked(Dataset):
-    def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768):
+    def __init__(self, files, autoencoder, device, embed_dim=768):
         super(RPMFullSentencesAE_Masked, self).__init__()
 
         self.files = files
         self.embed_dim = embed_dim
         self.device = device
         self.autoencoder = autoencoder
-        self.num_gpus = num_gpus
-
-        if self.num_gpus > 1:  # use multiple GPUs
-            self.autoencoder = nn.DataParallel(self.autoencoder)
 
         # Ensure encoder is in eval mode and gradients are not computed
         for param in self.autoencoder.parameters():
