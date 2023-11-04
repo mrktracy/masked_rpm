@@ -7,7 +7,7 @@ from collections import defaultdict
 from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
 class RPMSentencesAE_Masked(Dataset):
-    def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768):
+    def __init__(self, files, autoencoder, device, embed_dim=768):
         super(RPMSentencesAE_Masked, self).__init__()
 
         self.files = files
