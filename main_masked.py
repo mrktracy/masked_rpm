@@ -14,7 +14,7 @@ from models import TransformerModelv8, TransformerModelv7
 import os
 import logging
 
-logfile = "../tr_results/v8-itr7/runlog.log"
+logfile = "../tr_results/v8-itr8/runlog.log"
 # with open(logfile, 'w'): # clear log file. This is dangerous if the path is wrong
 #     pass
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
@@ -38,7 +38,7 @@ def main():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv8(depth=8, num_heads=24).to(device)
+    transformer_model = TransformerModelv8(depth=20, num_heads=32).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -117,7 +117,7 @@ def main():
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr7"
+    VERSION = "v8-itr8"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
