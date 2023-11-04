@@ -16,9 +16,6 @@ class RPMSentencesAE_Masked(Dataset):
         self.autoencoder = autoencoder
         self.num_gpus = num_gpus
 
-        if self.num_gpus > 1:  # use multiple GPUs
-            self.autoencoder = nn.DataParallel(self.autoencoder)
-
         # Ensure encoder is in eval mode and gradients are not computed
         for param in self.autoencoder.parameters():
             param.requires_grad = False

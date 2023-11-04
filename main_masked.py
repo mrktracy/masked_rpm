@@ -36,7 +36,7 @@ def main():
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
-    print(num_gpus)
+    # print(num_gpus)
 
     transformer_model = TransformerModelv8(depth=8, num_heads=24).to(device)
 
@@ -52,7 +52,7 @@ def main():
         autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # load autoencoder state dict
-    state_dict = torch.load('../modelsaves/ae-v2-itr0/ae-v2-itr0_ep9.pth') # for I-RAVEN
+    state_dict = torch.load('../modelsaves/ae-v2-itr0/ae-v2-itr0_ep10.pth') # for I-RAVEN
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
     # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
     autoencoder.load_state_dict(state_dict)
