@@ -88,67 +88,6 @@ class ResidualBlock(nn.Module):
         out = self.relu(out)
         return out
 
-# initialize autoencoder
-    autoencoder = ResNetAutoencoder(embed_dim=768).to(device)
-
-    if num_gpus > 1:  # use multiple GPUs
-        transformer_model = nn.DataParallel(transformer_model)
-        # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
-        autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
-
-    # load autoencoder state dict
-    state_dict = torch.load('../modelsaves/ae-v2-itr0/ae-v2-itr0_ep10.pth') # for I-RAVEN
-    # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
-    # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
-    autoencoder.load_state_dict(state_dict)
-    autoencoder.eval()
-
-    ''' Load saved model '''
-    # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
-    # transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
-
-    ''' Use for PGM or I-RAVEN dataset '''
-    # root_dir = '../pgm/neutral/'
-    root_dir = '../i_raven_data/'
-    train_files, val_files, test_files = gather_files_pgm(root_dir)
-
-    ''' Use RAVEN dataset '''
-    # root_dir = '../RAVEN-10000'
-    # all_files = gather_files(root_dir)
-    # num_files = len(all_files)
-    # train_proportion = 0.7
-    # val_proportion = 0.15
-    # # test proportion is 1 - train_proportion - val_proportion
-    # train_files = all_files[:int(num_files * train_proportion)]
-    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
-    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
-
-    ''' Use MNIST dataset '''
-    # train_proportion = 0.85
-    # val_proportion = 0.15
-    # mnist_data = MNIST(root='../MNIST/', train=True, download=True, \
-    #                    transform=transforms.Compose([transforms.Resize((160, 160)), transforms.ToTensor()]))
-    # mnist_len = len(mnist_data)
-    # train_len = int(mnist_len*train_proportion)
-    # val_len = int(mnist_len*val_proportion)
-    #
-    # mnist_train, mnist_val = random_split(mnist_data, [train_len, val_len])
-
-    ''' Transformer model v8 '''
-    # train_dataset = RPMSentencesViT_Masked(train_files, \
-    #                                 ViT_model_name="google/vit-base-patch16-224-in21k", \
-    #                                 device = device, num_gpus = num_gpus)
-    # val_dataset = RPMFullSentencesViT_Masked(val_files, \
-    #                               ViT_model_name="google/vit-base-patch16-224-in21k", \
-    #                               device = device, num_gpus = num_gpus)
-
-    train_dataset = RPMSentencesAE_Masked(train_files, \
-                                           autoencoder = autoencoder, \
-                                           device=device, num_gpus=num_gpus)
-    val_dataset = RPMFullSentencesAE_Masked(val_files, \
-                                             autoencoder = autoencoder, \
-                                             device=device, num_gpus=num_gpus)
 class ResNetAutoencoder(nn.Module):
     def __init__(self, embed_dim=768):
         super(ResNetAutoencoder, self).__init__()
