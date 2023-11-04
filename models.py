@@ -37,7 +37,7 @@ class TransformerModelv8(nn.Module):
 
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)
         if first_patch is not None:
-            pad = torch.zeros(self.embed_dim).to(self.device)  # create padding token
+            pad = torch.zeros(self.embed_dim)  # create padding token
             int_pos_embed = final_pos_embed.clone()
             for i in range(batch_size):
                 if first_patch[i] > 0:
