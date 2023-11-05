@@ -32,6 +32,7 @@ logfile = "../tr_results/v8-itr9/runlog.log"
 #     pass
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
+logging.info("This is a test.")
 
 seed = 42
 random.seed(seed)
@@ -149,7 +150,7 @@ def main():
     # Training loop
     for epoch in range(EPOCHS):
         count = 0
-        avg_loss = 0
+        tot_loss = 0
         for idx, (inputs, first_patch, targets) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
@@ -162,7 +163,7 @@ def main():
             outputs = transformer_model(inputs, first_patch) # (B,embed_dim)
             loss = criterion(outputs,targets)
 
-            avg_loss += loss.item() # update running averages
+            tot_loss += loss.item() # update running averages
             count += 1
 
             loss.backward()
@@ -172,14 +173,14 @@ def main():
             if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {avg_loss/count}")
+                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
 
             if (idx+1) % batches_per_log == 0:
                 val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {avg_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
                 print(output)
                 logging.info(output)
-                avg_loss = 0
+                tot_loss = 0
                 count = 0
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
