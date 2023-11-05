@@ -14,7 +14,7 @@ from models import TransformerModelv8, TransformerModelv7
 import os
 import logging
 
-logfile = "../tr_results/v8-itr8/runlog.log"
+logfile = "../tr_results/v8-itr9/runlog.log"
 # with open(logfile, 'w'): # clear log file. This is dangerous if the path is wrong
 #     pass
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
@@ -112,12 +112,12 @@ def main():
     ''' Define Hyperparameters '''
     EPOCHS = 10
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.1
+    LEARNING_RATE = 0.001
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 100
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr8"
+    VERSION = "v8-itr9"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
