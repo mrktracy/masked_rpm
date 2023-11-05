@@ -28,11 +28,10 @@ except IOError:
     print(f"You do not have write permissions to the folder: {folder_path}")
 
 logfile = "../tr_results/v8-itr9/runlog.txt"
-# with open(logfile, 'w'): # clear log file. This is dangerous if the path is wrong
-#     pass
+
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
-logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
-logging.info("Test initializing logger.")
+# logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
+# logging.info("Test initializing logger.")
 
 seed = 42
 random.seed(seed)
@@ -179,7 +178,9 @@ def main():
                 val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
                 print(output)
-                logging.info(output)
+                with open(logfile, 'a') as file:
+                    file.write(output)
+
                 tot_loss = 0
                 count = 0
 
