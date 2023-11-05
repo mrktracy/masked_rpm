@@ -18,7 +18,7 @@ logfile = "../tr_results/v8-itr9/runlog.log"
 # with open(logfile, 'w'): # clear log file. This is dangerous if the path is wrong
 #     pass
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
-logging.basicConfig(filename=logfile,level=logging.INFO)
+logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
 
 seed = 42
 random.seed(seed)
