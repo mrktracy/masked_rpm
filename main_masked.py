@@ -32,7 +32,7 @@ logfile = "../tr_results/v8-itr9/runlog.log"
 #     pass
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
-logging.info("This is a test.")
+logging.info("Test initializing logger.")
 
 seed = 42
 random.seed(seed)
