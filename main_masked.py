@@ -27,7 +27,7 @@ try:
 except IOError:
     print(f"You do not have write permissions to the folder: {folder_path}")
 
-logfile = "../tr_results/v8-itr9/runlog.log"
+logfile = "../tr_results/v8-itr9/runlog.txt"
 # with open(logfile, 'w'): # clear log file. This is dangerous if the path is wrong
 #     pass
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
