@@ -178,6 +178,7 @@ def main():
                 val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}"
                 print(output)
+                # logging.info(output)
                 with open(logfile, 'a') as file:
                     file.write(output)
 
