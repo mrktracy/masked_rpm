@@ -14,19 +14,6 @@ from models import TransformerModelv8, TransformerModelv7
 import os
 import logging
 
-folder_path = "../tr_results/v8-itr10/"  # Replace with the actual folder path you want to check
-
-# Try to create a temporary file in the folder
-temp_file_path = os.path.join(folder_path, 'temp_file.txt')
-
-try:
-    with open(temp_file_path, 'w') as temp_file:
-        temp_file.write('This is a test.')
-    os.remove(temp_file_path)  # Remove the temporary file if it was created
-    print(f"You have write permissions to the folder: {folder_path}")
-except IOError:
-    print(f"You do not have write permissions to the folder: {folder_path}")
-
 logfile = "../tr_results/v8-itr9/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
