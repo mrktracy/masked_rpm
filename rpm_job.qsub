@@ -1,0 +1,17 @@
+#!binbash -l
+
+#$ -P noc-lab           # project name
+#$ -N masked_rpm_itr    # job name
+
+#$ -l h_rt=24:00:00     # hard time limit of 24 hours
+
+#$ -m ea                # send email when finished or aborted 
+#$ -j y			# merge error and output files into one
+
+#$ -l mem_per_core=6G	# memory requirements per CPU core
+#$ -l gpus=5		# number of GPUs
+#$ -l gpu_c=3.5		# GPU minimum capability
+
+module load miniconda
+conda activate rpm
+python main_masked.py

@@ -14,7 +14,7 @@ from models import TransformerModelv8, TransformerModelv7
 import os
 import logging
 
-folder_path = "../tr_results/v8-itr9/"  # Replace with the actual folder path you want to check
+folder_path = "../tr_results/v8-itr10/"  # Replace with the actual folder path you want to check
 
 # Try to create a temporary file in the folder
 temp_file_path = os.path.join(folder_path, 'temp_file.txt')
@@ -125,12 +125,12 @@ def main():
     ''' Define Hyperparameters '''
     EPOCHS = 10
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 100
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr9"
+    VERSION = "v8-itr10"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
