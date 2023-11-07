@@ -38,7 +38,7 @@ def main():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv8(depth=20, num_heads=32).to(device)
+    transformer_model = TransformerModelv8(depth=20, num_heads=32, norm_layer=nn.BatchNorm1d).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
