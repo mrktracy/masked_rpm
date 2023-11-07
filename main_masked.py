@@ -205,10 +205,13 @@ def main():
             with torch.no_grad():  # Disable gradient computation for inference
                 # Perform a forward pass to get the outputs
                 outputs = transformer_model(inputs)
-                inputs[:,8,:] = candidates[:,targets,:]
+
+                batch_indices = torch.arange(candidates.size(0), device=candidates.device)
+                selected_candidates = candidates[batch_indices, targets, :]
+                inputs[:,8,:] = selected_candidates
 
                 # Convert the tensors to images and save them
-                save_to_npz(inputs, outputs, candidates, idx/500, VERSION, VERSION_SUBFOLDER)
+                save_to_npz(inputs, outputs, candidates, idx//500, VERSION, VERSION_SUBFOLDER)
 
     print("Finished processing all items.")
 
