@@ -154,7 +154,6 @@ def main():
 
             loss.backward()
             optimizer.step()
-            optimizer.zero_grad()
 
             if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
@@ -171,6 +170,15 @@ def main():
 
                 tot_loss = 0
                 count = 0
+
+                # Inspect gradients
+                for name, param in transformer_model.named_parameters():
+                    if param.grad is not None:
+                        print(f"Gradient for {name}: {param.grad}")
+                    else:
+                        print(f"No gradient for {name}")
+
+            optimizer.zero_grad()
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
