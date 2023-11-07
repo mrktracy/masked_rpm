@@ -193,7 +193,7 @@ def main():
 
     # Iterate over the dataset
     for idx, (inputs, candidates, targets) in enumerate(val_dataloader):
-        if idx+1 % 22 == 0:  # Check if the idx is a multiple of 500
+        if idx % 1 == 0:  # Check if the idx is a multiple of 22
             print(f"Processing index: {idx}")
 
             # move images to the device
@@ -215,7 +215,7 @@ def main():
                 img_candidates = candidates[0, :, :].squeeze()
 
                 # Convert the tensors to images and save them
-                save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER)
+                save_to_npz(img_inputs, img_outputs, img_candidates, idx, VERSION, VERSION_SUBFOLDER)
 
     print("Finished processing all items.")
 
