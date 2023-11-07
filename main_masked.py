@@ -205,7 +205,7 @@ def main():
             with torch.no_grad():  # Disable gradient computation for inference
                 # Perform a forward pass to get the outputs
                 outputs = transformer_model(inputs)
-                inputs[:,9,:] = candidates[:,targets,:]
+                inputs[:,8,:] = candidates[:,targets,:]
 
                 # Convert the tensors to images and save them
                 save_to_npz(inputs, outputs, candidates, idx/500, VERSION, VERSION_SUBFOLDER)
