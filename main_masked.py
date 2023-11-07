@@ -112,7 +112,7 @@ def main():
     ''' Define Hyperparameters '''
     EPOCHS = 10
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.001
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 100
@@ -137,6 +137,7 @@ def main():
     for epoch in range(EPOCHS):
         count = 0
         tot_loss = 0
+        times = 0
         for idx, (inputs, first_patch, targets) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
@@ -171,12 +172,14 @@ def main():
                 tot_loss = 0
                 count = 0
 
-                # Inspect gradients
-                for name, param in transformer_model.named_parameters():
-                    if param.grad is not None:
-                        print(f"Gradient for {name}: {param.grad}")
-                    else:
-                        print(f"No gradient for {name}")
+                if times%5 == 0:
+                    # Inspect gradients
+                    for name, param in transformer_model.named_parameters():
+                        if param.grad is not None:
+                            print(f"Gradient for {name}: {param.grad}")
+                        else:
+                            print(f"No gradient for {name}")
+                    times += 1
 
             optimizer.zero_grad()
 
