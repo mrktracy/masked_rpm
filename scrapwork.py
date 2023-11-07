@@ -226,7 +226,7 @@ def displayresults_tr_grid_masked():
         for j in range(4):
             axs2[i, j].imshow(candidates[2*i + j, :].squeeze(0), cmap='gray')
 
-    axs3.imshow(outputs, cmap='gray')
+    axs3.imshow(outputs.squeeze(0), cmap='gray')
 
 if __name__ == "__main__":
     # calc_mean_std()
