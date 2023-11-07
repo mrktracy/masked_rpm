@@ -173,12 +173,17 @@ def main():
                 count = 0
 
                 if times%5 == 0:
+
+                    gradfile = f"../tr_results/v8-itr11/grads_ep{epoch+1}_sv{times//5}.txt"
+
                     # Inspect gradients
                     for name, param in transformer_model.named_parameters():
                         if param.grad is not None:
-                            print(f"Gradient for {name}: {param.grad}")
+                            with open(gradfile, 'a') as file:
+                                file.write(f"Gradient for {name}: {param.grad}\n")
                         else:
-                            print(f"No gradient for {name}")
+                            with open(logfile, 'a') as file:
+                                file.write(f"No gradient for {name}\n")
                     times += 1
 
             optimizer.zero_grad()
