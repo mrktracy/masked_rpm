@@ -32,6 +32,8 @@ class TransformerModelv8(nn.Module):
 
         self.norm = norm_layer(self.model_dim)
 
+        self.sig = nn.Sigmoid()
+
     def forward(self, x, first_patch=None):
         batch_size = x.size(0)  # Get the batch size from the first dimension of x
 
@@ -55,6 +57,8 @@ class TransformerModelv8(nn.Module):
         x = self.norm(x)
 
         guess = x[:,-1,:].squeeze() # make guess shape (batch_size, model_dim)
+        guess = self.sig(guess) # put on same scale as targets
+
         return guess
 
 class TransformerModelv7(nn.Module):
