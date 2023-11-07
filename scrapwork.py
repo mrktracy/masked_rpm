@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch
 from torch.utils.data import DataLoader
 matplotlib.use('TkAgg')
+random.seed(time.time())
 
 def calc_mean_std():
 
@@ -130,7 +131,7 @@ def visualizedata():
             file.write(f"Solution to problem {idx}: {sol}\n")
 
 def displayresults_ae():
-    filepath = "../ae_results/ae-v2-itr0/"
+    filepath = "../ae_results/ae-v2-itr1/"
     files = os.listdir(filepath)
     random.shuffle(files)
 
@@ -234,9 +235,9 @@ def displayresults_tr_grid_masked():
 if __name__ == "__main__":
     # calc_mean_std()
     # visualizedata()
-    # displayresults_ae()
+    displayresults_ae()
     # displayresults_tr_grid()
-    displayresults_tr_grid_masked()
+    # displayresults_tr_grid_masked()
     plt.show()
     while plt.get_fignums():
         plt.pause(0.1)
