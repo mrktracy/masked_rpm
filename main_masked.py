@@ -59,9 +59,9 @@ def main():
     autoencoder.eval()
 
     ''' Load saved model '''
-    # state_dict_tr = torch.load('../modelsaves/transformer_v2_ep14.pth')
-    # transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
+    state_dict_tr = torch.load('../modelsaves/v8-itr10/tf_v8-itr10_ep10.pth')
+    transformer_model.load_state_dict(state_dict_tr)
+    transformer_model.eval()
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
@@ -123,61 +123,94 @@ def main():
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    train_length = len(train_dataloader)
-    batches_per_log = train_length // LOGS_PER_EPOCH
+    # train_length = len(train_dataloader)
+    # batches_per_log = train_length // LOGS_PER_EPOCH
+    #
+    # # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
+    # #                              lr=LEARNING_RATE, momentum = MOMENTUM)
+    # optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
+    #
+    # scheduler = ExponentialLR(optimizer, gamma=0.98)
+    # criterion = nn.MSELoss()
+    #
+    # # Training loop
+    # for epoch in range(EPOCHS):
+    #     count = 0
+    #     tot_loss = 0
+    #     for idx, (inputs, first_patch, targets) in enumerate(train_dataloader):
+    #
+    #         if idx % BATCHES_PER_PRINT == 0:
+    #             start_time = time.time()
+    #
+    #         inputs = inputs.to(device)
+    #         first_patch = first_patch.to(device)
+    #         targets = targets.to(device)
+    #
+    #         outputs = transformer_model(inputs, first_patch) # (B,embed_dim)
+    #         loss = criterion(outputs,targets)
+    #
+    #         tot_loss += loss.item() # update running averages
+    #         count += 1
+    #
+    #         loss.backward()
+    #         optimizer.step()
+    #         optimizer.zero_grad()
+    #
+    #         if (idx+1) % BATCHES_PER_PRINT == 0:
+    #             end_time = time.time()
+    #             batch_time = end_time - start_time
+    #             print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
+    #
+    #         if (idx+1) % batches_per_log == 0:
+    #             val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
+    #             output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+    #             print(output)
+    #             # logging.info(output)
+    #             with open(logfile, 'a') as file:
+    #                 file.write(output)
+    #
+    #             tot_loss = 0
+    #             count = 0
+    #
+    #     if (epoch+1) % EPOCHS_PER_SAVE == 0:
+    #         save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+    #         os.makedirs(os.path.dirname(save_file), exist_ok=True)
+    #         torch.save(transformer_model.state_dict(), save_file)
+    #
+    #     scheduler.step()
 
-    # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
-    #                              lr=LEARNING_RATE, momentum = MOMENTUM)
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
+    def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER):
 
-    scheduler = ExponentialLR(optimizer, gamma=0.98)
-    criterion = nn.MSELoss()
+        input_images = autoencoder.decode(inputs).cpu().detach().numpy()
+        output_images = autoencoder.decode(outputs).cpu().detach().numpy()
+        candidate_images = autoencoder.decode(candidates).cpu().detach().numpy()
 
-    # Training loop
-    for epoch in range(EPOCHS):
-        count = 0
-        tot_loss = 0
-        for idx, (inputs, first_patch, targets) in enumerate(train_dataloader):
+        # Save to npz file
+        np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_{idx}.npz",
+                            inputs=input_images,
+                            outputs=output_images,
+                            candidates=candidate_images)
 
-            if idx % BATCHES_PER_PRINT == 0:
-                start_time = time.time()
+    # Iterate over the dataset
+    for idx, (inputs, candidates, targets) in enumerate(val_dataloader):
+        if idx % 500 == 0:  # Check if the idx is a multiple of 500
+            print(f"Processing index: {idx}")
 
-            inputs = inputs.to(device)
-            first_patch = first_patch.to(device)
-            targets = targets.to(device)
+            # move images to the device
+            inputs = inputs.to(device)  # shape (B,9,model_dim)
+            candidates = candidates.to(device)  # shape (B, 8, embed_dim)
+            targets = targets.to(device)  # shape (B,)
 
-            outputs = transformer_model(inputs, first_patch) # (B,embed_dim)
-            loss = criterion(outputs,targets)
+            transformer_model.eval()
+            with torch.no_grad():  # Disable gradient computation for inference
+                # Perform a forward pass to get the outputs
+                outputs = transformer_model(inputs)
+                inputs[:,9,:] = candidates[:,targets,:]
 
-            tot_loss += loss.item() # update running averages
-            count += 1
+                # Convert the tensors to images and save them
+                save_to_npz(inputs, outputs, candidates, idx/500, VERSION, VERSION_SUBFOLDER)
 
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-
-            if (idx+1) % BATCHES_PER_PRINT == 0:
-                end_time = time.time()
-                batch_time = end_time - start_time
-                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
-
-            if (idx+1) % batches_per_log == 0:
-                val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                print(output)
-                # logging.info(output)
-                with open(logfile, 'a') as file:
-                    file.write(output)
-
-                tot_loss = 0
-                count = 0
-
-        if (epoch+1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-            os.makedirs(os.path.dirname(save_file), exist_ok=True)
-            torch.save(transformer_model.state_dict(), save_file)
-
-        scheduler.step()
+    print("Finished processing all items.")
 
 if __name__ == "__main__":
     main()
