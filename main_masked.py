@@ -14,7 +14,7 @@ from models import TransformerModelv8, TransformerModelv7
 import os
 import logging
 
-logfile = "../tr_results/v8-itr11/runlog.txt"
+logfile = "../tr_results/v8-itr12/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -38,7 +38,7 @@ def main():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv8(depth=5, num_heads=32).to(device)
+    transformer_model = TransformerModelv8(depth=20, num_heads=32).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -52,7 +52,7 @@ def main():
         autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # load autoencoder state dict
-    state_dict = torch.load('../modelsaves/ae-v2-itr1/ae-v2-itr1_ep10.pth') # for I-RAVEN
+    state_dict = torch.load('../modelsaves/ae-v2-itr1/ae-v2-itr0_ep10.pth') # for I-RAVEN
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
     # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
     autoencoder.load_state_dict(state_dict)
@@ -100,10 +100,10 @@ def main():
 
     train_dataset = RPMSentencesAE_Masked(train_files, \
                                            autoencoder = autoencoder, \
-                                           device=device, num_gpus=num_gpus, inv=True)
+                                           device=device, num_gpus=num_gpus, inv=False)
     val_dataset = RPMFullSentencesAE_Masked(val_files, \
                                              autoencoder = autoencoder, \
-                                             device=device, num_gpus=num_gpus, inv=True)
+                                             device=device, num_gpus=num_gpus, inv=False)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)
@@ -117,7 +117,7 @@ def main():
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 100
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr11"
+    VERSION = "v8-itr12"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -174,7 +174,7 @@ def main():
 
                 if times%5 == 0:
 
-                    gradfile = f"../tr_results/v8-itr11/grads_ep{epoch+1}_sv{times//5}.txt"
+                    gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
 
                     # Inspect gradients
                     for name, param in transformer_model.named_parameters():
@@ -236,7 +236,7 @@ def main():
                 img_candidates = candidates[0, :, :].squeeze()
 
                 # Convert the tensors to images and save them
-                save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=True)
+                save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=False)
 
     print("Finished processing all items.")
 
