@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import os
+import time
 import matplotlib
 import matplotlib.pyplot as plt
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
@@ -199,7 +200,8 @@ def displayresults_tr_grid():
     axs4.imshow(target.squeeze(0), cmap='gray')
 
 def displayresults_tr_grid_masked():
-    filepath = "../tr_results/v8-itr10/"
+    random.seed(time.time())
+    filepath = "../tr_results/v8-itr11/"
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
@@ -210,7 +212,8 @@ def displayresults_tr_grid_masked():
     fig2, axs2 = plt.subplots(2, 4)
     fig3, axs3 = plt.subplots(1,1)
 
-    file = files[0]
+    file = npz_files[0]
+    print(file)
 
     path = os.path.join(filepath, file)
     data = np.load(path)

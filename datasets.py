@@ -7,7 +7,7 @@ from collections import defaultdict
 from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
 class RPMSentencesAE_Masked(Dataset):
-    def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768):
+    def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768, inv=False):
         super(RPMSentencesAE_Masked, self).__init__()
 
         self.files = files
@@ -15,6 +15,7 @@ class RPMSentencesAE_Masked(Dataset):
         self.device = device
         self.autoencoder = autoencoder
         self.num_gpus = num_gpus
+        self.inv = inv
 
         # Ensure encoder is in eval mode and gradients are not computed
         for param in self.autoencoder.parameters():
@@ -33,6 +34,10 @@ class RPMSentencesAE_Masked(Dataset):
         indices = list(range(8)) + [8+data['target']]
         images = data['image'][indices,np.newaxis,:,:] # shape (9,1,160,160)
         imagetensor = torch.from_numpy(images).float() / 255  # convert context panels to tensor
+
+        if self.inv: # invert image
+            imagetensor = 1 - imagetensor
+
         imagetensor = imagetensor.to(self.device)
 
         # get panel embeddings
@@ -57,7 +62,7 @@ class RPMSentencesAE_Masked(Dataset):
 
 # Dataset for evaluation
 class RPMFullSentencesAE_Masked(Dataset):
-    def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768):
+    def __init__(self, files, autoencoder, device, num_gpus, embed_dim=768, inv=False):
         super(RPMFullSentencesAE_Masked, self).__init__()
 
         self.files = files
@@ -65,6 +70,7 @@ class RPMFullSentencesAE_Masked(Dataset):
         self.device = device
         self.autoencoder = autoencoder
         self.num_gpus = num_gpus
+        self.inv = inv
 
         # Ensure encoder is in eval mode and gradients are not computed
         for param in self.autoencoder.parameters():
@@ -78,6 +84,10 @@ class RPMFullSentencesAE_Masked(Dataset):
         data = np.load(filename)
         images = data['image'].reshape(16,1,160,160)
         imagetensor = torch.from_numpy(images).float() / 255  # convert context panels to tensor
+
+        if self.inv: # invert image
+            imagetensor = 1 - imagetensor
+
         imagetensor = imagetensor.to(self.device)
 
         # get panel embeddings

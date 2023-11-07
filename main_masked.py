@@ -14,7 +14,7 @@ from models import TransformerModelv8, TransformerModelv7
 import os
 import logging
 
-logfile = "../tr_results/v8-itr10/runlog.txt"
+logfile = "../tr_results/v8-itr11/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -100,10 +100,10 @@ def main():
 
     train_dataset = RPMSentencesAE_Masked(train_files, \
                                            autoencoder = autoencoder, \
-                                           device=device, num_gpus=num_gpus)
+                                           device=device, num_gpus=num_gpus, inv=True)
     val_dataset = RPMFullSentencesAE_Masked(val_files, \
                                              autoencoder = autoencoder, \
-                                             device=device, num_gpus=num_gpus)
+                                             device=device, num_gpus=num_gpus, inv=True)
 
     ''' MNIST transformer model '''
     # train_dataset = CustomMNIST(mnist_train, num_samples=100000)
@@ -117,73 +117,78 @@ def main():
     LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 100
     EPOCHS_PER_SAVE = 1
-    VERSION = "v8-itr10"
+    VERSION = "v8-itr11"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    # train_length = len(train_dataloader)
-    # batches_per_log = train_length // LOGS_PER_EPOCH
-    #
-    # # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
-    # #                              lr=LEARNING_RATE, momentum = MOMENTUM)
-    # optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
-    #
-    # scheduler = ExponentialLR(optimizer, gamma=0.98)
-    # criterion = nn.MSELoss()
-    #
-    # # Training loop
-    # for epoch in range(EPOCHS):
-    #     count = 0
-    #     tot_loss = 0
-    #     for idx, (inputs, first_patch, targets) in enumerate(train_dataloader):
-    #
-    #         if idx % BATCHES_PER_PRINT == 0:
-    #             start_time = time.time()
-    #
-    #         inputs = inputs.to(device)
-    #         first_patch = first_patch.to(device)
-    #         targets = targets.to(device)
-    #
-    #         outputs = transformer_model(inputs, first_patch) # (B,embed_dim)
-    #         loss = criterion(outputs,targets)
-    #
-    #         tot_loss += loss.item() # update running averages
-    #         count += 1
-    #
-    #         loss.backward()
-    #         optimizer.step()
-    #         optimizer.zero_grad()
-    #
-    #         if (idx+1) % BATCHES_PER_PRINT == 0:
-    #             end_time = time.time()
-    #             batch_time = end_time - start_time
-    #             print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
-    #
-    #         if (idx+1) % batches_per_log == 0:
-    #             val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
-    #             output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-    #             print(output)
-    #             # logging.info(output)
-    #             with open(logfile, 'a') as file:
-    #                 file.write(output)
-    #
-    #             tot_loss = 0
-    #             count = 0
-    #
-    #     if (epoch+1) % EPOCHS_PER_SAVE == 0:
-    #         save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-    #         os.makedirs(os.path.dirname(save_file), exist_ok=True)
-    #         torch.save(transformer_model.state_dict(), save_file)
-    #
-    #     scheduler.step()
+    train_length = len(train_dataloader)
+    batches_per_log = train_length // LOGS_PER_EPOCH
 
-    def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER):
+    # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
+    #                              lr=LEARNING_RATE, momentum = MOMENTUM)
+    optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
-        input_images = np.array([autoencoder.module.decode(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
-        output_images = autoencoder.module.decode(outputs.unsqueeze(0)).cpu().detach().numpy()
-        candidate_images = np.array([autoencoder.module.decode(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
+    scheduler = ExponentialLR(optimizer, gamma=0.98)
+    criterion = nn.MSELoss()
+
+    # Training loop
+    for epoch in range(EPOCHS):
+        count = 0
+        tot_loss = 0
+        for idx, (inputs, first_patch, targets) in enumerate(train_dataloader):
+
+            if idx % BATCHES_PER_PRINT == 0:
+                start_time = time.time()
+
+            inputs = inputs.to(device)
+            first_patch = first_patch.to(device)
+            targets = targets.to(device)
+
+            outputs = transformer_model(inputs, first_patch) # (B,embed_dim)
+            loss = criterion(outputs,targets)
+
+            tot_loss += loss.item() # update running averages
+            count += 1
+
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+
+            if (idx+1) % BATCHES_PER_PRINT == 0:
+                end_time = time.time()
+                batch_time = end_time - start_time
+                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
+
+            if (idx+1) % batches_per_log == 0:
+                val_loss = evaluate_model_masked(transformer_model, val_dataloader, device, max_batches=150)
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                print(output)
+                # logging.info(output)
+                with open(logfile, 'a') as file:
+                    file.write(output)
+
+                tot_loss = 0
+                count = 0
+
+        if (epoch+1) % EPOCHS_PER_SAVE == 0:
+            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+            os.makedirs(os.path.dirname(save_file), exist_ok=True)
+            torch.save(transformer_model.state_dict(), save_file)
+
+        scheduler.step()
+
+    def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False):
+
+        if inv:
+            input_images = np.array([autoencoder.module.decode_inv(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
+            output_images = autoencoder.module.decode_inv(outputs.unsqueeze(0)).cpu().detach().numpy()
+            candidate_images = np.array([autoencoder.module.decode_inv(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
+        else:
+            input_images = np.array([autoencoder.module.decode(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
+            output_images = autoencoder.module.decode(outputs.unsqueeze(0)).cpu().detach().numpy()
+            candidate_images = np.array([autoencoder.module.decode(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
 
         # Save to npz file
         np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_{idx}.npz",
@@ -215,7 +220,7 @@ def main():
                 img_candidates = candidates[0, :, :].squeeze()
 
                 # Convert the tensors to images and save them
-                save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER)
+                save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=True)
 
     print("Finished processing all items.")
 
