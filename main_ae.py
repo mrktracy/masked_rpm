@@ -9,7 +9,7 @@ import time
 import re
 import logging
 
-VERSION = 'ae-v2-itr0'
+VERSION = 'ae-v2-itr1'
 logfile = f"../ae_results/{VERSION}/runlog.log"
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO)
@@ -57,6 +57,26 @@ class RPMPanels(Dataset):
         data = np.load(filename)
         image = data['image'].reshape([16,160,160])
         panel = torch.from_numpy(image[panelidx,:,:]).float() / 255
+        label = panel.clone()
+
+        return (panel.unsqueeze(0), label.unsqueeze(0))
+
+    def __len__(self):
+        length = len(self.files)*16
+        return length
+
+class RPMPanels_inv(Dataset):
+    def __init__(self, files):
+        self.files = files
+
+    def __getitem__(self, idx):
+        fileidx = idx // 16
+        panelidx = idx % 16
+        filename = self.files[fileidx]
+        data = np.load(filename)
+        image = data['image'].reshape([16,160,160])
+        panel = torch.from_numpy(image[panelidx,:,:]).float() / 255
+        panel = 1-panel
         label = panel.clone()
 
         return (panel.unsqueeze(0), label.unsqueeze(0))
@@ -133,6 +153,11 @@ class ResNetAutoencoder(nn.Module):
         x = self.decoder(x)
         return x
 
+    def decode_inv(self,x):
+        x = self.decoder(x)
+        x = 1-x
+        return x
+
 def evaluate_model(model, dataloader, device, save_path):
 
     os.makedirs(save_path, exist_ok=True) # make file path if it doesn't exist, do nothing otherwise
@@ -174,7 +199,7 @@ def main():
     # Define Hyperparameters
     EPOCHS = 10
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.01
     LOGS_PER_EPOCH = 100
     BATCHES_PER_PRINT = 150
     EPOCHS_PER_SAVE = 1
@@ -197,8 +222,8 @@ def main():
     # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion+val_proportion))]
     # test_files = all_files[int(num_files * (train_proportion+val_proportion)):]
 
-    train_dataset = RPMPanels(train_files)
-    val_dataset = RPMPanels(val_files)
+    train_dataset = RPMPanels_inv(train_files)
+    val_dataset = RPMPanels_inv(val_files)
     # test_dataset = RPMPanels(test_files)
 
     print("Training files: {}, validation files: {}, testing files: {}".format(len(train_files), len(val_files),\

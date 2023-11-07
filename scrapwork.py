@@ -220,13 +220,13 @@ def displayresults_tr_grid_masked():
 
     for i in range(3):
         for j in range(3):
-            axs1[i, j].imshow(problem_grid[i*3 + j,:].squeeze(0), cmap='gray')
+            axs1[i, j].imshow(problem_grid[i*3 + j,:].squeeze(), cmap='gray')
 
     for i in range(2):
         for j in range(4):
-            axs2[i, j].imshow(candidates[2*i + j, :].squeeze(0), cmap='gray')
+            axs2[i, j].imshow(candidates[2*i + j, :].squeeze(), cmap='gray')
 
-    axs3.imshow(outputs.squeeze(0), cmap='gray')
+    axs3.imshow(outputs.squeeze(), cmap='gray')
 
 if __name__ == "__main__":
     # calc_mean_std()
