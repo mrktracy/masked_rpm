@@ -224,6 +224,8 @@ def main():
 
     train_dataset = RPMPanels_inv(train_files)
     val_dataset = RPMPanels_inv(val_files)
+    # train_dataset = RPMPanels(train_files)
+    # val_dataset = RPMPanels(val_files)
     # test_dataset = RPMPanels(test_files)
 
     print("Training files: {}, validation files: {}, testing files: {}".format(len(train_files), len(val_files),\
