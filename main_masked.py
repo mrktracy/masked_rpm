@@ -210,8 +210,12 @@ def main():
                 selected_candidates = candidates[batch_indices, targets, :]
                 inputs[:,8,:] = selected_candidates
 
+                img_inputs = inputs[0,:,:].squeeze()
+                img_outputs = outputs[0, :].squeeze()
+                img_candidates = candidates[0, :, :].squeeze()
+
                 # Convert the tensors to images and save them
-                save_to_npz(inputs, outputs, candidates, idx//500, VERSION, VERSION_SUBFOLDER)
+                save_to_npz(img_inputs, img_outputs, img_candidates, idx//500, VERSION, VERSION_SUBFOLDER)
 
     print("Finished processing all items.")
 
