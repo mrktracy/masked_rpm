@@ -182,7 +182,7 @@ def main():
     def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER):
 
         input_images = np.array([autoencoder.module.decode(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
-        output_images = autoencoder.module.decode(outputs).cpu().detach().numpy()
+        output_images = autoencoder.module.decode(outputs.unsqueeze(0)).cpu().detach().numpy()
         candidate_images = np.array([autoencoder.module.decode(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
 
         # Save to npz file
