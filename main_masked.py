@@ -182,7 +182,7 @@ def main():
     def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER):
 
         input_images = np.array([autoencoder.module.decode(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
-        output_images = np.array([autoencoder.module.decode(output.unsqueeze(0)).cpu().detach().numpy() for output in outputs])
+        output_images = autoencoder.module.decode(outputs).cpu().detach().numpy()
         candidate_images = np.array([autoencoder.module.decode(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
 
         # Save to npz file
@@ -211,7 +211,7 @@ def main():
                 inputs[:,8,:] = selected_candidates
 
                 img_inputs = inputs[0,:,:].squeeze()
-                img_outputs = outputs[0, :]
+                img_outputs = outputs[0, :].squeeze()
                 img_candidates = candidates[0, :, :].squeeze()
 
                 # Convert the tensors to images and save them
