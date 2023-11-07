@@ -211,7 +211,7 @@ def main():
                 inputs[:,8,:] = selected_candidates
 
                 img_inputs = inputs[0,:,:].squeeze()
-                img_outputs = outputs[0, :].squeeze()
+                img_outputs = outputs[0, :]
                 img_candidates = candidates[0, :, :].squeeze()
 
                 # Convert the tensors to images and save them
