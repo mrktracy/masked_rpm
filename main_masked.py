@@ -38,7 +38,7 @@ def main():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv8(depth=20, num_heads=32, norm_layer=nn.BatchNorm1d).to(device)
+    transformer_model = TransformerModelv8(depth=20, num_heads=32).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -59,9 +59,9 @@ def main():
     autoencoder.eval()
 
     ''' Load saved model '''
-    state_dict_tr = torch.load('../modelsaves/v8-itr10/tf_v8-itr10_ep10.pth')
-    transformer_model.load_state_dict(state_dict_tr)
-    transformer_model.eval()
+    # state_dict_tr = torch.load('../modelsaves/v8-itr10/tf_v8-itr10_ep10.pth')
+    # transformer_model.load_state_dict(state_dict_tr)
+    # transformer_model.eval()
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
