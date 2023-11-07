@@ -181,9 +181,9 @@ def main():
 
     def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER):
 
-        input_images = autoencoder.decode(inputs).cpu().detach().numpy()
-        output_images = autoencoder.decode(outputs).cpu().detach().numpy()
-        candidate_images = autoencoder.decode(candidates).cpu().detach().numpy()
+        input_images = autoencoder.module.decode(inputs).cpu().detach().numpy()
+        output_images = autoencoder.module.decode(outputs).cpu().detach().numpy()
+        candidate_images = autoencoder.module.decode(candidates).cpu().detach().numpy()
 
         # Save to npz file
         np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_{idx}.npz",
