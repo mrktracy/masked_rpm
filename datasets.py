@@ -80,7 +80,7 @@ class RPMFullSentences(Dataset):
 
         target_embed = embeddings[target_num+8,:]  # extract target panel embedding
 
-        mask_tensor = torch.zeros(9, self.embed_dim*2)
+        mask_tensor = torch.zeros(9, self.embed_dim)
         mask_tensor[8, :] = mask_exp  # ones where the mask is, 0s elsewhere
 
         return maskedsentence, target_embed, imagetensor, target_num, embeddings, mask_tensor
