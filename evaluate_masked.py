@@ -37,6 +37,8 @@ def evaluate_model_masked_BERT(model, dataloader, device, max_batches = None):
             # move images to the device
             inputs = inputs.to(device) # shape (B,9,model_dim)
             candidates = embeddings[:,8:,:].to(device) # shape (B, 8, embed_dim)
+            target_nums = target_nums.to(device)
+            mask_tensors = mask_tensors.to(device)
 
             # forward pass
             outputs = model(inputs,mask_tensors).unsqueeze(1) # (batch_size,1,embed_dim)
