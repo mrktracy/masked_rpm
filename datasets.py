@@ -74,7 +74,7 @@ class RPMFullSentences(Dataset):
         imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
         imagetensor = imagetensor.unsqueeze(1).to(self.device)
 
-        embeddings = self.autoencoder.get_embedding(imagetensor)  # get panel embeddings
+        embeddings = self.autoencoder.module.get_embedding(imagetensor)  # get panel embeddings
         sentence = embeddings[0:8, :]
         maskedsentence = torch.cat([sentence, mask], 0)  # create masked sentence
 
