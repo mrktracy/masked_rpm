@@ -202,7 +202,7 @@ def displayresults_tr_grid():
 
 def displayresults_tr_grid_masked():
     random.seed(time.time())
-    filepath = "../tr_results/v8-itr11/"
+    filepath = "../tr_results/v8-itr12/"
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
@@ -235,9 +235,9 @@ def displayresults_tr_grid_masked():
 if __name__ == "__main__":
     # calc_mean_std()
     # visualizedata()
-    displayresults_ae()
+    # displayresults_ae()
     # displayresults_tr_grid()
-    # displayresults_tr_grid_masked()
+    displayresults_tr_grid_masked()
     plt.show()
     while plt.get_fignums():
         plt.pause(0.1)
