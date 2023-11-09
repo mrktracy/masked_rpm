@@ -276,6 +276,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
+    # train_files = train_files[:200]
+    # val_files = val_files[:200]
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
@@ -292,12 +294,16 @@ def main_BERT():
     train_dataset = RPMSentencesSupervised(train_files, \
                                            autoencoder=autoencoder, embed_dim=768, \
                                            device=device)
+    # create dataset for printing results of problems in training set
+    train_print_dataset = RPMFullSentences(train_files, \
+                                   autoencoder=autoencoder, embed_dim=768, \
+                                   device=device)
     val_dataset = RPMFullSentences(val_files, \
                                              autoencoder = autoencoder, embed_dim=768, \
                                              device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 5
+    EPOCHS = 1000
     BATCH_SIZE = 32
     LEARNING_RATE = 0.01
     MOMENTUM = 0.90
@@ -309,6 +315,7 @@ def main_BERT():
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    train_print_dataloader = DataLoader(train_print_dataset, batch_size=BATCH_SIZE, shuffle=True) # for saving images
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
     train_length = len(train_dataloader)
     batches_per_log = train_length // LOGS_PER_EPOCH
@@ -400,7 +407,7 @@ def main_BERT():
                             candidates=candidate_images)
 
     # Iterate over the dataset
-    for idx, (inputs, targets, _, target_nums, embeddings, mask_tensors) in enumerate(val_dataloader):
+    for idx, (inputs, targets, _, target_nums, embeddings, mask_tensors) in enumerate(train_print_dataloader):
         if (idx+1) % 22 == 0:  # Check if the idx is a multiple of 22
             print(f"Processing index: {idx}")
 
