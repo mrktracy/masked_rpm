@@ -406,7 +406,7 @@ def main_BERT():
 
             # move images to the device
             inputs = inputs.to(device)  # shape (B,9,model_dim)
-            candidates = embeddings[8:,:].to(device)  # shape (B, 8, embed_dim)
+            candidates = embeddings[:,8:,:].to(device)  # shape (B, 8, embed_dim)
             targets = target_nums.to(device)  # shape (B,)
 
             transformer_model.eval()
