@@ -276,8 +276,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    # train_files = train_files[:200]
-    # val_files = val_files[:200]
+    train_files = train_files[:200]
+    val_files = val_files[:200]
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
