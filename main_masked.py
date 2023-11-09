@@ -294,7 +294,7 @@ def main_BERT():
                                            device=device)
     val_dataset = RPMFullSentences(val_files, \
                                              autoencoder = autoencoder, embed_dim=768, \
-                                             device=device, num_gpus=num_gpus)
+                                             device=device)
 
     ''' Define Hyperparameters '''
     EPOCHS = 5
