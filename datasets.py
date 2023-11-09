@@ -16,7 +16,7 @@ class RPMSentencesSupervised(Dataset):
 
     def __getitem__(self, idx):
         mask = torch.ones(self.embed_dim).to(self.device) # create masking token
-        mask_exp = torch.ones(self.embed_dim*2).to(self.device) # create mask for tensor output
+        mask_exp = torch.ones(self.embed_dim).to(self.device) # create mask for tensor output
         pad = torch.zeros([1,self.embed_dim]).to(self.device) # create padding token
 
         fileidx = idx // (9*4)
