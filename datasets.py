@@ -8,9 +8,9 @@ from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
 # 1. Dataset
 class RPMSentencesSupervised(Dataset):
-    def __init__(self, files, ResNetAutoencoder, embed_dim, device):
+    def __init__(self, files, autoencoder, embed_dim, device):
         self.files = files
-        self.autoencoder = ResNetAutoencoder
+        self.autoencoder = autoencoder
         self.embed_dim = embed_dim
         self.device = device
 
@@ -57,9 +57,9 @@ class RPMSentencesSupervised(Dataset):
 
 # Dataset for evaluation
 class RPMFullSentences(Dataset):
-    def __init__(self, files, ResNetAutoencoder, embed_dim, device):
+    def __init__(self, files, autoencoder, embed_dim, device):
         self.files = files
-        self.autoencoder = ResNetAutoencoder
+        self.autoencoder = autoencoder
         self.embed_dim = embed_dim
         self.device = device
 
