@@ -34,7 +34,7 @@ class RPMSentencesSupervised(Dataset):
         maskedsentence[panelidx, :] = mask # replace one panel with mask token
 
         # create mask tensor for selecting output
-        mask_tensor = torch.zeros(9, self.embed_dim * 2)
+        mask_tensor = torch.zeros(9, self.embed_dim)
         mask_tensor[panelidx, :] = mask_exp  # ones where the mask is, 0s elsewhere
 
         # rotate grid
@@ -43,9 +43,9 @@ class RPMSentencesSupervised(Dataset):
         final_sentence = masked_sen_grid_rotated.reshape([9, self.embed_dim])
 
         # rotate mask tensor
-        mask_grid = mask_tensor.reshape([3, 3, self.embed_dim*2])
+        mask_grid = mask_tensor.reshape([3, 3, self.embed_dim])
         mask_grid_rotated = torch.rot90(mask_grid, k=idx%4, dims=[0,1])
-        final_mask_tensor = mask_grid_rotated.reshape([9, self.embed_dim*2])
+        final_mask_tensor = mask_grid_rotated.reshape([9, self.embed_dim])
 
         target = embeddings[panelidx, :] # extract target panel embedding
 
