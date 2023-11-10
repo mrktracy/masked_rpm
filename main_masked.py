@@ -268,9 +268,9 @@ def main_BERT():
     autoencoder.eval()
 
     ''' Load saved model '''
-    # state_dict_tr = torch.load('../modelsaves/v8-itr10/tf_v8-itr10_ep10.pth')
-    # transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
+    state_dict_tr = torch.load('../modelsaves/v9-itr0/tf_v9-itr0_ep200.pth')
+    transformer_model.load_state_dict(state_dict_tr)
+    transformer_model.eval()
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
@@ -322,72 +322,72 @@ def main_BERT():
 
     # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
-
-    scheduler = ExponentialLR(optimizer, gamma=0.98)
-    criterion = nn.MSELoss()
-
-    # Training loop
-    for epoch in range(EPOCHS):
-        count = 0
-        tot_loss = 0
-        times = 0
-        for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
-
-            if idx % BATCHES_PER_PRINT == 0:
-                start_time = time.time()
-
-            inputs = inputs.to(device)
-            targets = targets.to(device)
-            mask_tensors = mask_tensors.to(device)
-
-            outputs = transformer_model(inputs, mask_tensors) # (B,embed_dim)
-            loss = criterion(outputs,targets)
-
-            tot_loss += loss.item() # update running averages
-            count += 1
-
-            loss.backward()
-            optimizer.step()
-
-            if (idx+1) % BATCHES_PER_PRINT == 0:
-                end_time = time.time()
-                batch_time = end_time - start_time
-                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
-
-            if (idx+1) % batches_per_log == 0:
-                val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                print(output)
-                # logging.info(output)
-                with open(logfile, 'a') as file:
-                    file.write(output)
-
-                tot_loss = 0
-                count = 0
-
-                if times%5 == 0:
-
-                    gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
-
-                    # Inspect gradients
-                    for name, param in transformer_model.named_parameters():
-                        if param.grad is not None:
-                            with open(gradfile, 'a') as file:
-                                file.write(f"Gradient for {name}: {param.grad}\n")
-                        else:
-                            with open(logfile, 'a') as file:
-                                file.write(f"No gradient for {name}\n")
-                    times += 1
-
-            optimizer.zero_grad()
-
-        if (epoch+1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-            os.makedirs(os.path.dirname(save_file), exist_ok=True)
-            torch.save(transformer_model.state_dict(), save_file)
-
-        scheduler.step()
+    # optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
+    #
+    # scheduler = ExponentialLR(optimizer, gamma=0.98)
+    # criterion = nn.MSELoss()
+    #
+    # # Training loop
+    # for epoch in range(EPOCHS):
+    #     count = 0
+    #     tot_loss = 0
+    #     times = 0
+    #     for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
+    #
+    #         if idx % BATCHES_PER_PRINT == 0:
+    #             start_time = time.time()
+    #
+    #         inputs = inputs.to(device)
+    #         targets = targets.to(device)
+    #         mask_tensors = mask_tensors.to(device)
+    #
+    #         outputs = transformer_model(inputs, mask_tensors) # (B,embed_dim)
+    #         loss = criterion(outputs,targets)
+    #
+    #         tot_loss += loss.item() # update running averages
+    #         count += 1
+    #
+    #         loss.backward()
+    #         optimizer.step()
+    #
+    #         if (idx+1) % BATCHES_PER_PRINT == 0:
+    #             end_time = time.time()
+    #             batch_time = end_time - start_time
+    #             print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
+    #
+    #         if (idx+1) % batches_per_log == 0:
+    #             val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
+    #             output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+    #             print(output)
+    #             # logging.info(output)
+    #             with open(logfile, 'a') as file:
+    #                 file.write(output)
+    #
+    #             tot_loss = 0
+    #             count = 0
+    #
+    #             if times%5 == 0:
+    #
+    #                 gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
+    #
+    #                 # Inspect gradients
+    #                 for name, param in transformer_model.named_parameters():
+    #                     if param.grad is not None:
+    #                         with open(gradfile, 'a') as file:
+    #                             file.write(f"Gradient for {name}: {param.grad}\n")
+    #                     else:
+    #                         with open(logfile, 'a') as file:
+    #                             file.write(f"No gradient for {name}\n")
+    #                 times += 1
+    #
+    #         optimizer.zero_grad()
+    #
+    #     if (epoch+1) % EPOCHS_PER_SAVE == 0:
+    #         save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+    #         os.makedirs(os.path.dirname(save_file), exist_ok=True)
+    #         torch.save(transformer_model.state_dict(), save_file)
+    #
+    #     scheduler.step()
 
     def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False):
 

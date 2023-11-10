@@ -7,6 +7,84 @@ from collections import defaultdict
 from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
 # 1. Dataset
+class RPMSentencesSupervisedRaw(Dataset): # TODO: finish this and run v10
+    def __init__(self, files, embed_dim, device):
+        self.files = files
+        self.embed_dim = embed_dim
+        self.device = device
+
+    def __getitem__(self, idx):
+        mask = torch.ones(self.embed_dim).to(self.device) # create masking token
+        mask_exp = torch.ones(self.embed_dim).to(self.device) # create mask for tensor output
+        pad = torch.zeros([1,self.embed_dim]).to(self.device) # create padding token
+
+        fileidx = idx // (9*4)
+        panelidx = idx % 9
+
+        filename = self.files[fileidx]
+        data = np.load(filename)
+        image = data['image']
+        indices = list(range(8)) + [8 + data['target']]
+        imagetensor = torch.from_numpy(image[indices,:,:]).float() / 255 # convert context panels to tensor
+        imagetensor = imagetensor.unsqueeze(1).to(self.device) # (9, embed_dim)
+
+        # create mask tensor for selecting output
+        mask_tensor = torch.zeros(9, self.embed_dim)
+        mask_tensor[panelidx, :] = mask_exp  # ones where the mask is, 0s elsewhere
+
+        # rotate grid
+        masked_sen_grid = imagetensor.reshape([3, 3, self.embed_dim])
+        masked_sen_grid_rotated = torch.rot90(masked_sen_grid, k=idx%4, dims=[0,1])
+        final_sentence = masked_sen_grid_rotated.reshape([9, self.embed_dim])
+
+        # rotate mask tensor
+        mask_grid = mask_tensor.reshape([3, 3, self.embed_dim])
+        mask_grid_rotated = torch.rot90(mask_grid, k=idx%4, dims=[0,1])
+        final_mask_tensor = mask_grid_rotated.reshape([9, self.embed_dim])
+
+        target = embeddings[panelidx, :] # extract target panel embedding
+
+        return final_sentence, target, final_mask_tensor
+
+    def __len__(self):
+        length = len(self.files)*(9*4)
+        return length
+
+# Dataset for evaluation
+class RPMFullSentencesRaw(Dataset): # TODO: finish this and run v10
+    def __init__(self, files, autoencoder, embed_dim, device):
+        self.files = files
+        self.autoencoder = autoencoder
+        self.embed_dim = embed_dim
+        self.device = device
+
+    def __getitem__(self, idx):
+        mask = torch.ones([1,self.embed_dim]).to(self.device)  # create masking token
+        mask_exp = torch.ones(self.embed_dim).to(self.device)  # create mask token for tensor output
+
+        filename = self.files[idx]
+        data = np.load(filename)
+        image = data['image']
+        target_num = data['target'].item()
+        imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
+        imagetensor = imagetensor.unsqueeze(1).to(self.device)
+
+        embeddings = self.autoencoder.module.get_embedding(imagetensor)  # get panel embeddings
+        sentence = embeddings[0:8, :]
+        maskedsentence = torch.cat([sentence, mask], 0)  # create masked sentence
+
+        target_embed = embeddings[target_num+8,:]  # extract target panel embedding
+
+        mask_tensor = torch.zeros(9, self.embed_dim)
+        mask_tensor[8, :] = mask_exp  # ones where the mask is, 0s elsewhere
+
+        return maskedsentence, target_embed, imagetensor, target_num, embeddings, mask_tensor
+
+    def __len__(self):
+        length = len(self.files)
+        return length
+
+# 1. Dataset
 class RPMSentencesSupervised(Dataset):
     def __init__(self, files, autoencoder, embed_dim, device):
         self.files = files
