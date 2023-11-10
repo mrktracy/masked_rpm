@@ -408,7 +408,8 @@ def main_BERT():
 
     # Iterate over the dataset
     for idx, (inputs, targets, _, target_nums, embeddings, mask_tensors) in enumerate(train_print_dataloader):
-        if (idx+1) % 3 == 0:  # Check if the idx is a multiple of 22
+        # if (idx+1) % 22 == 0:  # Check if the idx is a multiple of 22
+        if True:  # Check if the idx is a multiple of 22
             print(f"Processing index: {idx}")
 
             # move images to the device
