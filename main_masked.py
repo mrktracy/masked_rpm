@@ -420,7 +420,8 @@ def main_BERT():
             with torch.no_grad():  # Disable gradient computation for inference
                 # Perform a forward pass to get the outputs
                 outputs = transformer_model(inputs, mask_tensors) # get embedding of guess
-                inputs[:,8,:] = candidates[:,targets,:] # fill in the answer in the grid
+                indices = list(range(inputs.size(0))) + []
+                inputs[:,8,:] = targets.unsqueeze(1) # fill in the answer in the grid
 
                 # sample just one example per batch
                 img_inputs = inputs[0,:,:].squeeze()
