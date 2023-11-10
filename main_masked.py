@@ -430,7 +430,8 @@ def main_BERT():
                 img_candidates = candidates[0, :, :].squeeze()
 
                 # Convert the tensors to images and save them
-                save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=False)
+                # save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=False)
+                save_to_npz(img_inputs, img_outputs, img_candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False)
 
     print("Finished processing all items.")
 
