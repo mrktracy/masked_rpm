@@ -232,7 +232,7 @@ def displayresults_tr_grid_masked():
 
     axs3.imshow(outputs.squeeze(), cmap='gray')
 
-def displayresults_tr_grid_masked():
+def displayresults_BERT():
     random.seed(time.time())
     filepath = "../tr_results/v10-itr0/"
     files = os.listdir(filepath)
@@ -251,25 +251,24 @@ def displayresults_tr_grid_masked():
     path = os.path.join(filepath, file)
     data = np.load(path)
     problem_grid = data['input']
-    outputs = data['output']
-    candidates = data['candidate']
+    output = data['output']
+    target = data['target']
 
     for i in range(3):
         for j in range(3):
             axs1[i, j].imshow(problem_grid[i*3 + j,:,:,:].squeeze(), cmap='gray')
 
-    for i in range(2):
-        for j in range(4):
-            axs2[i, j].imshow(candidates[2*i + j, :].squeeze(), cmap='gray')
-
-    axs3.imshow(outputs.squeeze(), cmap='gray')
+    axs2.imshow(target.squeeze(), cmap='gray')
+    axs3.imshow(output.squeeze(), cmap='gray')
 
 if __name__ == "__main__":
     # calc_mean_std()
     # visualizedata()
     # displayresults_ae()
     # displayresults_tr_grid()
-    displayresults_tr_grid_masked()
+    # displayresults_tr_grid_masked()
+    displayresults_BERT()
+
     plt.show()
     while plt.get_fignums():
         plt.pause(0.1)
