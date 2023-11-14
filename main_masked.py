@@ -342,7 +342,6 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            print(torch.equal(outputs, torch.ones_like(outputs)))
             loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages
@@ -355,6 +354,7 @@ def main_BERT():
                 end_time = time.time()
                 batch_time = end_time - start_time
                 print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
+                print(f"Error indicated: {torch.equal(outputs, torch.ones_like(outputs))}")
 
             if (idx+1) % batches_per_log == 0:
                 val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
