@@ -67,8 +67,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    # train_files = train_files[:5]
-    # val_files = val_files[:5]
+    train_files = train_files[:5]
+    val_files = val_files[:5]
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
@@ -94,11 +94,11 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 4
+    EPOCHS = 100
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 100
+    LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
     VERSION = "v10-itr12"
@@ -164,11 +164,13 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
+                pix_mean = 0.9031295340401794
+                pix_std = 0.263461851960206
                 # Save guesses to npz file
                 np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch+1}_btch{idx}.npz",
-                                    input=np.array(inputs[0,:,:,:,:].squeeze().cpu()),
-                                    output=np.array(outputs[0,:,:,:].squeeze().detach().cpu()),
-                                    target=np.array(targets[0,:,:,:].squeeze().cpu()))
+                                    input=np.array(inputs[0,:,:,:,:].squeeze().cpu()*pix_std + pix_mean),
+                                    output=np.array(outputs[0,:,:,:].squeeze().detach().cpu()*pix_std + pix_mean),
+                                    target=np.array(targets[0,:,:,:].squeeze().cpu()*pix_std + pix_mean))
 
                 if times%5 == 0:
 

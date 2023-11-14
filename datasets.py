@@ -25,6 +25,11 @@ class RPMSentencesSupervisedRaw(Dataset):
         imagetensor = imagetensor.unsqueeze(1).to(self.device) # (9, 1, 160, 160)
         # imagetensor = 1-imagetensor # invert colors
 
+        # normalize
+        pix_mean = 0.9031295340401794
+        pix_std = 0.263461851960206
+        imagetensor = (imagetensor - pix_mean)/pix_std
+
         target = imagetensor[panelidx, :, :, :].clone()  # extract target image
         imagetensor[panelidx, :, :, :] = torch.ones_like(target)  # replace with mask
 
@@ -65,6 +70,11 @@ class RPMFullSentencesRaw(Dataset):
         imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
         imagetensor = imagetensor.unsqueeze(1).to(self.device) # shape (16, 1, 160, 160)
         # imagetensor = 1 - imagetensor # invert images
+
+        # normalize
+        pix_mean = 0.9031295340401794
+        pix_std = 0.263461851960206
+        imagetensor = (imagetensor - pix_mean) / pix_std
 
         target_num = data['target'].item()
         target_image = imagetensor[target_num + 8, :]  # extract target panel embedding
