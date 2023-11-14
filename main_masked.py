@@ -305,14 +305,14 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 500
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.0001
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
     VERSION = "v10-itr4"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 0.0001 # scaling regularizer
+    ALPHA = 1/160**2 # scaling regularizer
     DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
