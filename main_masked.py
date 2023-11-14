@@ -310,7 +310,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr5"
+    VERSION = "v10-itr6"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.1/160**2 # scaling regularizer
     DELTA = 1e-8 # for log stability
