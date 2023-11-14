@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
-logfile = "../tr_results/v10-itr0/runlog.txt"
+logfile = "../tr_results/v10-itr1/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -310,7 +310,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 50
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr0"
+    VERSION = "v10-itr1"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
 
     ''' Instantiate data loaders, optimizer, criterion '''
