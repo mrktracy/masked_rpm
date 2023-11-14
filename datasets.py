@@ -50,7 +50,7 @@ class RPMSentencesSupervisedRaw(Dataset):
 
 # Dataset for evaluation
 class RPMFullSentencesRaw(Dataset):
-    def __init__(self, files, autoencoder, embed_dim, device):
+    def __init__(self, files, embed_dim, device):
         self.files = files
         self.embed_dim = embed_dim
         self.device = device

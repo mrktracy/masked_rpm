@@ -315,13 +315,13 @@ def main_BERT():
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    train_print_dataloader = DataLoader(train_print_dataset, batch_size=BATCH_SIZE, shuffle=True) # for saving images
+    # train_print_dataloader = DataLoader(train_print_dataset, batch_size=BATCH_SIZE, shuffle=True) # for saving images
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
     train_length = len(train_dataloader)
     batches_per_log = train_length // LOGS_PER_EPOCH
 
-    optimizer = torch.optim.SGD(list(transformer_model.parameters()),
-                                 lr=LEARNING_RATE, momentum = MOMENTUM)
+    # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
+    #                              lr=LEARNING_RATE, momentum = MOMENTUM)
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
     scheduler = ExponentialLR(optimizer, gamma=0.98)
