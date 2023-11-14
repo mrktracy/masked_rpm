@@ -24,7 +24,7 @@ class RPMSentencesSupervisedRaw(Dataset):
         imagetensor = torch.from_numpy(image[indices,:,:]).float() / 255 # convert context panels to tensor
         imagetensor = imagetensor.unsqueeze(1).to(self.device) # (9, 1, 160, 160)
 
-        target = imagetensor[panelidx, :, :, :]  # extract target image
+        target = imagetensor[panelidx, :, :, :].clone()  # extract target image
         imagetensor[panelidx, :, :, :] = torch.ones_like(target)  # replace with mask
 
         # create mask tensor for selecting output
