@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
-logfile = "../tr_results/v10-itr11/runlog.txt"
+logfile = "../tr_results/v10-itr12/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -67,8 +67,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:5]
-    val_files = val_files[:5]
+    # train_files = train_files[:5]
+    # val_files = val_files[:5]
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
@@ -94,14 +94,14 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 100
+    EPOCHS = 4
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 1
+    LOGS_PER_EPOCH = 100
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr11"
+    VERSION = "v10-itr12"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 1/160**2 # scaling regularizer
     DELTA = 1e-8 # for log stability
@@ -117,7 +117,7 @@ def main_BERT():
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
-    # scheduler = ExponentialLR(optimizer, gamma=0.98)
+    scheduler = ExponentialLR(optimizer, gamma=0.98)
     criterion = nn.MSELoss()
 
     # Training loop
@@ -153,9 +153,9 @@ def main_BERT():
                 # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
 
             if (idx+1) % batches_per_log == 0:
-                # val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
-                # output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
+                val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                # output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
                 print(output)
                 # logging.info(output)
                 with open(logfile, 'a') as file:
@@ -186,12 +186,12 @@ def main_BERT():
 
             optimizer.zero_grad()
 
-        # if (epoch+1) % EPOCHS_PER_SAVE == 0:
-        #     save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-        #     os.makedirs(os.path.dirname(save_file), exist_ok=True)
-        #     torch.save(transformer_model.state_dict(), save_file)
+        if (epoch+1) % EPOCHS_PER_SAVE == 0:
+            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+            os.makedirs(os.path.dirname(save_file), exist_ok=True)
+            torch.save(transformer_model.state_dict(), save_file)
 
-        # scheduler.step()
+        scheduler.step()
 
     # def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False):
     #
