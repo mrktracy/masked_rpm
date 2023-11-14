@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
-logfile = "../tr_results/v10-itr12/runlog.txt"
+logfile = "../tr_results/v10-itr13/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -67,8 +67,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:5]
-    val_files = val_files[:5]
+    # train_files = train_files[:5]
+    # val_files = val_files[:5]
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
@@ -101,7 +101,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr12"
+    VERSION = "v10-itr13"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 1/160**2 # scaling regularizer
     DELTA = 1e-8 # for log stability
@@ -117,7 +117,7 @@ def main_BERT():
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
-    # scheduler = ExponentialLR(optimizer, gamma=0.98)
+    scheduler = ExponentialLR(optimizer, gamma=0.98)
     criterion = nn.MSELoss()
 
     # Training loop
@@ -135,10 +135,10 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            # regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
-            #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
-            # loss = criterion(outputs,targets) + regularizer
-            loss = criterion(outputs,targets)
+            regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
+                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
+            loss = criterion(outputs,targets) + regularizer
+            # loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages
             count += 1
@@ -153,9 +153,9 @@ def main_BERT():
                 # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
 
             if (idx+1) % batches_per_log == 0:
-                # val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
-                # output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
+                val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                # output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
                 print(output)
                 # logging.info(output)
                 with open(logfile, 'a') as file:
@@ -164,13 +164,17 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
-                pix_mean = 0.9031295340401794
-                pix_std = 0.263461851960206
+                # pix_mean = 0.9031295340401794
+                # pix_std = 0.263461851960206
                 # Save guesses to npz file
-                np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch+1}_btch{idx}.npz",
-                                    input=np.array(inputs[0,:,:,:,:].squeeze().cpu()*pix_std + pix_mean),
-                                    output=np.array(outputs[0,:,:,:].squeeze().detach().cpu()*pix_std + pix_mean),
-                                    target=np.array(targets[0,:,:,:].squeeze().cpu()*pix_std + pix_mean))
+                # np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch+1}_btch{idx}.npz",
+                #                     input=np.array(inputs[0,:,:,:,:].squeeze().cpu()*pix_std + pix_mean),
+                #                     output=np.array(outputs[0,:,:,:].squeeze().detach().cpu()*pix_std + pix_mean),
+                #                     target=np.array(targets[0,:,:,:].squeeze().cpu()*pix_std + pix_mean))
+                np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
+                                    input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
+                                    output=np.array(outputs[0, :, :, :].squeeze().detach().cpu()),
+                                    target=np.array(targets[0, :, :, :].squeeze().cpu()))
 
                 if times%5 == 0:
 
@@ -188,12 +192,12 @@ def main_BERT():
 
             optimizer.zero_grad()
 
-        # if (epoch+1) % EPOCHS_PER_SAVE == 0:
-        #     save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-        #     os.makedirs(os.path.dirname(save_file), exist_ok=True)
-        #     torch.save(transformer_model.state_dict(), save_file)
-        #
-        # scheduler.step()
+        if (epoch+1) % EPOCHS_PER_SAVE == 0:
+            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+            os.makedirs(os.path.dirname(save_file), exist_ok=True)
+            torch.save(transformer_model.state_dict(), save_file)
+
+        scheduler.step()
 
     # def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False):
     #
