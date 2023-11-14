@@ -276,8 +276,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    # train_files = train_files[:100]
-    # val_files = val_files[:100]
+    train_files = train_files[:100]
+    val_files = val_files[:100]
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
@@ -303,7 +303,7 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 10
+    EPOCHS = 1000
     BATCH_SIZE = 32
     LEARNING_RATE = 0.01
     MOMENTUM = 0.90
