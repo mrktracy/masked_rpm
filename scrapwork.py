@@ -238,22 +238,22 @@ def displayresults_BERT():
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
-    random.shuffle(npz_files)
-    # npz_files.sort(reverse=True)
+    # random.shuffle(npz_files)
+    npz_files.sort(reverse=True)
 
     # guesses = []
     fig1, axs1 = plt.subplots(3, 3)
     fig2, axs2 = plt.subplots(1, 1)
     fig3, axs3 = plt.subplots(1,1)
 
-    file = npz_files[0]
-    print(file)
+    # file = npz_files[0]
+    # print(file)
+    file = "imgs_ep182_btch5.npz"
 
     path = os.path.join(filepath, file)
     data = np.load(path)
     problem_grid = data['input']
     output = data['output']
-    print(np.sum(1-output))
     target = data['target']
 
     for i in range(3):
