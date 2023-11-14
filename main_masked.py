@@ -367,6 +367,12 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
+                # Save guesses to npz file
+                np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch+1}_btch{idx}.npz",
+                                    input=np.array(inputs[0,:,:,:,:].squeeze()),
+                                    output=np.array(outputs[0,:,:,:].squeeze()),
+                                    target=np.array(targets[0,:,:,:].squeeze()))
+
                 if times%5 == 0:
 
                     gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
