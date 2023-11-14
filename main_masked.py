@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
-logfile = "../tr_results/v10-itr1/runlog.txt"
+logfile = "../tr_results/v10-itr2/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -310,8 +310,10 @@ def main_BERT():
     LOGS_PER_EPOCH = 100
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr1"
+    VERSION = "v10-itr2"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
+    ALPHA = 1/(160*160) # scaling regularizer
+    DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -342,7 +344,7 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            loss = criterion(outputs,targets)
+            loss = criterion(outputs,targets) + ALPHA*torch.mean(torch.sum(output*torch.log(output + DELTA), dim=[1,2,3]))
 
             tot_loss += loss.item() # update running averages
             count += 1
