@@ -276,8 +276,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    # train_files = train_files[:5]
-    # val_files = val_files[:5]
+    train_files = train_files[:5]
+    val_files = val_files[:5]
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
@@ -307,7 +307,7 @@ def main_BERT():
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 100
+    LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
     VERSION = "v10-itr4"
