@@ -276,8 +276,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:5]
-    val_files = val_files[:5]
+    # train_files = train_files[:5]
+    # val_files = val_files[:5]
 
     ''' Use RAVEN dataset '''
     # root_dir = '../RAVEN-10000'
@@ -303,11 +303,11 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 1000
+    EPOCHS = 10
     BATCH_SIZE = 32
     LEARNING_RATE = 0.1
     MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 1
+    LOGS_PER_EPOCH = 50
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
     VERSION = "v10-itr0"
@@ -342,7 +342,7 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            print(outputs == torch.ones_like(outputs))
+            print(torch.equal(outputs, torch.ones_like(outputs)))
             loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages
