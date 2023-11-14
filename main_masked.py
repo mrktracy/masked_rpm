@@ -303,9 +303,9 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 100
+    EPOCHS = 1000
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.0001
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
