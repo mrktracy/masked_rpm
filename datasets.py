@@ -68,7 +68,7 @@ class RPMFullSentencesRaw(Dataset):
         target_image = imagetensor[target_num + 8, :]  # extract target panel embedding
 
         sentence = imagetensor[0:8, :, :, :] # size (8, 1, 160, 160)
-        mask = torch.ones_like(sentence[0,:,:,:]).to(self.device)  # create masking token
+        mask = torch.ones([1,1,160,160]).to(self.device)  # create masking token
         masked_sentence = torch.cat([sentence, mask], 0)  # create masked sentence
 
         mask_tensor = torch.zeros(9, self.embed_dim)
