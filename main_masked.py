@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
-logfile = "../tr_results/v10-itr7/runlog.txt"
+logfile = "../tr_results/v10-itr8/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -30,6 +30,215 @@ def initialize_weights_he(m):
         nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
         if m.bias is not None:
             nn.init.constant_(m.bias, 0)
+
+def main_BERT():
+
+    # Initialize device, model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    num_gpus = torch.cuda.device_count()
+    # print(num_gpus)
+
+    transformer_model = TransformerModelv10(depth=20, num_heads=64, cat=True).to(device)
+
+    # initialize weights
+    transformer_model.apply(initialize_weights_he)
+
+    # initialize autoencoder
+    # autoencoder = ResNetAutoencoder(embed_dim=768).to(device)
+
+    if num_gpus > 1:  # use multiple GPUs
+        transformer_model = nn.DataParallel(transformer_model)
+        # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
+        # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
+
+    # load autoencoder state dict
+    # state_dict = torch.load('../modelsaves/ae-v2-itr0/ae-v2-itr0_ep10.pth') # for I-RAVEN
+    # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
+    # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
+    # autoencoder.load_state_dict(state_dict)
+    # autoencoder.eval()
+
+    ''' Load saved model '''
+    # state_dict_tr = torch.load('../modelsaves/v9-itr0/tf_v9-itr0_ep200.pth')
+    # transformer_model.load_state_dict(state_dict_tr)
+    # transformer_model.eval()
+
+    ''' Use for PGM or I-RAVEN dataset '''
+    # root_dir = '../pgm/neutral/'
+    root_dir = '../i_raven_data/'
+    train_files, val_files, test_files = gather_files_pgm(root_dir)
+    train_files = train_files[:5]
+    val_files = val_files[:5]
+
+    ''' Use RAVEN dataset '''
+    # root_dir = '../RAVEN-10000'
+    # all_files = gather_files(root_dir)
+    # num_files = len(all_files)
+    # train_proportion = 0.7
+    # val_proportion = 0.15
+    # # test proportion is 1 - train_proportion - val_proportion
+    # train_files = all_files[:int(num_files * train_proportion)]
+    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
+    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
+
+    ''' Transformer model v9 '''
+    train_dataset = RPMSentencesSupervisedRaw(train_files, \
+                                           embed_dim=768, \
+                                           device=device)
+    # create dataset for printing results of problems in training set
+    # train_print_dataset = RPMFullSentencesRaw(train_files, \
+    #                                        embed_dim=768, \
+    #                                        device=device)
+    val_dataset = RPMFullSentencesRaw(val_files, \
+                                            embed_dim=768, \
+                                            device=device)
+
+    ''' Define Hyperparameters '''
+    EPOCHS = 100
+    BATCH_SIZE = 32
+    LEARNING_RATE = 0.001
+    MOMENTUM = 0.90
+    LOGS_PER_EPOCH = 1
+    BATCHES_PER_PRINT = 50
+    EPOCHS_PER_SAVE = 1
+    VERSION = "v10-itr8"
+    VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
+    ALPHA = 0.1/160**2 # scaling regularizer
+    DELTA = 1e-8 # for log stability
+
+    ''' Instantiate data loaders, optimizer, criterion '''
+    train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    # train_print_dataloader = DataLoader(train_print_dataset, batch_size=BATCH_SIZE, shuffle=True) # for saving images
+    val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    train_length = len(train_dataloader)
+    batches_per_log = train_length // LOGS_PER_EPOCH
+
+    # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
+    #                              lr=LEARNING_RATE, momentum = MOMENTUM)
+    optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
+
+    # scheduler = ExponentialLR(optimizer, gamma=0.98)
+    criterion = nn.MSELoss()
+
+    # Training loop
+    for epoch in range(EPOCHS):
+        count = 0
+        tot_loss = 0
+        times = 0
+        for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
+
+            if idx % BATCHES_PER_PRINT == 0:
+                start_time = time.time()
+
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+            mask_tensors = mask_tensors.to(device)
+
+            outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
+            regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
+                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
+            loss = criterion(outputs,targets) + regularizer
+            # loss = criterion(outputs,targets)
+
+            tot_loss += loss.item() # update running averages
+            count += 1
+
+            loss.backward()
+            optimizer.step()
+
+            if (idx+1) % BATCHES_PER_PRINT == 0:
+                end_time = time.time()
+                batch_time = end_time - start_time
+                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
+                # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
+
+            if (idx+1) % batches_per_log == 0:
+                # val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
+                # output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
+                print(output)
+                # logging.info(output)
+                with open(logfile, 'a') as file:
+                    file.write(output)
+
+                tot_loss = 0
+                count = 0
+
+                # Save guesses to npz file
+                np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch+1}_btch{idx}.npz",
+                                    input=np.array(inputs[0,:,:,:,:].squeeze().cpu()),
+                                    output=np.array(outputs[0,:,:,:].squeeze().detach().cpu()),
+                                    target=np.array(targets[0,:,:,:].squeeze().cpu()))
+
+                if times%5 == 0:
+
+                    gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
+
+                    # Inspect gradients
+                    for name, param in transformer_model.named_parameters():
+                        if param.grad is not None:
+                            with open(gradfile, 'a') as file:
+                                file.write(f"Gradient for {name}: {param.grad}\n")
+                        else:
+                            with open(logfile, 'a') as file:
+                                file.write(f"No gradient for {name}\n")
+                    times += 1
+
+            optimizer.zero_grad()
+
+        # if (epoch+1) % EPOCHS_PER_SAVE == 0:
+        #     save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+        #     os.makedirs(os.path.dirname(save_file), exist_ok=True)
+        #     torch.save(transformer_model.state_dict(), save_file)
+
+        # scheduler.step()
+
+    # def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False):
+    #
+    #     if inv:
+    #         input_images = np.array([autoencoder.module.decode_inv(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
+    #         output_images = autoencoder.module.decode_inv(outputs.unsqueeze(0)).cpu().detach().numpy()
+    #         candidate_images = np.array([autoencoder.module.decode_inv(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
+    #     else:
+    #         input_images = np.array([autoencoder.module.decode(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
+    #         output_images = autoencoder.module.decode(outputs.unsqueeze(0)).cpu().detach().numpy()
+    #         candidate_images = np.array([autoencoder.module.decode(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
+    #
+    #     # Save to npz file
+    #     np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_{idx}.npz",
+    #                         inputs=input_images,
+    #                         outputs=output_images,
+    #                         candidates=candidate_images)
+    #
+    # # Iterate over the dataset
+    # for idx, (inputs, targets, _, target_nums, embeddings, mask_tensors) in enumerate(train_print_dataloader):
+    #     # if (idx+1) % 22 == 0:  # Check if the idx is a multiple of 22
+    #     if True:  # Check if the idx is a multiple of 22
+    #         print(f"Processing index: {idx}")
+    #
+    #         # move images to the device
+    #         inputs = inputs.to(device)  # shape (B,9,model_dim)
+    #         candidates = embeddings[:,8:,:].to(device)  # shape (B, 8, embed_dim)
+    #         targets = target_nums.to(device)  # shape (B,)
+    #
+    #         transformer_model.eval()
+    #         with torch.no_grad():  # Disable gradient computation for inference
+    #             # Perform a forward pass to get the outputs
+    #             outputs = transformer_model(inputs, mask_tensors) # get embedding of guess
+    #             indices = list(range(inputs.size(0))) + []
+    #             inputs[:,8,:] = targets.unsqueeze(1) # fill in the answer in the grid
+    #
+    #             # sample just one example per batch
+    #             img_inputs = inputs[0,:,:].squeeze()
+    #             img_outputs = outputs[0, :].squeeze()
+    #             img_candidates = candidates[0, :, :].squeeze()
+    #
+    #             # Convert the tensors to images and save them
+    #             # save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=False)
+    #             save_to_npz(img_inputs, img_outputs, img_candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False)
+    #
+    # print("Finished processing all items.")
+
 
 def main_GPT():
 
@@ -239,214 +448,6 @@ def main_GPT():
                 save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=False)
 
     print("Finished processing all items.")
-
-def main_BERT():
-
-    # Initialize device, model
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    num_gpus = torch.cuda.device_count()
-    # print(num_gpus)
-
-    transformer_model = TransformerModelv10(depth=20, num_heads=64, cat=True).to(device)
-
-    # initialize weights
-    transformer_model.apply(initialize_weights_he)
-
-    # initialize autoencoder
-    # autoencoder = ResNetAutoencoder(embed_dim=768).to(device)
-
-    if num_gpus > 1:  # use multiple GPUs
-        transformer_model = nn.DataParallel(transformer_model)
-        # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
-        # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
-
-    # load autoencoder state dict
-    # state_dict = torch.load('../modelsaves/ae-v2-itr0/ae-v2-itr0_ep10.pth') # for I-RAVEN
-    # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
-    # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
-    # autoencoder.load_state_dict(state_dict)
-    # autoencoder.eval()
-
-    ''' Load saved model '''
-    # state_dict_tr = torch.load('../modelsaves/v9-itr0/tf_v9-itr0_ep200.pth')
-    # transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
-
-    ''' Use for PGM or I-RAVEN dataset '''
-    # root_dir = '../pgm/neutral/'
-    root_dir = '../i_raven_data/'
-    train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:5]
-    val_files = val_files[:5]
-
-    ''' Use RAVEN dataset '''
-    # root_dir = '../RAVEN-10000'
-    # all_files = gather_files(root_dir)
-    # num_files = len(all_files)
-    # train_proportion = 0.7
-    # val_proportion = 0.15
-    # # test proportion is 1 - train_proportion - val_proportion
-    # train_files = all_files[:int(num_files * train_proportion)]
-    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
-    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
-
-    ''' Transformer model v9 '''
-    train_dataset = RPMSentencesSupervisedRaw(train_files, \
-                                           embed_dim=768, \
-                                           device=device)
-    # create dataset for printing results of problems in training set
-    # train_print_dataset = RPMFullSentencesRaw(train_files, \
-    #                                        embed_dim=768, \
-    #                                        device=device)
-    val_dataset = RPMFullSentencesRaw(val_files, \
-                                            embed_dim=768, \
-                                            device=device)
-
-    ''' Define Hyperparameters '''
-    EPOCHS = 100
-    BATCH_SIZE = 32
-    LEARNING_RATE = 0.01
-    MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 1
-    BATCHES_PER_PRINT = 50
-    EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr7"
-    VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 0.01/160**2 # scaling regularizer
-    DELTA = 1e-8 # for log stability
-
-    ''' Instantiate data loaders, optimizer, criterion '''
-    train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    # train_print_dataloader = DataLoader(train_print_dataset, batch_size=BATCH_SIZE, shuffle=True) # for saving images
-    val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    train_length = len(train_dataloader)
-    batches_per_log = train_length // LOGS_PER_EPOCH
-
-    # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
-    #                              lr=LEARNING_RATE, momentum = MOMENTUM)
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
-
-    # scheduler = ExponentialLR(optimizer, gamma=0.98)
-    criterion = nn.MSELoss()
-
-    # Training loop
-    for epoch in range(EPOCHS):
-        count = 0
-        tot_loss = 0
-        times = 0
-        for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
-
-            if idx % BATCHES_PER_PRINT == 0:
-                start_time = time.time()
-
-            inputs = inputs.to(device)
-            targets = targets.to(device)
-            mask_tensors = mask_tensors.to(device)
-
-            outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
-                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
-            loss = criterion(outputs,targets) + regularizer
-            # loss = criterion(outputs,targets)
-
-            tot_loss += loss.item() # update running averages
-            count += 1
-
-            loss.backward()
-            optimizer.step()
-
-            if (idx+1) % BATCHES_PER_PRINT == 0:
-                end_time = time.time()
-                batch_time = end_time - start_time
-                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
-                # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
-
-            if (idx+1) % batches_per_log == 0:
-                # val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
-                # output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
-                print(output)
-                # logging.info(output)
-                with open(logfile, 'a') as file:
-                    file.write(output)
-
-                tot_loss = 0
-                count = 0
-
-                # Save guesses to npz file
-                np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch+1}_btch{idx}.npz",
-                                    input=np.array(inputs[0,:,:,:,:].squeeze().cpu()),
-                                    output=np.array(outputs[0,:,:,:].squeeze().detach().cpu()),
-                                    target=np.array(targets[0,:,:,:].squeeze().cpu()))
-
-                if times%5 == 0:
-
-                    gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
-
-                    # Inspect gradients
-                    for name, param in transformer_model.named_parameters():
-                        if param.grad is not None:
-                            with open(gradfile, 'a') as file:
-                                file.write(f"Gradient for {name}: {param.grad}\n")
-                        else:
-                            with open(logfile, 'a') as file:
-                                file.write(f"No gradient for {name}\n")
-                    times += 1
-
-            optimizer.zero_grad()
-
-        # if (epoch+1) % EPOCHS_PER_SAVE == 0:
-        #     save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-        #     os.makedirs(os.path.dirname(save_file), exist_ok=True)
-        #     torch.save(transformer_model.state_dict(), save_file)
-
-        # scheduler.step()
-
-    # def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False):
-    #
-    #     if inv:
-    #         input_images = np.array([autoencoder.module.decode_inv(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
-    #         output_images = autoencoder.module.decode_inv(outputs.unsqueeze(0)).cpu().detach().numpy()
-    #         candidate_images = np.array([autoencoder.module.decode_inv(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
-    #     else:
-    #         input_images = np.array([autoencoder.module.decode(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
-    #         output_images = autoencoder.module.decode(outputs.unsqueeze(0)).cpu().detach().numpy()
-    #         candidate_images = np.array([autoencoder.module.decode(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
-    #
-    #     # Save to npz file
-    #     np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_{idx}.npz",
-    #                         inputs=input_images,
-    #                         outputs=output_images,
-    #                         candidates=candidate_images)
-    #
-    # # Iterate over the dataset
-    # for idx, (inputs, targets, _, target_nums, embeddings, mask_tensors) in enumerate(train_print_dataloader):
-    #     # if (idx+1) % 22 == 0:  # Check if the idx is a multiple of 22
-    #     if True:  # Check if the idx is a multiple of 22
-    #         print(f"Processing index: {idx}")
-    #
-    #         # move images to the device
-    #         inputs = inputs.to(device)  # shape (B,9,model_dim)
-    #         candidates = embeddings[:,8:,:].to(device)  # shape (B, 8, embed_dim)
-    #         targets = target_nums.to(device)  # shape (B,)
-    #
-    #         transformer_model.eval()
-    #         with torch.no_grad():  # Disable gradient computation for inference
-    #             # Perform a forward pass to get the outputs
-    #             outputs = transformer_model(inputs, mask_tensors) # get embedding of guess
-    #             indices = list(range(inputs.size(0))) + []
-    #             inputs[:,8,:] = targets.unsqueeze(1) # fill in the answer in the grid
-    #
-    #             # sample just one example per batch
-    #             img_inputs = inputs[0,:,:].squeeze()
-    #             img_outputs = outputs[0, :].squeeze()
-    #             img_candidates = candidates[0, :, :].squeeze()
-    #
-    #             # Convert the tensors to images and save them
-    #             # save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=False)
-    #             save_to_npz(img_inputs, img_outputs, img_candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False)
-    #
-    # print("Finished processing all items.")
 
 if __name__ == "__main__":
     # main_GPT()
