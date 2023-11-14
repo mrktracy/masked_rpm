@@ -305,9 +305,9 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 1000
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.1
     MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 50
+    LOGS_PER_EPOCH = 2
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
     VERSION = "v10-itr0"
