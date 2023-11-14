@@ -342,7 +342,7 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            # print(outputs.size(), targets.size())
+            print(outputs == torch.ones_like(outputs))
             loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages

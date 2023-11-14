@@ -252,6 +252,7 @@ def displayresults_BERT():
     data = np.load(path)
     problem_grid = data['input']
     output = data['output']
+    print(output)
     target = data['target']
 
     for i in range(3):
