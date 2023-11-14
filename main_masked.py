@@ -10,7 +10,7 @@ import time
 import random
 from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT
 from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw, RPMFullSentencesRaw
-from models import TransformerModelv9, TransformerModelv8
+from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
