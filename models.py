@@ -27,8 +27,10 @@ class TransformerModelv10(nn.Module): # takes in images, embeds, performs self-a
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
+            # Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
+            #       norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, drop_path=0.5*((i+1)/depth))
             Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
-                  norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, drop_path=0.5*((i+1)/depth))
+                  norm_layer=norm_layer)
             for i in range(depth)])
 
         self.norm = norm_layer(self.model_dim)
