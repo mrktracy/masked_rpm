@@ -261,7 +261,7 @@ def main_BERT():
         # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
     # load autoencoder state dict
-    state_dict = torch.load('../modelsaves/ae-v2-itr0/ae-v2-itr0_ep10.pth') # for I-RAVEN
+    # state_dict = torch.load('../modelsaves/ae-v2-itr0/ae-v2-itr0_ep10.pth') # for I-RAVEN
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
     # state_dict = torch.load('../modelsaves/autoencoder_v0.pth') # for RAVEN
     # autoencoder.load_state_dict(state_dict)
@@ -303,7 +303,7 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 200
+    EPOCHS = 10
     BATCH_SIZE = 32
     LEARNING_RATE = 0.01
     MOMENTUM = 0.90
