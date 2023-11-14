@@ -362,9 +362,9 @@ def main_BERT():
                 # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
 
             if (idx+1) % batches_per_log == 0:
-                val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
+                # val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
                 # output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}. val: {val_loss:.2f}\n"
+                output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
                 print(output)
                 # logging.info(output)
                 with open(logfile, 'a') as file:
@@ -395,10 +395,10 @@ def main_BERT():
 
             optimizer.zero_grad()
 
-        if (epoch+1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-            os.makedirs(os.path.dirname(save_file), exist_ok=True)
-            torch.save(transformer_model.state_dict(), save_file)
+        # if (epoch+1) % EPOCHS_PER_SAVE == 0:
+        #     save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+        #     os.makedirs(os.path.dirname(save_file), exist_ok=True)
+        #     torch.save(transformer_model.state_dict(), save_file)
 
         # scheduler.step()
 
