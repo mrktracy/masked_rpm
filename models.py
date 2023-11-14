@@ -33,8 +33,6 @@ class TransformerModelv10(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm = norm_layer(self.model_dim)
 
-        self.sig = nn.Sigmoid()
-
         self.decoder = ResNetDecoder(embed_dim=embed_dim)
 
     def forward(self, ims, mask_tensor):
@@ -56,11 +54,10 @@ class TransformerModelv10(nn.Module): # takes in images, embeds, performs self-a
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
 
-        guess = torch.sum(x*mask_tensor, dim=1) # make guess shape (batch_size, model_dim)
+        guess = torch.sum(x*mask_tensor, dim=1) # make guess shape (B, model_dim)
         if self.cat:
             guess = guess[:,:self.embed_dim] # take only the first embed_dim as guess
 
-        guess = self.sig(guess) # put on same scale as targets; shape (1, embed_dim)
         guess = self.decoder(guess) # create an image
 
         return guess
@@ -103,7 +100,6 @@ class ResNetEncoder(nn.Module):
             ResidualBlock(128, 256, 2), # N, 256, 10, 10
             nn.Flatten(), # N, 256*10*10
             nn.Linear(256*10*10, self.embed_dim), # N, embed_dim
-            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -132,8 +128,7 @@ class ResNetDecoder(nn.Module):
         )
 
     def forward(self, x):
-        x = self.decoder(x)
-        return x
+        return self.decoder(x)
 
 class TransformerModelv9(nn.Module):
     def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
