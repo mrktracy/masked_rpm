@@ -232,6 +232,38 @@ def displayresults_tr_grid_masked():
 
     axs3.imshow(outputs.squeeze(), cmap='gray')
 
+def displayresults_tr_grid_masked():
+    random.seed(time.time())
+    filepath = "../tr_results/v10-itr0/"
+    files = os.listdir(filepath)
+    npz_files = [file for file in files if file.endswith(".npz")]
+
+    random.shuffle(npz_files)
+
+    # guesses = []
+    fig1, axs1 = plt.subplots(3, 3)
+    fig2, axs2 = plt.subplots(2, 4)
+    fig3, axs3 = plt.subplots(1,1)
+
+    file = npz_files[0]
+    print(file)
+
+    path = os.path.join(filepath, file)
+    data = np.load(path)
+    problem_grid = data['input']
+    outputs = data['output']
+    candidates = data['candidate']
+
+    for i in range(3):
+        for j in range(3):
+            axs1[i, j].imshow(problem_grid[i*3 + j,:,:,:].squeeze(), cmap='gray')
+
+    for i in range(2):
+        for j in range(4):
+            axs2[i, j].imshow(candidates[2*i + j, :].squeeze(), cmap='gray')
+
+    axs3.imshow(outputs.squeeze(), cmap='gray')
+
 if __name__ == "__main__":
     # calc_mean_std()
     # visualizedata()

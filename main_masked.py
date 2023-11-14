@@ -369,9 +369,9 @@ def main_BERT():
 
                 # Save guesses to npz file
                 np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch+1}_btch{idx}.npz",
-                                    input=np.array(inputs[0,:,:,:,:].squeeze()),
-                                    output=np.array(outputs[0,:,:,:].squeeze()),
-                                    target=np.array(targets[0,:,:,:].squeeze()))
+                                    input=np.array(inputs[0,:,:,:,:].squeeze().cpu()),
+                                    output=np.array(outputs[0,:,:,:].squeeze().cpu()),
+                                    target=np.array(targets[0,:,:,:].squeeze().cpu()))
 
                 if times%5 == 0:
 
