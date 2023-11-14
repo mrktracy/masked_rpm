@@ -242,7 +242,7 @@ def displayresults_BERT():
 
     # guesses = []
     fig1, axs1 = plt.subplots(3, 3)
-    fig2, axs2 = plt.subplots(2, 4)
+    fig2, axs2 = plt.subplots(1, 1)
     fig3, axs3 = plt.subplots(1,1)
 
     file = npz_files[0]
@@ -256,7 +256,7 @@ def displayresults_BERT():
 
     for i in range(3):
         for j in range(3):
-            axs1[i, j].imshow(problem_grid[i*3 + j,:,:,:].squeeze(), cmap='gray')
+            axs1[i, j].imshow(problem_grid[i*3 + j,:,:].squeeze(), cmap='gray')
 
     axs2.imshow(target.squeeze(), cmap='gray')
     axs3.imshow(output.squeeze(), cmap='gray')
