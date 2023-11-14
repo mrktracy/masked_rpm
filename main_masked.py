@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
-logfile = "../tr_results/v10-itr3/runlog.txt"
+logfile = "../tr_results/v10-itr4/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -247,7 +247,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv10(depth=10, num_heads=32, cat=True).to(device)
+    transformer_model = TransformerModelv10(depth=20, num_heads=64, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -310,7 +310,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 100
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr3"
+    VERSION = "v10-itr4"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 1/(160*160) # scaling regularizer
     DELTA = 1e-8 # for log stability
