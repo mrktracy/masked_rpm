@@ -341,7 +341,7 @@ def main_BERT():
             targets = targets.to(device)
             mask_tensors = mask_tensors.to(device)
 
-            outputs = transformer_model(inputs, mask_tensors) # (B,embed_dim)
+            outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
             loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages
