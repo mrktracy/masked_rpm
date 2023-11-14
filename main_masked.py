@@ -103,7 +103,7 @@ def main_BERT():
     EPOCHS_PER_SAVE = 1
     VERSION = "v10-itr10"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 1/160**2 # scaling regularizer
+    ALPHA = 0.01 # scaling regularizer
     DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
