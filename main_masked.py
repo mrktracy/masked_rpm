@@ -135,9 +135,9 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
-                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
-            loss = criterion(outputs,targets) + regularizer
+            # regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
+            #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
+            # loss = criterion(outputs,targets) + regularizer
             # loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages
@@ -164,17 +164,10 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
-                # pix_mean = 0.9031295340401794
-                # pix_std = 0.263461851960206
-                # Save guesses to npz file
-                # np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch+1}_btch{idx}.npz",
-                #                     input=np.array(inputs[0,:,:,:,:].squeeze().cpu()*pix_std + pix_mean),
-                #                     output=np.array(outputs[0,:,:,:].squeeze().detach().cpu()*pix_std + pix_mean),
-                #                     target=np.array(targets[0,:,:,:].squeeze().cpu()*pix_std + pix_mean))
-                np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
-                                    input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
-                                    output=np.array(outputs[0, :, :, :].squeeze().detach().cpu()),
-                                    target=np.array(targets[0, :, :, :].squeeze().cpu()))
+                # np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
+                #                     input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
+                #                     output=np.array(outputs[0, :, :, :].squeeze().detach().cpu()),
+                #                     target=np.array(targets[0, :, :, :].squeeze().cpu()))
 
                 if times%5 == 0:
 
@@ -198,53 +191,6 @@ def main_BERT():
             torch.save(transformer_model.state_dict(), save_file)
 
         scheduler.step()
-
-    # def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False):
-    #
-    #     if inv:
-    #         input_images = np.array([autoencoder.module.decode_inv(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
-    #         output_images = autoencoder.module.decode_inv(outputs.unsqueeze(0)).cpu().detach().numpy()
-    #         candidate_images = np.array([autoencoder.module.decode_inv(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
-    #     else:
-    #         input_images = np.array([autoencoder.module.decode(input.unsqueeze(0)).cpu().detach().numpy() for input in inputs])
-    #         output_images = autoencoder.module.decode(outputs.unsqueeze(0)).cpu().detach().numpy()
-    #         candidate_images = np.array([autoencoder.module.decode(candidate.unsqueeze(0)).cpu().detach().numpy() for candidate in candidates])
-    #
-    #     # Save to npz file
-    #     np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_{idx}.npz",
-    #                         inputs=input_images,
-    #                         outputs=output_images,
-    #                         candidates=candidate_images)
-    #
-    # # Iterate over the dataset
-    # for idx, (inputs, targets, _, target_nums, embeddings, mask_tensors) in enumerate(train_print_dataloader):
-    #     # if (idx+1) % 22 == 0:  # Check if the idx is a multiple of 22
-    #     if True:  # Check if the idx is a multiple of 22
-    #         print(f"Processing index: {idx}")
-    #
-    #         # move images to the device
-    #         inputs = inputs.to(device)  # shape (B,9,model_dim)
-    #         candidates = embeddings[:,8:,:].to(device)  # shape (B, 8, embed_dim)
-    #         targets = target_nums.to(device)  # shape (B,)
-    #
-    #         transformer_model.eval()
-    #         with torch.no_grad():  # Disable gradient computation for inference
-    #             # Perform a forward pass to get the outputs
-    #             outputs = transformer_model(inputs, mask_tensors) # get embedding of guess
-    #             indices = list(range(inputs.size(0))) + []
-    #             inputs[:,8,:] = targets.unsqueeze(1) # fill in the answer in the grid
-    #
-    #             # sample just one example per batch
-    #             img_inputs = inputs[0,:,:].squeeze()
-    #             img_outputs = outputs[0, :].squeeze()
-    #             img_candidates = candidates[0, :, :].squeeze()
-    #
-    #             # Convert the tensors to images and save them
-    #             # save_to_npz(img_inputs, img_outputs, img_candidates, (idx+1)//22, VERSION, VERSION_SUBFOLDER, inv=False)
-    #             save_to_npz(img_inputs, img_outputs, img_candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False)
-    #
-    # print("Finished processing all items.")
-
 
 def main_GPT():
 
