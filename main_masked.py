@@ -326,7 +326,7 @@ def main_BERT():
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
-    scheduler = ExponentialLR(optimizer, gamma=0.98)
+    # scheduler = ExponentialLR(optimizer, gamma=0.98)
     criterion = nn.MSELoss()
 
     # Training loop
@@ -397,7 +397,7 @@ def main_BERT():
             os.makedirs(os.path.dirname(save_file), exist_ok=True)
             torch.save(transformer_model.state_dict(), save_file)
 
-        scheduler.step()
+        # scheduler.step()
 
     # def save_to_npz(inputs, outputs, candidates, idx, VERSION, VERSION_SUBFOLDER, inv=False):
     #

@@ -238,7 +238,8 @@ def displayresults_BERT():
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
-    random.shuffle(npz_files)
+    # random.shuffle(npz_files)
+    npz_files.sort()
 
     # guesses = []
     fig1, axs1 = plt.subplots(3, 3)
