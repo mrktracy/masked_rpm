@@ -234,7 +234,7 @@ def displayresults_tr_grid_masked():
 
 def displayresults_BERT():
     random.seed(time.time())
-    filepath = "../tr_results/v10-itr0/"
+    filepath = "../tr_results/v10-itr2/"
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
