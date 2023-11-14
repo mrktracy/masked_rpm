@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
-logfile = "../tr_results/v10-itr5/runlog.txt"
+logfile = "../tr_results/v10-itr6/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -344,9 +344,10 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
-                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
-            loss = criterion(outputs,targets) + regularizer
+            # regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
+            #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
+            # loss = criterion(outputs,targets) + regularizer
+            loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages
             count += 1
