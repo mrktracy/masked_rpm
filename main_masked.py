@@ -344,8 +344,8 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            regularizer = ALPHA*(torch.mean(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
-                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3])))
+            regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
+                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
             loss = criterion(outputs,targets) + regularizer
 
             tot_loss += loss.item() # update running averages
