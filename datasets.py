@@ -52,7 +52,6 @@ class RPMSentencesSupervisedRaw(Dataset):
 class RPMFullSentencesRaw(Dataset):
     def __init__(self, files, autoencoder, embed_dim, device):
         self.files = files
-        self.autoencoder = autoencoder
         self.embed_dim = embed_dim
         self.device = device
 
@@ -71,8 +70,6 @@ class RPMFullSentencesRaw(Dataset):
         sentence = imagetensor[0:8, :, :, :] # size (8, 1, 160, 160)
         mask = torch.ones_like(sentence[0,:,:,:]).to(self.device)  # create masking token
         masked_sentence = torch.cat([sentence, mask], 0)  # create masked sentence
-
-
 
         mask_tensor = torch.zeros(9, self.embed_dim)
         mask_tensor[8, :] = mask_exp  # ones where the mask is, 0s elsewhere
