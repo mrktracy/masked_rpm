@@ -325,7 +325,7 @@ def main_BERT():
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
     scheduler = ExponentialLR(optimizer, gamma=0.98)
-    criterion = nn.MSELoss(reduction='sum')
+    criterion = nn.MSELoss()
 
     # Training loop
     for epoch in range(EPOCHS):
