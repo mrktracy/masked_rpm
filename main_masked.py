@@ -247,7 +247,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv9(depth=20, num_heads=32, cat=True).to(device)
+    transformer_model = TransformerModelv10(depth=10, num_heads=32, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -295,9 +295,9 @@ def main_BERT():
                                            embed_dim=768, \
                                            device=device)
     # create dataset for printing results of problems in training set
-    train_print_dataset = RPMFullSentencesRaw(train_files, \
-                                           embed_dim=768, \
-                                           device=device)
+    # train_print_dataset = RPMFullSentencesRaw(train_files, \
+    #                                        embed_dim=768, \
+    #                                        device=device)
     val_dataset = RPMFullSentencesRaw(val_files, \
                                             embed_dim=768, \
                                             device=device)
