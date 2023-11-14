@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
 import os
 import logging
 
-logfile = "../tr_results/v10-itr11/runlog.txt"
+logfile = "../tr_results/v10-itr7/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -305,14 +305,14 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 100
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.01
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 50
     EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr11"
+    VERSION = "v10-itr7"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 0.01 # scaling regularizer
+    ALPHA = 0.01/160**2 # scaling regularizer
     DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -344,10 +344,10 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            # regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
-            #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
-            # loss = criterion(outputs,targets) + regularizer
-            loss = criterion(outputs,targets)
+            regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
+                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
+            loss = criterion(outputs,targets) + regularizer
+            # loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages
             count += 1
