@@ -164,11 +164,6 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
-                # np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
-                #                     input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
-                #                     output=np.array(outputs[0, :, :, :].squeeze().detach().cpu()),
-                #                     target=np.array(targets[0, :, :, :].squeeze().cpu()))
-
                 if times%5 == 0:
 
                     gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
@@ -181,6 +176,11 @@ def main_BERT():
                         else:
                             with open(logfile, 'a') as file:
                                 file.write(f"No gradient for {name}\n")
+
+                    np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
+                                        input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
+                                        output=np.array(outputs[0, :, :, :].squeeze().detach().cpu()),
+                                        target=np.array(targets[0, :, :, :].squeeze().cpu()))
                     times += 1
 
             optimizer.zero_grad()
