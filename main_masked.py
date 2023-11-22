@@ -65,7 +65,7 @@ def main_BERT():
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
-    root_dir = '../i_raven_data/'
+    root_dir = '../i_raven_data_cnst/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files = train_files[:5]
     # val_files = val_files[:5]
