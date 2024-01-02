@@ -23,7 +23,7 @@ MarkupSafe
 matplotlib
 mock
 more-itertools
-mpmath
+mpmathy
 networkx
 numpy
 packaging
@@ -32,7 +32,6 @@ pycparser
 pyOpenSSL
 pyparsing
 python-dateutil
-pytorch
 PyYAML
 regex
 requests
@@ -43,7 +42,6 @@ six
 sympy
 timm
 tokenizers
-torchvision
 tqdm
 transformers
 typing_extensions
