@@ -135,10 +135,10 @@ def main_BERT():
             mask_tensors = mask_tensors.to(device)
 
             outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
-                                 torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
-            loss = criterion(outputs,targets) + regularizer
-            # loss = criterion(outputs,targets)
+            # regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
+            #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
+            # loss = criterion(outputs,targets) + regularizer
+            loss = criterion(outputs,targets)
 
             tot_loss += loss.item() # update running averages
             count += 1
@@ -185,10 +185,10 @@ def main_BERT():
 
             optimizer.zero_grad()
 
-        if (epoch+1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-            os.makedirs(os.path.dirname(save_file), exist_ok=True)
-            torch.save(transformer_model.state_dict(), save_file)
+        # if (epoch+1) % EPOCHS_PER_SAVE == 0:
+        #     save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+        #     os.makedirs(os.path.dirname(save_file), exist_ok=True)
+        #     torch.save(transformer_model.state_dict(), save_file)
 
         scheduler.step()
 

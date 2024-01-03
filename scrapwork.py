@@ -234,7 +234,7 @@ def displayresults_tr_grid_masked():
 
 def displayresults_BERT():
     random.seed(time.time())
-    filepath = "../tr_results/v10-itr12/"
+    filepath = "../tr_results/v10-itr15/"
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
@@ -248,7 +248,7 @@ def displayresults_BERT():
 
     # file = npz_files[0]
     # print(file)
-    file = "imgs_ep100_btch5.npz"
+    file = "imgs_ep77_btch5.npz"
 
     path = os.path.join(filepath, file)
     data = np.load(path)
