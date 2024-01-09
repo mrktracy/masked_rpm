@@ -6,13 +6,13 @@ from torch.optim.lr_scheduler import StepLR, ExponentialLR
 import time
 import random
 from evaluate_cln import evaluate_model_masked_BERT
-from datasets_cln import RPMSentencesSupervisedRaw
+from datasets_cln import RPMSentencesSupervisedRaw, RPMFullSentencesRaw
 from models_cln import TransformerModelv10
 import os
 import re
 # import logging # commented out because logging was giving errors
 
-logfile = "../tr_results/v10-itr15/runlog.txt"
+logfile = "../../tr_results/v10-itr15/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -63,18 +63,18 @@ def main_BERT():
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     ''' Load saved model '''
-    # state_dict_tr = torch.load('../modelsaves/v9-itr0/tf_v9-itr0_ep200.pth')
+    # state_dict_tr = torch.load('../../modelsaves/v9-itr0/tf_v9-itr0_ep200.pth')
     # transformer_model.load_state_dict(state_dict_tr)
     # transformer_model.eval()
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
-    root_dir = '../i_raven_data_cnst/'
+    root_dir = '../../i_raven_data_cnst/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:5]
-    val_files = val_files[:5]
+    # train_files = train_files[:5]
+    # val_files = val_files[:5]
 
-    ''' Transformer model v9 '''
+    ''' Transformer model v10 '''
     train_dataset = RPMSentencesSupervisedRaw(train_files, \
                                            embed_dim=768, \
                                            device=device)
@@ -151,7 +151,7 @@ def main_BERT():
 
                 if times%5 == 0:
 
-                    gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
+                    gradfile = f"../../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
 
                     # Inspect gradients
                     for name, param in transformer_model.named_parameters():
@@ -162,7 +162,7 @@ def main_BERT():
                             with open(logfile, 'a') as file:
                                 file.write(f"No gradient for {name}\n")
 
-                    np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
+                    np.savez_compressed(f"../../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
                                         input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
                                         output=np.array(outputs[0, :, :, :].squeeze().detach().cpu()),
                                         target=np.array(targets[0, :, :, :].squeeze().cpu()))
@@ -171,7 +171,7 @@ def main_BERT():
             optimizer.zero_grad()
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+            save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
             os.makedirs(os.path.dirname(save_file), exist_ok=True)
             torch.save(transformer_model.state_dict(), save_file)
 
