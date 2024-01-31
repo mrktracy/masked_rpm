@@ -6,6 +6,67 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
+class TransformerModelv11(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
+    def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
+                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):
+        super(TransformerModelv11, self).__init__()
+
+        self.cat = cat
+        self.embed_dim = embed_dim
+        self.grid_size = grid_size
+        self.perception = ResNetEncoder(embed_dim=embed_dim)
+
+        if self.cat:
+            self.model_dim = 2*self.embed_dim
+        else:
+            self.model_dim = self.embed_dim
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size**2, self.embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.embed_dim, grid_size=self.grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
+                  norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, drop_path=0.5*((i+1)/depth))
+            # Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
+            #       norm_layer=norm_layer)
+            for i in range(depth)])
+
+        self.norm = norm_layer(self.model_dim)
+
+        self.decoder = ResNetDecoder(embed_dim=embed_dim)
+
+    def forward(self, ims, mask_tensor):
+        batch_size = ims.size(0)  # Get the batch size from the first dimension of x
+
+        ims_reshaped = ims.view(-1, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
+        x_reshaped = self.perception(ims_reshaped) # x_reshaped is (B*9, embed_dim)
+        x = x_reshaped.view(batch_size, 9, -1) # x is (B, 9, embed_dim)
+
+        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1) # expand to fit batch (B, 9, embed_dim)
+
+        if self.cat:
+            x = torch.cat([x, final_pos_embed], dim=2)  # add positional embeddings
+            mask_tensor = torch.cat([mask_tensor, mask_tensor], dim=2)
+        else:
+            x = x + final_pos_embed  # add positional embeddings
+
+        for blk in self.blocks: # multi-headed self-attention layer
+            x = blk(x_q=x, x_k=x, x_v=x)
+        x = self.norm(x)
+
+        guess = torch.sum(x*mask_tensor, dim=1) # make guess shape (B, model_dim)
+        if self.cat:
+            guess = guess[:,:self.embed_dim] # take only the first embed_dim as guess
+
+        guess = self.decoder(guess) # create an image
+
+        recreation_reshaped = self.decoder(x_reshaped)
+        recreation = recreation_reshaped.view(batch_size, 9, 1, 160, 160) # x is (B, 9, 1, 160, 160)
+
+        return guess, recreation
+
 class TransformerModelv10(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
                  mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):

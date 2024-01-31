@@ -10,11 +10,11 @@ import time
 import random
 from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT
 from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw, RPMFullSentencesRaw
-from models import TransformerModelv9, TransformerModelv8, TransformerModelv10
+from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv11
 import os
 import logging
 
-logfile = "../tr_results/v10-itr15/runlog.txt"
+logfile = "../tr_results/v11-itr0/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -38,7 +38,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv10(depth=20, num_heads=64, cat=False).to(device)
+    transformer_model = TransformerModelv11(depth=20, num_heads=64, cat=False).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -70,17 +70,6 @@ def main_BERT():
     train_files = train_files[:5]
     val_files = val_files[:5]
 
-    ''' Use RAVEN dataset '''
-    # root_dir = '../RAVEN-10000'
-    # all_files = gather_files(root_dir)
-    # num_files = len(all_files)
-    # train_proportion = 0.7
-    # val_proportion = 0.15
-    # # test proportion is 1 - train_proportion - val_proportion
-    # train_files = all_files[:int(num_files * train_proportion)]
-    # val_files = all_files[int(num_files * train_proportion):int(num_files * (train_proportion + val_proportion))]
-    # # test_files = all_files[int(num_files * (train_proportion + val_proportion)):]
-
     ''' Transformer model v9 '''
     train_dataset = RPMSentencesSupervisedRaw(train_files, \
                                            embed_dim=768, \
@@ -101,9 +90,10 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     EPOCHS_PER_SAVE = 1
-    VERSION = "v10-itr15"
+    VERSION = "v11-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 1/160**2 # scaling regularizer
+    ALPHA_1 = 1/160**2 # scaling regularizer
+    ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
     DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -134,11 +124,12 @@ def main_BERT():
             targets = targets.to(device)
             mask_tensors = mask_tensors.to(device)
 
-            outputs = transformer_model(inputs, mask_tensors) # (B,1,160,160)
-            # regularizer = ALPHA*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
+            outputs, recreation = transformer_model(inputs, mask_tensors) # (B,1,160,160)
+            # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
             #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
             # loss = criterion(outputs,targets) + regularizer
-            loss = criterion(outputs,targets)
+            loss = ALPHA_2*criterion(outputs, targets) + (1-ALPHA_2)*criterion(inputs, recreation)
+            # loss = criterion(outputs, targets)
 
             tot_loss += loss.item() # update running averages
             count += 1
