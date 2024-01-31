@@ -4,13 +4,16 @@ import os
 import time
 import matplotlib
 import matplotlib.pyplot as plt
-from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
-from datasets import RPMSentencesRaw
+# from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
+# from datasets import RPMSentencesRaw
 import torch.nn as nn
-import torch
-from torch.utils.data import DataLoader
+# import torch
+# from torch.utils.data import DataLoader
+import sys
 matplotlib.use('TkAgg')
 random.seed(time.time())
+
+print(sys.executable)
 
 def calc_mean_std():
 
@@ -248,7 +251,7 @@ def displayresults_BERT():
 
     # file = npz_files[0]
     # print(file)
-    file = "imgs_ep300_btch5.npz"
+    file = "imgs_ep42_btch5.npz"
 
     path = os.path.join(filepath, file)
     data = np.load(path)
