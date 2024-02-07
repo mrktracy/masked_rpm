@@ -85,12 +85,12 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 300
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.0005
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     EPOCHS_PER_SAVE = 1
-    VERSION = "v11-itr2"
+    VERSION = "v11-itr3"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA_1 = 1/160**2 # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
