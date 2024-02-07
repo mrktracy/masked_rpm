@@ -12,7 +12,7 @@ random.seed(time.time())
 
 def displayresults_BERT():
     random.seed(time.time())
-    filepath = "../../tr_results/v11-itr0/"
+    filepath = "../../tr_results/v11-itr1/"
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
@@ -26,7 +26,7 @@ def displayresults_BERT():
 
     # file = npz_files[0]
     # print(file)
-    file = "imgs_ep41_btch5.npz"
+    file = "imgs_ep74_btch5.npz"
 
     path = os.path.join(filepath, file)
     data = np.load(path)

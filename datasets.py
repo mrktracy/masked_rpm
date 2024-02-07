@@ -6,8 +6,45 @@ import random
 from collections import defaultdict
 from transformers import ViTImageProcessor, ViTModel, ViTConfig
 
-# 1. Dataset
-class RPMSentencesSupervisedRaw(Dataset):
+# Dataset for training, version 1
+class RPMSentencesSupervisedRaw_v1(Dataset):
+    def __init__(self, files, embed_dim, device):
+        self.files = files
+        self.embed_dim = embed_dim
+        self.device = device
+
+    def __getitem__(self, idx):
+        fileidx = idx // (9*4)
+        panelidx = idx % 9
+
+        filename = self.files[fileidx]
+        data = np.load(filename)
+        image = data['image']
+        indices = list(range(8)) + [8 + data['target']]
+        imagetensor = torch.from_numpy(image[indices,:,:]).float() / 255 # convert context panels to tensor
+        imagetensor = imagetensor.unsqueeze(1).to(self.device) # (9, 1, 160, 160)
+
+        target = imagetensor.clone()  # extract target image
+        imagetensor[panelidx, :, :, :] = torch.ones_like(target)  # replace with mask
+
+        # rotate masked inputs grid
+        masked_sen_grid = imagetensor.reshape([3, 3, 1, 160, 160])
+        masked_sen_grid_rotated = torch.rot90(masked_sen_grid, k=idx%4, dims=[0,1])
+        final_sentence = masked_sen_grid_rotated.reshape([9, 1, 160, 160])
+
+        # rotate target grid
+        masked_target_grid = target.reshape([3, 3, 1, 160, 160])
+        masked_target_grid_rotated = torch.rot90(masked_target_grid, k=idx % 4, dims=[0, 1])
+        final_target = masked_target_grid_rotated.reshape([9, 1, 160, 160])
+
+        return final_sentence, final_target
+
+    def __len__(self):
+        length = len(self.files)*(9*4)
+        return length
+
+# Dataset for training, version 0
+class RPMSentencesSupervisedRaw_v0(Dataset):
     def __init__(self, files, embed_dim, device):
         self.files = files
         self.embed_dim = embed_dim

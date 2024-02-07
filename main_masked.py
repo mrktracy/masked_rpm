@@ -9,12 +9,12 @@ from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
 from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT
-from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw, RPMFullSentencesRaw
+from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw_v1, RPMFullSentencesRaw
 from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv11
 import os
 import logging
 
-logfile = "../tr_results/v11-itr1/runlog.txt"
+logfile = "../tr_results/v11-itr2/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -71,7 +71,7 @@ def main_BERT():
     val_files = val_files[:5]
 
     ''' Transformer model v9 '''
-    train_dataset = RPMSentencesSupervisedRaw(train_files, \
+    train_dataset = RPMSentencesSupervisedRaw_v1(train_files, \
                                            embed_dim=768, \
                                            device=device)
     # create dataset for printing results of problems in training set
@@ -90,10 +90,10 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     EPOCHS_PER_SAVE = 1
-    VERSION = "v11-itr1"
+    VERSION = "v11-itr2"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA_1 = 1/160**2 # scaling regularizer
-    ALPHA_2 = 0 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
     DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -115,16 +115,15 @@ def main_BERT():
         count = 0
         tot_loss = 0
         times = 0
-        for idx, (inputs, targets, mask_tensors) in enumerate(train_dataloader):
+        for idx, (inputs, targets) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
             targets = targets.to(device)
-            mask_tensors = mask_tensors.to(device)
 
-            outputs, recreation = transformer_model(inputs, mask_tensors) # (B,1,160,160)
+            outputs, recreation = transformer_model(inputs) # (B,1,160,160)
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
             #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
             # loss = criterion(outputs,targets) + regularizer

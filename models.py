@@ -37,18 +37,17 @@ class TransformerModelv11(nn.Module): # takes in images, embeds, performs self-a
 
         self.decoder = ResNetDecoder(embed_dim=embed_dim)
 
-    def forward(self, ims, mask_tensor):
+    def forward(self, ims):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
 
         ims_reshaped = ims.view(-1, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
-        x_reshaped = self.perception(ims_reshaped) # x_reshaped is (B*9, embed_dim)
+        x_reshaped = self.perception.forward(ims_reshaped) # x_reshaped is (B*9, embed_dim)
         x = x_reshaped.view(batch_size, 9, -1) # x is (B, 9, embed_dim)
 
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1) # expand to fit batch (B, 9, embed_dim)
 
         if self.cat:
             x = torch.cat([x, final_pos_embed], dim=2)  # add positional embeddings
-            mask_tensor = torch.cat([mask_tensor, mask_tensor], dim=2)
         else:
             x = x + final_pos_embed  # add positional embeddings
 
@@ -56,14 +55,13 @@ class TransformerModelv11(nn.Module): # takes in images, embeds, performs self-a
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
 
-        guess = torch.sum(x*mask_tensor, dim=1) # make guess shape (B, model_dim)
         if self.cat:
-            guess = guess[:,:self.embed_dim] # take only the first embed_dim as guess
+            x = x[:,:,self.embed_dim] # take only the first embed_dim as guesses
 
-        guess = self.decoder(guess) # create an image
+        final_x_reshaped = x.view(-1, self.embed_dim)
+        guess = self.decoder.forward(final_x_reshaped).view(batch_size, 9, 1, 160, 160) # create images
 
-        recreation_reshaped = self.decoder(x_reshaped)
-        recreation = recreation_reshaped.view(batch_size, 9, 1, 160, 160) # x is (B, 9, 1, 160, 160)
+        recreation = self.decoder.forward(x_reshaped).view(batch_size, 9, 1, 160, 160) # x is (B, 9, 1, 160, 160)
 
         return guess, recreation
 
