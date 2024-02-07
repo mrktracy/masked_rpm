@@ -25,7 +25,7 @@ class RPMSentencesSupervisedRaw_v1(Dataset):
         imagetensor = imagetensor.unsqueeze(1).to(self.device) # (9, 1, 160, 160)
 
         target = imagetensor.clone()  # extract target image
-        imagetensor[panelidx, :, :, :] = torch.ones_like(target)  # replace with mask
+        imagetensor[panelidx, :, :, :] = torch.ones([1,1,160,160])  # replace with mask
 
         # rotate masked inputs grid
         masked_sen_grid = imagetensor.reshape([3, 3, 1, 160, 160])
