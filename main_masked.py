@@ -108,6 +108,7 @@ def main_BERT():
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
     scheduler = ExponentialLR(optimizer, gamma=1)
+    # criterion = nn.MSELoss(delta=0.5)
     criterion = nn.HuberLoss(delta=0.5)
 
     # Training loop
