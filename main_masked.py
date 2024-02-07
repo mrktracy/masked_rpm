@@ -94,7 +94,7 @@ def main_BERT():
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA_1 = 1/(9*160**2) # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    # DELTA = 1e-8 # for log stability
+    DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
