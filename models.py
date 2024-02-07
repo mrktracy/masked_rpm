@@ -56,7 +56,7 @@ class TransformerModelv11(nn.Module): # takes in images, embeds, performs self-a
         x = self.norm(x)
 
         if self.cat:
-            x = x[:,:,self.embed_dim] # take only the first embed_dim as guesses
+            x = x[:,:,:self.embed_dim] # take only the first embed_dim as guesses
 
         final_x_reshaped = x.view(-1, self.embed_dim)
         guess = self.decoder.forward(final_x_reshaped).view(batch_size, 9, 1, 160, 160) # create images
