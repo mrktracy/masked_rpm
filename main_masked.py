@@ -92,9 +92,9 @@ def main_BERT():
     EPOCHS_PER_SAVE = 1
     VERSION = "v11-itr11"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA_1 = 1/160**2 # scaling regularizer
+    # ALPHA_1 = 1/160**2 # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    DELTA = 1e-8 # for log stability
+    # DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -107,7 +107,7 @@ def main_BERT():
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
-    scheduler = ExponentialLR(optimizer, gamma=0.995)
+    scheduler = ExponentialLR(optimizer, gamma=1)
     criterion = nn.MSELoss()
 
     # Training loop
