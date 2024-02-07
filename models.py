@@ -35,7 +35,8 @@ class TransformerModelv11(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm = norm_layer(self.model_dim)
 
-        self.decoder = ResNetDecoder(embed_dim=self.model_dim)
+        # self.decoder = ResNetDecoder(embed_dim=self.model_dim)
+        self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
     def forward(self, ims):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
@@ -51,20 +52,21 @@ class TransformerModelv11(nn.Module): # takes in images, embeds, performs self-a
         else:
             x = x + final_pos_embed  # add positional embeddings
 
-        x_to_decode = x.clone()
+        # x_to_decode = x.clone()
 
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
 
-        # if self.cat:
-        #     x = x[:,:,:self.embed_dim] # take only the first embed_dim as guesses
+        if self.cat:
+            x = x[:,:,:self.embed_dim] # take only the first embed_dim as guesses
 
         final_x_reshaped = x.view(-1, self.model_dim)
         guess = self.decoder.forward(final_x_reshaped).view(batch_size, 9, 1, 160, 160) # create images
 
-        x_to_decode_reshaped = x_to_decode.view(-1, self.model_dim)
-        recreation = self.decoder.forward(x_to_decode_reshaped).view(batch_size, 9, 1, 160, 160) # x is (B, 9, 1, 160, 160)
+        # x_to_decode_reshaped = x_to_decode.view(-1, self.model_dim)
+        # recreation = self.decoder.forward(x_to_decode_reshaped).view(batch_size, 9, 1, 160, 160) # x is (B, 9, 1, 160, 160)
+        recreation = self.decoder.forward(x_reshaped).view(batch_size, 9, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
 
         return guess, recreation
 
