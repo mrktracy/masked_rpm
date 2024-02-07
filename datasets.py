@@ -115,7 +115,7 @@ class RPMFullSentencesRaw(Dataset):
         masked_sentence = torch.cat([sentence, mask], 0)  # create masked sentence
 
         mask_tensor = torch.zeros_like(masked_sentence)
-        mask_tensor[9, :, :, :] = mask # ones where the mask is, 0s elsewhere
+        mask_tensor[8, :, :, :] = mask # ones where the mask is, 0s elsewhere
 
         return masked_sentence, mask_tensor, target_image, target_num, imagetensor
 
