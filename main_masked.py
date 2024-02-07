@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10, 
 import os
 import logging
 
-logfile = "../tr_results/v11-itr4/runlog.txt"
+logfile = "../tr_results/v11-itr5/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -85,12 +85,12 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 300
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.01
     MOMENTUM = 0.90
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     EPOCHS_PER_SAVE = 1
-    VERSION = "v11-itr4"
+    VERSION = "v11-itr5"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA_1 = 1/160**2 # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
