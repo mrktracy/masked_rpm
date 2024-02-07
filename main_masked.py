@@ -85,7 +85,7 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 300
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0005
+    LEARNING_RATE = 0.001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
@@ -108,7 +108,7 @@ def main_BERT():
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
     scheduler = ExponentialLR(optimizer, gamma=1)
-    criterion = nn.L1Loss()
+    criterion = nn.AbsCriterion()
 
     # Training loop
     for epoch in range(EPOCHS):
