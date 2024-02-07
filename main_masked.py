@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10, 
 import os
 import logging
 
-logfile = "../tr_results/v11-itr8/runlog.txt"
+logfile = "../tr_results/v11-itr9/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -38,7 +38,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv11(depth=20, num_heads=64, cat=False).to(device)
+    transformer_model = TransformerModelv11(depth=10, num_heads=64, cat=False).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -90,7 +90,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     EPOCHS_PER_SAVE = 1
-    VERSION = "v11-itr8"
+    VERSION = "v11-itr9"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA_1 = 1/160**2 # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
