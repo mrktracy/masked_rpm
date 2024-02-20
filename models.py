@@ -65,10 +65,14 @@ class TransformerModelv13(nn.Module): # takes in images, embeds, performs self-a
         return guess, recreation
 
     def encode(self, images):
-        self.perception.forward(images) # takes input (B, 1, 160, 160), gives output (B, embed_dim)
+        embeddings = self.perception.forward(images) # takes input (B, 1, 160, 160), gives output (B, embed_dim)
+
+        return embeddings
 
     def decode(self, embeddings):
-        self.decoder.forward(embeddings) # takes input (B, embed_dim), gives output (B, 1, 160, 160)
+        images = self.decoder.forward(embeddings) # takes input (B, embed_dim), gives output (B, 1, 160, 160)
+
+        return images
 
 class TransformerModelv12(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
