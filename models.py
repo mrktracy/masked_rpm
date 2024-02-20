@@ -36,7 +36,8 @@ class TransformerModelv12(nn.Module): # takes in images, embeds, performs self-a
         self.norm = norm_layer(self.model_dim)
 
         self.flatten = nn.Flatten()
-        self.mlp1 = nn.Linear(9 * self.model_dim, 5 * self.model_dim)
+        self.mlp1 = nn.Linear(9 * self.model_dim, self.embed_dim)
+        # self.mlp1 = nn.Linear(9 * self.model_dim, 5 * self.model_dim)
         self.mlp2 = nn.Linear(5 * self.model_dim, 3 * self.model_dim)
         self.mlp3 = nn.Linear(3 * self.model_dim, self.model_dim)
         self.mlp4 = nn.Linear(self.model_dim, self.embed_dim)
@@ -63,8 +64,8 @@ class TransformerModelv12(nn.Module): # takes in images, embeds, performs self-a
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
 
-        x = self.relu(self.mlp1(self.flatten(x)))
-        x = self.mlp4(self.relu(self.mlp3(self.relu(self.mlp2(x)))))
+        x = self.mlp1(self.flatten(x))
+        # x = self.mlp4(self.relu(self.mlp3(self.relu(self.mlp2(self.relu(x))))))
 
         # if self.cat:
         #     x = x[:,:,:self.embed_dim] # take only the first embed_dim as guesses
