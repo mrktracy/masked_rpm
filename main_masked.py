@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10, 
 import os
 import logging
 
-logfile = "../tr_results/v11-itr17/runlog.txt"
+logfile = "../tr_results/v11-itr18/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -90,7 +90,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     # EPOCHS_PER_SAVE = 1
-    VERSION = "v11-itr17"
+    VERSION = "v11-itr18"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
@@ -109,8 +109,8 @@ def main_BERT():
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
     scheduler = ExponentialLR(optimizer, gamma=1)
-    # criterion = nn.MSELoss(delta=0.5)
-    criterion = nn.HuberLoss(delta=0.5)
+    # criterion = nn.MSELoss()
+    criterion = nn.HuberLoss(delta=0.1)
 
     # Training loop
     for epoch in range(EPOCHS):
