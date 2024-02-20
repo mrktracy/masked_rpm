@@ -42,8 +42,7 @@ def evaluate_model_masked_BERT_v13(model, dataloader, device, max_batches = None
             target_nums = target_nums.to(device)
             # mask_tensors = mask_tensors.to(device) # 1s where the mask is, 0s elsewhere
 
-            candidates_embed = model.encode(candidates.view(batch_size*8, 1, 160, 160))
-            candidates_embed = candidates_embed.view(batch_size, 8, -1)
+            candidates_embed = model.encode(candidates.reshape(batch_size*8, 1, 160, 160)).reshape(batch_size, 8, -1)
 
             # forward pass
             outputs, _ = model(inputs)
