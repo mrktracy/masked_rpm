@@ -8,13 +8,13 @@ from torch.optim.lr_scheduler import StepLR, ExponentialLR
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
-from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT
+from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT_v13
 from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw_v0, RPMFullSentencesRaw
-from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv12
+from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv13
 import os
 import logging
 
-logfile = "../tr_results/v12-itr2/runlog.txt"
+logfile = "../tr_results/v13-itr0/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -38,7 +38,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv12(depth=4, num_heads=64, cat=True).to(device)
+    transformer_model = TransformerModelv13(depth=5, num_heads=64, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -90,7 +90,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     # EPOCHS_PER_SAVE = 1
-    VERSION = "v12-itr2"
+    VERSION = "v13-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
@@ -108,9 +108,9 @@ def main_BERT():
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
-    scheduler = ExponentialLR(optimizer, gamma=0.995)
-    # criterion = nn.MSELoss()
-    criterion = nn.HuberLoss(delta=0.5)
+    scheduler = ExponentialLR(optimizer, gamma=1)
+    criterion = nn.MSELoss()
+    # criterion = nn.HuberLoss(delta=0.5)
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -125,7 +125,12 @@ def main_BERT():
             inputs = inputs.to(device)
             targets = targets.to(device)
 
-            outputs, recreation = transformer_model(inputs) # (B,1,160,160)
+
+            outputs, recreation = transformer_model(inputs)
+
+            targets_embed = transformer_model.encode(targets)
+            outputs_image = transformer_model.decode(outputs)
+
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
             #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
 
@@ -133,7 +138,8 @@ def main_BERT():
             # loss = criterion(outputs,targets) + regularizer
             # loss = ALPHA_2*criterion(outputs, targets) + (1-ALPHA_2)*criterion(inputs, recreation)
             # loss = ALPHA_2 * criterion(outputs, targets) + (1 - ALPHA_2) * criterion(inputs, recreation) + regularizer
-            loss = ALPHA_3 * criterion(outputs, targets) * criterion(inputs, recreation)
+            # loss = ALPHA_3 * criterion(outputs, targets) * criterion(inputs, recreation)
+            loss = ALPHA_3 * criterion(outputs, targets_embed) * criterion(inputs, recreation)
 
             tot_loss += loss.item() # update running averages
             count += 1
@@ -148,7 +154,7 @@ def main_BERT():
                 # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
 
             if (idx+1) % batches_per_log == 0:
-                val_loss = evaluate_model_masked_BERT(transformer_model, val_dataloader, device, max_batches=150)
+                val_loss = evaluate_model_masked_BERT_v13(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 # output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
                 print(output)
@@ -174,7 +180,7 @@ def main_BERT():
 
                     np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
                                         input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
-                                        output=np.array(outputs[0, :, :, :].squeeze().detach().cpu()),
+                                        output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
                                         target=np.array(targets[0, :, :, :].squeeze().cpu()))
                     times += 1
 
