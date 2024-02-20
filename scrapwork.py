@@ -237,7 +237,7 @@ def displayresults_tr_grid_masked():
 
 def displayresults_BERT():
     random.seed(time.time())
-    filepath = "../tr_results/v11-itr17/"
+    filepath = "../tr_results/v12-itr0/"
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
@@ -246,12 +246,12 @@ def displayresults_BERT():
 
     # guesses = []
     fig1, axs1 = plt.subplots(3, 3)
-    fig2, axs2 = plt.subplots(3, 3)
-    fig3, axs3 = plt.subplots(3,3)
+    fig2, axs2 = plt.subplots(1, 1)
+    fig3, axs3 = plt.subplots(1,1)
 
     # file = npz_files[0]
     # print(file)
-    file = "imgs_ep237_btch5.npz"
+    file = "imgs_ep100_btch5.npz"
 
     path = os.path.join(filepath, file)
     data = np.load(path)
@@ -263,13 +263,15 @@ def displayresults_BERT():
         for j in range(3):
             axs1[i, j].imshow(problem_grid[i*3 + j,:,:].squeeze(), cmap='gray')
 
-    for i in range(3):
-        for j in range(3):
-            axs2[i, j].imshow(output[i*3 + j,:,:].squeeze(), cmap='gray')
+    # for i in range(3):
+    #     for j in range(3):
+    #         axs2[i, j].imshow(output[i*3 + j,:,:].squeeze(), cmap='gray')
+    axs2.imshow(output, cmap='gray')
 
-    for i in range(3):
-        for j in range(3):
-            axs3[i, j].imshow(target[i*3 + j,:,:].squeeze(), cmap='gray')
+    # for i in range(3):
+    #     for j in range(3):
+    #         axs3[i, j].imshow(target[i*3 + j,:,:].squeeze(), cmap='gray')
+    axs3.imshow(target, cmap='gray')
 
 if __name__ == "__main__":
     # calc_mean_std()
