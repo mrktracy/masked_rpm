@@ -110,7 +110,7 @@ def main_BERT():
 
     scheduler = ExponentialLR(optimizer, gamma=1)
     # criterion = nn.MSELoss()
-    criterion = nn.HuberLoss(delta=0.1)
+    criterion = nn.HuberLoss(delta=0.5)
 
     # Training loop
     for epoch in range(EPOCHS):
