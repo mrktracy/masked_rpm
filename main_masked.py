@@ -51,6 +51,11 @@ def main_BERT():
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
         # autoencoder = nn.DataParallel(autoencoder) # uncomment if using PGM
 
+    if isinstance(transformer_model, nn.DataParallel):
+        original_model = transformer_model.module
+    else:
+        original_model = transformer_model
+
     # load autoencoder state dict
     # state_dict = torch.load('../modelsaves/ae-v2-itr0/ae-v2-itr0_ep10.pth') # for I-RAVEN
     # state_dict = torch.load('../modelsaves/autoencoder_v1_ep1.pth') # for PGM
@@ -128,8 +133,8 @@ def main_BERT():
 
             outputs, recreation = transformer_model(inputs)
 
-            targets_embed = transformer_model.encode(targets)
-            outputs_image = transformer_model.decode(outputs)
+            targets_embed = original_model.encode(targets)
+            outputs_image = original_model.decode(outputs)
 
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
             #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
