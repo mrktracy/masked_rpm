@@ -9,12 +9,12 @@ from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
 from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT
-from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw_v1, RPMFullSentencesRaw
-from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv11
+from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw_v0, RPMFullSentencesRaw
+from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv12
 import os
 import logging
 
-logfile = "../tr_results/v11-itr18/runlog.txt"
+logfile = "../tr_results/v12-itr0/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -38,7 +38,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv11(depth=4, num_heads=64, cat=True).to(device)
+    transformer_model = TransformerModelv12(depth=4, num_heads=64, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -71,7 +71,7 @@ def main_BERT():
     val_files = val_files[:5]
 
     ''' Transformer model v9 '''
-    train_dataset = RPMSentencesSupervisedRaw_v1(train_files, \
+    train_dataset = RPMSentencesSupervisedRaw_v0(train_files, \
                                            embed_dim=768, \
                                            device=device)
     # create dataset for printing results of problems in training set
@@ -90,7 +90,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     # EPOCHS_PER_SAVE = 1
-    VERSION = "v11-itr18"
+    VERSION = "v12-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
@@ -117,7 +117,7 @@ def main_BERT():
         count = 0
         tot_loss = 0
         times = 0
-        for idx, (inputs, targets) in enumerate(train_dataloader):
+        for idx, (inputs, targets, _) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
