@@ -99,7 +99,7 @@ def main_BERT():
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
     ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    ALPHA_3 = 10000 # for scaling loss when multiplying errors
+    # ALPHA_3 = 10000 # for scaling loss when multiplying errors
     # DELTA = 1e-8 # for log stability
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -144,7 +144,8 @@ def main_BERT():
             # loss = ALPHA_2*criterion(outputs, targets) + (1-ALPHA_2)*criterion(inputs, recreation)
             # loss = ALPHA_2 * criterion(outputs, targets) + (1 - ALPHA_2) * criterion(inputs, recreation) + regularizer
             # loss = ALPHA_3 * criterion(outputs, targets) * criterion(inputs, recreation)
-            loss = ALPHA_3 * criterion(outputs, targets_embed) * criterion(inputs, recreation)
+            # loss = ALPHA_3 * criterion(outputs, targets_embed) * criterion(inputs, recreation)
+            loss = ALPHA_2*criterion(outputs, targets_embed) + (1-ALPHA_2)*criterion(inputs, recreation)
 
             tot_loss += loss.item() # update running averages
             count += 1
