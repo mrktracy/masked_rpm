@@ -48,7 +48,7 @@ def evaluate_model_masked_BERT_v13(model, dataloader, device, max_batches = None
             outputs, _ = model(inputs)
             outputs = outputs.unsqueeze(1)
 
-            guesses = torch.argmin(torch.sum((candidates_embed - outputs)**2, dim=[2,3,4]), dim = -1) # take least squares guess
+            guesses = torch.argmin(torch.sum((candidates_embed - outputs)**2, dim=2), dim = -1) # take least squares guess
 
             num_correct += torch.eq(guesses, target_nums).sum().item()
             num_samples += inputs.size(0)
