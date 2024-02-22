@@ -129,6 +129,8 @@ def main_BERT():
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
 
+            batch_size = inputs.size(0)
+
             inputs = inputs.to(device)
             target_nums = target_nums.to(device)
             cands = cands.to(device)
@@ -136,7 +138,8 @@ def main_BERT():
             dists, guess, recreation = transformer_model(inputs, cands)
 
             # targets_embed = original_model.encode(targets)
-            targets = cands[:, target_nums, :, :, :]
+            batch_indices = torch.arange(batch_size)
+            targets = cands[batch_indices, target_nums, :, :].unsqueeze(1)
             outputs_image = original_model.decode(guess)
 
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
