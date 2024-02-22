@@ -113,7 +113,7 @@ def main_BERT():
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
-    scheduler = ExponentialLR(optimizer, gamma=1)
+    scheduler = ExponentialLR(optimizer, gamma=0.95)
 
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
