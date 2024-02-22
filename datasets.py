@@ -31,6 +31,10 @@ class RPMFullSentencesRaw_v1(Dataset):
 
         return masked_sentence, cands, target_num
 
+    def __len__(self):
+        length = len(self.files)
+        return length
+
 # Dataset for training, version 1
 class RPMSentencesSupervisedRaw_v1(Dataset):
     def __init__(self, files, embed_dim, device):
