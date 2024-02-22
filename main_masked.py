@@ -136,7 +136,7 @@ def main_BERT():
             dists, guess, recreation = transformer_model(inputs, cands)
 
             # targets_embed = original_model.encode(targets)
-            targets = cands[target_nums, :, :, :]
+            targets = cands[:, target_nums, :, :, :]
             outputs_image = original_model.decode(guess)
 
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
