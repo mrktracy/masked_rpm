@@ -92,8 +92,8 @@ def main_BERT():
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 100
-    BATCHES_PER_PRINT = 50
+    LOGS_PER_EPOCH = 25
+    BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 5
     VERSION = "v14-itr2"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
