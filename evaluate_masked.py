@@ -44,7 +44,7 @@ def evaluate_model_masked_BERT_v14(model, dataloader, device, max_batches = None
             # forward pass
             dists, _, _ = model(inputs, cands)
 
-            dists_softmax = F.softmax(dists)
+            dists_softmax = F.softmax(dists, dim = 1)
 
             guesses = torch.argmax(dists, dim = -1) # take highest probability guess
 
