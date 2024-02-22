@@ -98,7 +98,7 @@ def main_BERT():
     VERSION = "v14-itr1"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
-    ALPHA_2 = 1.0 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA_2 = 1 # for relative importance of guess vs. autoencoder accuracy
     # ALPHA_3 = 10000 # for scaling loss when multiplying errors
     # DELTA = 1e-8 # for log stability
 
