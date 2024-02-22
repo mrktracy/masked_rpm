@@ -8,13 +8,13 @@ from torch.optim.lr_scheduler import StepLR, ExponentialLR
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
-from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT_v13
-from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw_v0, RPMFullSentencesRaw
-from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv13
+from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT_v14
+from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw_v0, RPMFullSentencesRaw_v1
+from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv14
 import os
 import logging
 
-logfile = "../tr_results/v13-itr2/runlog.txt"
+logfile = "../tr_results/v14-itr0/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -38,7 +38,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv13(depth=15, num_heads=64, cat=True).to(device)
+    transformer_model = TransformerModelv14(depth=10, num_heads=64, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -76,14 +76,14 @@ def main_BERT():
     val_files = val_files[:5]
 
     ''' Transformer model v9 '''
-    train_dataset = RPMSentencesSupervisedRaw_v0(train_files, \
+    train_dataset = RPMFullSentencesRaw_v1(train_files, \
                                            embed_dim=768, \
                                            device=device)
     # create dataset for printing results of problems in training set
     # train_print_dataset = RPMFullSentencesRaw(train_files, \
     #                                        embed_dim=768, \
     #                                        device=device)
-    val_dataset = RPMFullSentencesRaw(val_files, \
+    val_dataset = RPMFullSentencesRaw_v1(val_files, \
                                             embed_dim=768, \
                                             device=device)
 
@@ -95,10 +95,10 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 500
     # EPOCHS_PER_SAVE = 1
-    VERSION = "v13-itr2"
+    VERSION = "v14-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
-    ALPHA_2 = 0.8 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA_2 = 0.75 # for relative importance of guess vs. autoencoder accuracy
     # ALPHA_3 = 10000 # for scaling loss when multiplying errors
     # DELTA = 1e-8 # for log stability
 
@@ -114,7 +114,9 @@ def main_BERT():
     optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
 
     scheduler = ExponentialLR(optimizer, gamma=1)
-    criterion = nn.MSELoss()
+
+    criterion_1 = nn.CrossEntropyLoss()
+    criterion_2 = nn.MSELoss()
     # criterion = nn.HuberLoss(delta=0.5)
 
     # Training loop
@@ -122,19 +124,20 @@ def main_BERT():
         count = 0
         tot_loss = 0
         times = 0
-        for idx, (inputs, targets, _) in enumerate(train_dataloader):
+        for idx, (inputs, cands, target_nums) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
 
             inputs = inputs.to(device)
-            targets = targets.to(device)
+            target_nums = target_nums.to(device)
+            cands = cands.to(device)
 
+            dists, guess, recreation = transformer_model(inputs, cands)
 
-            outputs, recreation = transformer_model(inputs)
-
-            targets_embed = original_model.encode(targets)
-            outputs_image = original_model.decode(outputs)
+            # targets_embed = original_model.encode(targets)
+            targets = cands[target_nums, :, :, :]
+            outputs_image = original_model.decode(guess)
 
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
             #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
@@ -145,7 +148,8 @@ def main_BERT():
             # loss = ALPHA_2 * criterion(outputs, targets) + (1 - ALPHA_2) * criterion(inputs, recreation) + regularizer
             # loss = ALPHA_3 * criterion(outputs, targets) * criterion(inputs, recreation)
             # loss = ALPHA_3 * criterion(outputs, targets_embed) * criterion(inputs, recreation)
-            loss = ALPHA_2*criterion(outputs, targets_embed) + (1-ALPHA_2)*criterion(inputs, recreation)
+            # loss = ALPHA_2*criterion(outputs, targets_embed) + (1-ALPHA_2)*criterion(inputs, recreation)
+            loss = ALPHA_2 * criterion_1(dists, target_nums) + (1 - ALPHA_2) * criterion_2(inputs, recreation)
 
             tot_loss += loss.item() # update running averages
             count += 1
@@ -160,7 +164,7 @@ def main_BERT():
                 # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
 
             if (idx+1) % batches_per_log == 0:
-                val_loss = evaluate_model_masked_BERT_v13(original_model, val_dataloader, device, max_batches=150)
+                val_loss = evaluate_model_masked_BERT_v14(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 # output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
                 print(output)
