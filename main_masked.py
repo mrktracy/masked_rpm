@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10, 
 import os
 import logging
 
-logfile = "../tr_results/v15-itr2/runlog.txt"
+logfile = "../tr_results/v15-itr3/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
