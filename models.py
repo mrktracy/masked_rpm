@@ -7,14 +7,14 @@ from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
 class TemporalContextNorm(nn.Module):
-    def __init__(self, num_features=9, eps=1e-5, affine=True):
+    def __init__(self, embed_dim=768, eps=1e-5, affine=True):
         super(TemporalContextNorm, self).__init__()
         self.num_features = num_features
         self.eps = eps
         self.affine = affine
         if self.affine:
-            self.gamma = nn.Parameter(torch.Tensor(num_features))
-            self.beta = nn.Parameter(torch.Tensor(num_features))
+            self.gamma = nn.Parameter(torch.Tensor(embed_dim))
+            self.beta = nn.Parameter(torch.Tensor(embed_dim))
         else:
             self.register_parameter('gamma', None)
             self.register_parameter('beta', None)
