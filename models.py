@@ -6,6 +6,54 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
+class TemporalContextNorm(nn.Module):
+    def __init__(self, num_features=9, eps=1e-5, affine=True):
+        super(TemporalContextNorm, self).__init__()
+        self.num_features = num_features
+        self.eps = eps
+        self.affine = affine
+        if self.affine:
+            self.gamma = nn.Parameter(torch.Tensor(num_features))
+            self.beta = nn.Parameter(torch.Tensor(num_features))
+        else:
+            self.register_parameter('gamma', None)
+            self.register_parameter('beta', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        if self.affine:
+            nn.init.ones_(self.gamma)
+            nn.init.zeros_(self.beta)
+
+    def forward(self, x):
+        # x has shape (batch_size, 9, num_features)
+        mean = x.mean(dim=1, keepdim=True)
+        var = x.var(dim=1, unbiased=False, keepdim=True)
+
+        # Normalize
+        x_norm = (x - mean) / (var + self.eps).sqrt()
+
+        # Apply affine transformation
+        if self.affine:
+            x_norm = x_norm * self.gamma + self.beta
+
+        return x_norm
+
+    def inverse(self, x_norm):
+        # x_norm has shape (batch_size, 9, num_features)
+        mean = x_norm.mean(dim=1, keepdim=True)
+        var = x_norm.var(dim=1, unbiased=False, keepdim=True)
+
+        # Invert normalization
+        if self.affine:
+            x = (x_norm - self.beta) / self.gamma
+        else:
+            x = x_norm
+
+        x = x * (var + self.eps).sqrt() + mean
+
+        return x
+
 class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
                  mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):
@@ -15,6 +63,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         self.embed_dim = embed_dim
         self.grid_size = grid_size
         self.perception = ResNetEncoder(embed_dim=embed_dim)
+        self.tcn = TemporalContextNorm()
 
         if self.cat:
             self.model_dim = 2*self.embed_dim
@@ -52,6 +101,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         ims_reshaped = ims.view(-1, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
         x_reshaped = self.perception.forward(ims_reshaped) # x_reshaped is (B*9, embed_dim)
         x = x_reshaped.view(batch_size, 9, -1) # x is (B, 9, embed_dim)
+        x = self.tcn(x)
 
         cands_reshaped = cands.view(-1, 1, 160, 160)  # cands is (B, 8, 1, 160, 160)
         cands_reshaped = self.perception.forward(cands_reshaped)  # cands_reshaped is (B*8, embed_dim)
@@ -69,6 +119,8 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
+
+        x = self.tcn.inverse(x)
 
         guess = self.mlp1(self.flatten(x)) # guess is (B, embed_dim)
 
