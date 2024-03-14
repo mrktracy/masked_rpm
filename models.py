@@ -90,7 +90,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
         normal_initializer = torch.nn.init.normal_
-        self.symbols = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim)))
+        self.symbols = nn.Parameter(normal_initializer(torch.empty(1, 9, self.model_dim)))
 
     def forward(self, ims, cands):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
