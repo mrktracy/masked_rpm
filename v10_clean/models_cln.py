@@ -37,6 +37,7 @@ class TransformerModelv10(nn.Module): # takes in images, embeds, performs self-a
 
         self.decoder = ResNetDecoder(embed_dim=embed_dim)
 
+
     def forward(self, ims, mask_tensor):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
 

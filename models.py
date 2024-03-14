@@ -6,6 +6,88 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
+class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
+    def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
+                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):
+        super(TransformerModelv15, self).__init__()
+
+        self.cat = cat
+        self.embed_dim = embed_dim
+        self.grid_size = grid_size
+        self.perception = ResNetEncoder(embed_dim=embed_dim)
+
+        if self.cat:
+            self.model_dim = 2*self.embed_dim
+        else:
+            self.model_dim = self.embed_dim
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size**2, self.embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.embed_dim, grid_size=self.grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.relBottleneck = Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
+                  norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1)
+
+        self.blocks = nn.ModuleList([
+            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
+                  norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, drop_path=0.5*((i+1)/depth))
+            # Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
+            #       norm_layer=norm_layer)
+            for i in range(depth-1)])
+
+        self.norm = norm_layer(self.model_dim)
+
+        self.flatten = nn.Flatten()
+        self.mlp1 = nn.Linear(9 * self.model_dim, self.embed_dim)
+
+        self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
+
+        normal_initializer = torch.nn.init.normal_
+        self.symbols = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim)))
+
+    def forward(self, ims, cands):
+        batch_size = ims.size(0)  # Get the batch size from the first dimension of x
+
+        ims_reshaped = ims.view(-1, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
+        x_reshaped = self.perception.forward(ims_reshaped) # x_reshaped is (B*9, embed_dim)
+        x = x_reshaped.view(batch_size, 9, -1) # x is (B, 9, embed_dim)
+
+        cands_reshaped = cands.view(-1, 1, 160, 160)  # cands is (B, 8, 1, 160, 160)
+        cands_reshaped = self.perception.forward(cands_reshaped)  # cands_reshaped is (B*8, embed_dim)
+        cands = cands_reshaped.view(batch_size, 8, -1)  # cands is (B, 8, embed_dim)
+
+        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1) # expand to fit batch (B, 9, embed_dim)
+
+        if self.cat:
+            x = torch.cat([x, final_pos_embed], dim=2)  # add positional embeddings
+        else:
+            x = x + final_pos_embed  # add positional embeddings
+
+        x = self.relBottleneck(x_q=x, x_k=x, x_v=self.symbols)
+
+        for blk in self.blocks: # multi-headed self-attention layer
+            x = blk(x_q=x, x_k=x, x_v=x)
+        x = self.norm(x)
+
+        guess = self.mlp1(self.flatten(x)) # guess is (B, embed_dim)
+
+        dists = torch.bmm(cands, guess.unsqueeze(-1)).squeeze(-1) # dists is (B, 8)
+
+        recreation = self.decoder.forward(x_reshaped).view(batch_size, 9, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
+
+        return dists, guess, recreation
+
+    def encode(self, images):
+        embeddings = self.perception.forward(images) # takes input (B, 1, 160, 160), gives output (B, embed_dim)
+
+        return embeddings
+
+    def decode(self, embeddings):
+        images = self.decoder.forward(embeddings) # takes input (B, embed_dim), gives output (B, 1, 160, 160)
+
+        return images
+
 class TransformerModelv14(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
                  mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):
