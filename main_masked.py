@@ -10,7 +10,7 @@ import time
 import random
 from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT_v14
 from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw_v0, RPMFullSentencesRaw_v1
-from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv14
+from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv15
 import os
 import logging
 
@@ -38,7 +38,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv14(depth=10, num_heads=64, cat=True).to(device)
+    transformer_model = TransformerModelv15(depth=10, num_heads=64, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -98,7 +98,7 @@ def main_BERT():
     VERSION = "v15-itr3"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
-    ALPHA_2 = 0.75 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA_2 = 1 # for relative importance of guess vs. autoencoder accuracy
     # ALPHA_3 = 10000 # for scaling loss when multiplying errors
     # DELTA = 1e-8 # for log stability
 
