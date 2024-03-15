@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from torch.optim.lr_scheduler import StepLR, ExponentialLR
-from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
+from funs import gather_files_pgm
 import time
 import random
 from evaluate_masked import evaluate_model_masked_BERT_embed as evaluation_function
