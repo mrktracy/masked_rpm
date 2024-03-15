@@ -98,7 +98,6 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         ims_reshaped = ims.view(-1, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
         x_reshaped = self.perception.forward(ims_reshaped) # x_reshaped is (B*9, embed_dim)
         x = x_reshaped.view(batch_size, 9, -1) # x is (B, 9, embed_dim)
-        x = self.tcn(x)
 
         cands_reshaped = cands.view(-1, 1, 160, 160)  # cands is (B, 8, 1, 160, 160)
         cands_reshaped = self.perception.forward(cands_reshaped)  # cands_reshaped is (B*8, embed_dim)
@@ -110,6 +109,8 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
             x = torch.cat([x, final_pos_embed], dim=2)  # add positional embeddings
         else:
             x = x + final_pos_embed  # add positional embeddings
+
+        x = self.tcn(x)
 
         # repeat symbols along batch dimension
         symbols = self.symbols.unsqueeze(0)
