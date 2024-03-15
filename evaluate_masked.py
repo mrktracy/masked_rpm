@@ -42,13 +42,13 @@ def evaluate_model_masked_BERT_embed(model, dataloader, device, max_batches = No
             target_nums = target_nums.to(device)
             targets = targets.to(device)  # shape (B,)
 
-            # forward pass
-            guess, recreation = model(inputs, cands)
+            # get embeddings of candidates
+            cands_embed = model.encode(cands)
 
             # forward pass
             outputs, _ = model(inputs, cands)
             outputs = outputs.unsqueeze(1) # (B, 1, embed_dim)
-            guesses = torch.argmin(torch.sum((candidates - outputs) ** 2, dim=-1), dim=-1)
+            guesses = torch.argmin(torch.sum((cands - outputs) ** 2, dim=-1), dim=-1)
 
             num_correct += torch.eq(guesses, target_nums).sum().item()
             num_samples += inputs.size(0)
