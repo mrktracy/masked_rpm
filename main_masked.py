@@ -88,13 +88,13 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 15
+    EPOCHS = 300
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 10
+    LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 20
-    EPOCHS_PER_SAVE = 5
+    EPOCHS_PER_SAVE = 500
     VERSION = "v15-itr7"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
