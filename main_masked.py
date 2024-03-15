@@ -139,8 +139,8 @@ def main_BERT():
             guess, recreation = transformer_model(inputs, cands)
 
             # targets_embed = original_model.encode(targets)
-            batch_indices = torch.arange(batch_size)
-            # targets = cands[batch_indices, target_nums, :, :].unsqueeze(1)
+            # batch_indices = torch.arange(batch_size)
+            # targets_image = cands[batch_indices, target_nums, :, :].unsqueeze(1)
             outputs_image = original_model.decode(guess)
 
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
@@ -148,7 +148,7 @@ def main_BERT():
 
             # loss = criterion(outputs, targets)
             # loss = criterion(outputs,targets) + regularizer
-            loss = ALPHA_2*criterion_1(outputs, targets) + (1-ALPHA_2)*criterion_2(inputs, recreation)
+            loss = ALPHA_2*criterion_1(guess, targets) + (1-ALPHA_2)*criterion_2(inputs, recreation)
             # loss = ALPHA_2 * criterion(outputs, targets) + (1 - ALPHA_2) * criterion(inputs, recreation) + regularizer
             # loss = ALPHA_3 * criterion(outputs, targets) * criterion(inputs, recreation)
             # loss = ALPHA_3 * criterion(outputs, targets_embed) * criterion(inputs, recreation)
@@ -179,24 +179,24 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
-                # if times%5 == 0:
-                #
-                #     gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
-                #
-                #     # Inspect gradients
-                #     for name, param in transformer_model.named_parameters():
-                #         if param.grad is not None:
-                #             with open(gradfile, 'a') as file:
-                #                 file.write(f"Gradient for {name}: {param.grad}\n")
-                #         else:
-                #             with open(logfile, 'a') as file:
-                #                 file.write(f"No gradient for {name}\n")
-                #
-                #     np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
-                #                         input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
-                #                         output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
-                #                         target=np.array(targets[0, :, :, :].squeeze().cpu()))
-                #     times += 1
+                if times%5 == 0:
+
+                    gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
+
+                    # Inspect gradients
+                    for name, param in transformer_model.named_parameters():
+                        if param.grad is not None:
+                            with open(gradfile, 'a') as file:
+                                file.write(f"Gradient for {name}: {param.grad}\n")
+                        else:
+                            with open(logfile, 'a') as file:
+                                file.write(f"No gradient for {name}\n")
+
+                    np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
+                                        input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
+                                        output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
+                                        target=np.array(targets[0, :, :, :].squeeze().cpu()))
+                    times += 1
 
             optimizer.zero_grad()
 
