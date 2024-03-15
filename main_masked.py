@@ -138,7 +138,7 @@ def main_BERT():
 
             guess, recreation = transformer_model(inputs, cands)
 
-            # targets_embed = original_model.encode(targets)
+            targets_embed = original_model.encode(targets)
             # batch_indices = torch.arange(batch_size)
             # targets_image = cands[batch_indices, target_nums, :, :].unsqueeze(1)
             outputs_image = original_model.decode(guess)
@@ -148,7 +148,7 @@ def main_BERT():
 
             # loss = criterion(outputs, targets)
             # loss = criterion(outputs,targets) + regularizer
-            loss = ALPHA_2*criterion_1(guess, targets) + (1-ALPHA_2)*criterion_2(inputs, recreation)
+            loss = ALPHA_2*criterion_1(guess, targets_embed) + (1-ALPHA_2)*criterion_2(inputs, recreation)
             # loss = ALPHA_2 * criterion(outputs, targets) + (1 - ALPHA_2) * criterion(inputs, recreation) + regularizer
             # loss = ALPHA_3 * criterion(outputs, targets) * criterion(inputs, recreation)
             # loss = ALPHA_3 * criterion(outputs, targets_embed) * criterion(inputs, recreation)
