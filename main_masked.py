@@ -139,20 +139,16 @@ def main_BERT():
             guess, recreation, cands_embed = transformer_model(inputs, cands_image)
 
             batch_indices = torch.arange(batch_size)
-            targets_embed = cands_embed[batch_indices, target_nums, :].unsqueeze(1)
+            targets_embed = cands_embed[batch_indices, target_nums, :]
 
+            # get image for output using decoder
+            # note: if not using recreation error term in loss, this should be random output
             outputs_image = original_model.decode(guess)
 
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
             #                      torch.sum(targets * torch.log(targets + DELTA), dim=[1, 2, 3]))))
 
-            # loss = criterion(outputs, targets)
-            # loss = criterion(outputs,targets) + regularizer
             loss = ALPHA_2*criterion_1(guess, targets_embed) + (1-ALPHA_2)*criterion_2(inputs, recreation)
-            # loss = ALPHA_2 * criterion(outputs, targets) + (1 - ALPHA_2) * criterion(inputs, recreation) + regularizer
-            # loss = ALPHA_3 * criterion(outputs, targets) * criterion(inputs, recreation)
-            # loss = ALPHA_3 * criterion(outputs, targets_embed) * criterion(inputs, recreation)
-            # loss = ALPHA_2*criterion(outputs, targets_embed) + (1-ALPHA_2)*criterion(inputs, recreation)
             # loss = ALPHA_2 * criterion_1(dists, target_nums) + (1 - ALPHA_2) * criterion_2(inputs, recreation)
 
             tot_loss += loss.item() # update running averages
