@@ -46,7 +46,8 @@ def evaluate_model_masked_BERT_embed(model, dataloader, device, max_batches = No
             guess, recreation = model(inputs, cands)
 
             # forward pass
-            outputs, _ = model(inputs, cands).unsqueeze(1)  # (batch_size,1,embed_dim)
+            outputs, _ = model(inputs, cands)
+            outputs = outputs.unsqueeze(1) # (B, 1, embed_dim)
             guesses = torch.argmin(torch.sum((candidates - outputs) ** 2, dim=-1), dim=-1)
 
             num_correct += torch.eq(guesses, target_nums).sum().item()
