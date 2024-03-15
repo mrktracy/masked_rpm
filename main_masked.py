@@ -8,7 +8,7 @@ from torch.optim.lr_scheduler import StepLR, ExponentialLR
 from main_ae import ResNetAutoencoder, gather_files, gather_files_pgm
 import time
 import random
-from evaluate_masked import evaluate_model_masked, evaluate_model_masked_BERT_v14
+from evaluate_masked import evaluate_model_masked_BERT_embed as evaluation_function
 from datasets import RPMSentencesSupervised, RPMFullSentences, RPMSentencesSupervisedRaw_v0, RPMFullSentencesRaw_v1
 from models import TransformerModelv9, TransformerModelv8, TransformerModelv10,  TransformerModelv15
 import os
@@ -168,7 +168,7 @@ def main_BERT():
                 # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
 
             if (idx+1) % batches_per_log == 0:
-                val_loss = evaluate_model_masked_BERT_v14(transformer_model, val_dataloader, device, max_batches=150)
+                val_loss = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 # output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
                 print(output)
