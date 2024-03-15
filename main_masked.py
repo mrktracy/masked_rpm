@@ -124,7 +124,7 @@ def main_BERT():
         count = 0
         tot_loss = 0
         times = 0
-        for idx, (inputs, cands, target_nums, target) in enumerate(train_dataloader):
+        for idx, (inputs, cands, target_nums, targets) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
