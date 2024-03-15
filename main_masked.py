@@ -124,23 +124,23 @@ def main_BERT():
         count = 0
         tot_loss = 0
         times = 0
-        for idx, (inputs, cands, target_nums, targets) in enumerate(train_dataloader):
+        for idx, (inputs, cands_image, target_nums, targets_image) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
 
             batch_size = inputs.size(0)
 
-            inputs = inputs.to(device)
-            target_nums = target_nums.to(device)
-            # cands = cands.to(device)
-            targets = targets.to(device)
+            inputs = inputs.to(device) # passed to model to get output and recreation of inputs
+            cands_image = cands_image.to(device) # passed to model for embedding
+            target_nums = target_nums.to(device)  # used to select from among candidates
+            targets_image = targets_image.to(device) # only used for saving image
 
-            guess, recreation = transformer_model(inputs, cands)
+            guess, recreation, cands_embed = transformer_model(inputs, cands_image)
 
-            targets_embed = original_model.encode(targets)
-            # batch_indices = torch.arange(batch_size)
-            # targets_image = cands[batch_indices, target_nums, :, :].unsqueeze(1)
+            batch_indices = torch.arange(batch_size)
+            targets_embed = cands_embed[batch_indices, target_nums, :].unsqueeze(1)
+
             outputs_image = original_model.decode(guess)
 
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
@@ -168,7 +168,7 @@ def main_BERT():
                 # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
 
             if (idx+1) % batches_per_log == 0:
-                val_loss = evaluation_function(original_model, val_dataloader, device, max_batches=150)
+                val_loss = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 # output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
                 print(output)
@@ -195,7 +195,7 @@ def main_BERT():
                     np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
                                         input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
                                         output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
-                                        target=np.array(targets[0, :, :, :].squeeze().cpu()))
+                                        target=np.array(targets_image[0, :, :, :].squeeze().cpu()))
                     times += 1
 
             optimizer.zero_grad()

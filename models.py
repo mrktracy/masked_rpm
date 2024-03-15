@@ -100,9 +100,9 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         x_reshaped = self.perception.forward(ims_reshaped) # x_reshaped is (B*9, embed_dim)
         x = x_reshaped.view(batch_size, 9, -1) # x is (B, 9, embed_dim)
 
-        # cands_reshaped = cands.view(-1, 1, 160, 160)  # cands is (B, 8, 1, 160, 160)
-        # cands_reshaped = self.perception.forward(cands_reshaped)  # cands_reshaped is (B*8, embed_dim)
-        # cands = cands_reshaped.view(batch_size, 8, -1)  # cands is (B, 8, embed_dim)
+        cands_reshaped = cands.view(-1, 1, 160, 160)  # cands is (B, 8, 1, 160, 160)
+        cands_reshaped = self.perception.forward(cands_reshaped)  # cands_reshaped is (B*8, embed_dim)
+        cands_embed = cands_reshaped.view(batch_size, 8, -1)  # cands is (B, 8, embed_dim)
 
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1) # expand to fit batch (B, 9, embed_dim)
 
@@ -132,7 +132,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
 
         recreation = self.decoder.forward(x_reshaped).view(batch_size, 9, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
 
-        return guess, recreation
+        return guess, recreation, cands_embed
 
     def encode(self, images):
         embeddings = self.perception.forward(images) # takes input (B, 1, 160, 160), gives output (B, embed_dim)
