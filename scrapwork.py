@@ -251,7 +251,7 @@ def displayresults_BERT():
 
     # file = npz_files[0]
     # print(file)
-    file = "imgs_ep150_btch0.npz"
+    file = "imgs_ep190_btch0.npz"
 
     path = os.path.join(filepath, file)
     data = np.load(path)
