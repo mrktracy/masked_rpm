@@ -124,8 +124,8 @@ def main_BERT():
             # note: if not using recreation error term in loss, this should be random output
             outputs_image = original_model.decode(guess)
 
-            loss = ALPHA_2*criterion_1(guess, targets_embed) + (1-ALPHA_2)*criterion_2(inputs, recreation)
-            # loss = ALPHA_2 * criterion_1(dists, target_nums) + (1 - ALPHA_2) * criterion_2(inputs, recreation)
+            loss = ALPHA*criterion_1(guess, targets_embed) + (1-ALPHA)*criterion_2(inputs, recreation)
+            # loss = ALPHA * criterion_1(dists, target_nums) + (1 - ALPHA) * criterion_2(inputs, recreation)
 
             tot_loss += loss.item() # update running averages
             count += 1
