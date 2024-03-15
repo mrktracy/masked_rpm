@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10, 
 import os
 import logging
 
-logfile = "../tr_results/v15-itr3/runlog.txt"
+logfile = "../tr_results/v15-itr4/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -72,8 +72,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data_cnst/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:5]
-    val_files = val_files[:5]
+    # train_files = train_files[:5]
+    # val_files = val_files[:5]
 
     ''' Transformer model v9 '''
     train_dataset = RPMFullSentencesRaw_v1(train_files, \
@@ -95,10 +95,10 @@ def main_BERT():
     LOGS_PER_EPOCH = 1
     BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 500
-    VERSION = "v15-itr3"
+    VERSION = "v15-itr4"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
-    ALPHA_2 = 1 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
     # ALPHA_3 = 10000 # for scaling loss when multiplying errors
     # DELTA = 1e-8 # for log stability
 
