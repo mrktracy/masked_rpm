@@ -90,7 +90,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
         normal_initializer = torch.nn.init.normal_
-        self.symbols = nn.Parameter(normal_initializer(torch.empty(1, 9, self.model_dim)))
+        self.symbols = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim)))
 
     def forward(self, ims, cands):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
@@ -111,7 +111,11 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         else:
             x = x + final_pos_embed  # add positional embeddings
 
-        x = self.relBottleneck(x_q=x, x_k=x, x_v=self.symbols)
+        # repeat symbols along batch dimension
+        symbols = self.symbols.unsqueeze(0)
+        symbols = symbols.repeat(batch_size, 1, 1)
+
+        x = self.relBottleneck(x_q=x, x_k=x, x_v=symbols)
 
         for blk in self.blocks: # multi-headed self-attention layer
             x = blk(x_q=x, x_k=x, x_v=x)
