@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10, 
 import os
 import logging
 
-logfile = "../tr_results/v15-itr5/runlog.txt"
+logfile = "../tr_results/v15-itr6/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -38,7 +38,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv15(depth=20, num_heads=64, cat=True).to(device)
+    transformer_model = TransformerModelv15(depth=10, num_heads=64, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -72,8 +72,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data_cnst/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:5]
-    val_files = val_files[:5]
+    # train_files = train_files[:5]
+    # val_files = val_files[:5]
 
     ''' Transformer model v9 '''
     train_dataset = RPMFullSentencesRaw_v1(train_files, \
@@ -88,17 +88,17 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 300
+    EPOCHS = 15
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 1
+    LOGS_PER_EPOCH = 20
     BATCHES_PER_PRINT = 30
-    EPOCHS_PER_SAVE = 500
-    VERSION = "v15-itr5"
+    EPOCHS_PER_SAVE = 5
+    VERSION = "v15-itr6"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
-    ALPHA_2 = 0.5 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA_2 = 1 # for relative importance of guess vs. autoencoder accuracy
     # ALPHA_3 = 10000 # for scaling loss when multiplying errors
     # DELTA = 1e-8 # for log stability
 
@@ -178,24 +178,24 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
-                if times%5 == 0:
-
-                    gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
-
-                    # Inspect gradients
-                    for name, param in transformer_model.named_parameters():
-                        if param.grad is not None:
-                            with open(gradfile, 'a') as file:
-                                file.write(f"Gradient for {name}: {param.grad}\n")
-                        else:
-                            with open(logfile, 'a') as file:
-                                file.write(f"No gradient for {name}\n")
-
-                    np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
-                                        input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
-                                        output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
-                                        target=np.array(targets[0, :, :, :].squeeze().cpu()))
-                    times += 1
+                # if times%5 == 0:
+                #
+                #     gradfile = f"../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
+                #
+                #     # Inspect gradients
+                #     for name, param in transformer_model.named_parameters():
+                #         if param.grad is not None:
+                #             with open(gradfile, 'a') as file:
+                #                 file.write(f"Gradient for {name}: {param.grad}\n")
+                #         else:
+                #             with open(logfile, 'a') as file:
+                #                 file.write(f"No gradient for {name}\n")
+                #
+                #     np.savez_compressed(f"../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
+                #                         input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
+                #                         output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
+                #                         target=np.array(targets[0, :, :, :].squeeze().cpu()))
+                #     times += 1
 
             optimizer.zero_grad()
 
