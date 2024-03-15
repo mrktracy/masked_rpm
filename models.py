@@ -126,7 +126,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         x = self.tcn.inverse(x)
 
         # guess = self.mlp1(self.flatten(x)) # guess is (B, embed_dim)
-        guess = self.mlp1(x[:,9,:].squeeze()) # guess is (B, embed_dim)
+        guess = self.mlp1(x[:,8,:].squeeze()) # guess is (B, embed_dim)
 
         # dists = torch.bmm(cands, guess.unsqueeze(-1)).squeeze(-1) # get raw logits for softmax. dists is (B, 8) x
 
