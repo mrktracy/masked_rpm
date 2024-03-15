@@ -60,7 +60,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         self.embed_dim = embed_dim
         self.grid_size = grid_size
         self.perception = ResNetEncoder(embed_dim=self.embed_dim)
-        self.tcn = TemporalContextNorm(num_features=self.embed_dim)
+        self.tcn = TemporalContextNorm(num_features=self.model_dim)
 
         if self.cat:
             self.model_dim = 2*self.embed_dim
