@@ -60,12 +60,13 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         self.embed_dim = embed_dim
         self.grid_size = grid_size
         self.perception = ResNetEncoder(embed_dim=self.embed_dim)
-        self.tcn = TemporalContextNorm(num_features=self.model_dim)
 
         if self.cat:
             self.model_dim = 2*self.embed_dim
         else:
             self.model_dim = self.embed_dim
+
+        self.tcn = TemporalContextNorm(num_features=self.model_dim)
 
         # initialize and retrieve positional embeddings
         self.pos_embed = nn.Parameter(torch.zeros([self.grid_size**2, self.embed_dim]), requires_grad=False)
