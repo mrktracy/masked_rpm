@@ -24,12 +24,13 @@ class RPMFullSentencesRaw_v1(Dataset):
 
         target_num = data['target'].item()
         cands = imagetensor[8:, :, :, :] # extract candidate panel embeddings
+        target = imagetensor[8+target_num, :, :, :]  # extract target panel embeddings
 
         sentence = imagetensor[0:8, :, :, :] # size (8, 1, 160, 160)
         mask = torch.ones([1,1,160,160]).to(self.device)  # create masking token
         masked_sentence = torch.cat([sentence, mask], 0)  # create masked sentence
 
-        return masked_sentence, cands, target_num
+        return masked_sentence, cands, target_num, target
 
     def __len__(self):
         length = len(self.files)

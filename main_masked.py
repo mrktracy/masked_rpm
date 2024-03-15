@@ -14,7 +14,7 @@ from models import TransformerModelv9, TransformerModelv8, TransformerModelv10, 
 import os
 import logging
 
-logfile = "../tr_results/v15-itr6/runlog.txt"
+logfile = "../tr_results/v15-itr7/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -72,8 +72,8 @@ def main_BERT():
     # root_dir = '../pgm/neutral/'
     root_dir = '../i_raven_data_cnst/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    # train_files = train_files[:5]
-    # val_files = val_files[:5]
+    train_files = train_files[:5]
+    val_files = val_files[:5]
 
     ''' Transformer model v9 '''
     train_dataset = RPMFullSentencesRaw_v1(train_files, \
@@ -95,7 +95,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v15-itr6"
+    VERSION = "v15-itr7"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA_1 = 1/(9*160**2) # scaling regularizer
     ALPHA_2 = 1 # for relative importance of guess vs. autoencoder accuracy
@@ -115,7 +115,7 @@ def main_BERT():
 
     scheduler = ExponentialLR(optimizer, gamma=1)
 
-    criterion_1 = nn.CrossEntropyLoss()
+    criterion_1 = nn.MSELoss()
     criterion_2 = nn.MSELoss()
     # criterion = nn.HuberLoss(delta=0.5)
 
@@ -124,7 +124,7 @@ def main_BERT():
         count = 0
         tot_loss = 0
         times = 0
-        for idx, (inputs, cands, target_nums) in enumerate(train_dataloader):
+        for idx, (inputs, cands, target_nums, target) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
@@ -133,13 +133,14 @@ def main_BERT():
 
             inputs = inputs.to(device)
             target_nums = target_nums.to(device)
-            cands = cands.to(device)
+            # cands = cands.to(device)
+            targets = targets.to(device)
 
-            dists, guess, recreation = transformer_model(inputs, cands)
+            guess, recreation = transformer_model(inputs, cands)
 
             # targets_embed = original_model.encode(targets)
             batch_indices = torch.arange(batch_size)
-            targets = cands[batch_indices, target_nums, :, :].unsqueeze(1)
+            # targets = cands[batch_indices, target_nums, :, :].unsqueeze(1)
             outputs_image = original_model.decode(guess)
 
             # regularizer = ALPHA_1*(torch.mean(torch.abs(torch.sum(outputs*torch.log(outputs + DELTA), dim=[1,2,3]) - \
@@ -147,12 +148,12 @@ def main_BERT():
 
             # loss = criterion(outputs, targets)
             # loss = criterion(outputs,targets) + regularizer
-            # loss = ALPHA_2*criterion(outputs, targets) + (1-ALPHA_2)*criterion(inputs, recreation)
+            loss = ALPHA_2*criterion_1(outputs, targets) + (1-ALPHA_2)*criterion_2(inputs, recreation)
             # loss = ALPHA_2 * criterion(outputs, targets) + (1 - ALPHA_2) * criterion(inputs, recreation) + regularizer
             # loss = ALPHA_3 * criterion(outputs, targets) * criterion(inputs, recreation)
             # loss = ALPHA_3 * criterion(outputs, targets_embed) * criterion(inputs, recreation)
             # loss = ALPHA_2*criterion(outputs, targets_embed) + (1-ALPHA_2)*criterion(inputs, recreation)
-            loss = ALPHA_2 * criterion_1(dists, target_nums) + (1 - ALPHA_2) * criterion_2(inputs, recreation)
+            # loss = ALPHA_2 * criterion_1(dists, target_nums) + (1 - ALPHA_2) * criterion_2(inputs, recreation)
 
             tot_loss += loss.item() # update running averages
             count += 1
