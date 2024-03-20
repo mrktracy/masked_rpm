@@ -56,6 +56,8 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
                  mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):
         super(TransformerModelv15, self).__init__()
 
+        assert depth >= 2, 'depth must be at least 2'
+
         self.cat = cat
         self.embed_dim = embed_dim
         self.symbol_factor = symbol_factor
@@ -74,14 +76,14 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.embed_dim, grid_size=self.grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
-        self.relBottleneck = Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
-                  norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1)
+        self.relBottleneck = Block(self.model_dim, self.model_dim * self.symbol_factor, num_heads, mlp_ratio, \
+                                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, \
+                                   attn_drop=0.1)
 
         self.blocks = nn.ModuleList([
-            Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
-                  norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, drop_path=0.5*((i+1)/depth))
-            # Block(self.model_dim, num_heads, mlp_ratio, q_bias=True, k_bias=True, v_bias=True, \
-            #       norm_layer=norm_layer)
+            Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, num_heads, mlp_ratio,
+                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
+                  drop_path=0.5*((i+1)/depth))
             for i in range(depth-1)])
 
         self.norm = norm_layer(self.model_dim * self.symbol_factor)
@@ -220,11 +222,11 @@ Hacked together by / Copyright 2020, Ross Wightman
 """
 
 class Attention(nn.Module):
-    fused_attn: Final[bool]
 
     def __init__(
             self,
-            dim,
+            dim_kq,
+            dim_v,
             num_heads=8,
             q_bias=False,
             k_bias=False,
@@ -236,46 +238,43 @@ class Attention(nn.Module):
     ):
         super().__init__()
 
-        assert dim % num_heads == 0, 'dim should be divisible by num_heads'
-        self.dim = dim
+        assert dim_kq % num_heads == 0, 'dim_kq should be divisible by num_heads'
+        assert dim_v % num_heads == 0, 'dim_v should be divisible by num_heads'
+
+        self.dim_kq = dim_kq
+        self.dim_v = dim_v
         self.num_heads = num_heads
-        self.head_dim = dim // num_heads
-        self.scale = self.head_dim ** -0.5
-        self.fused_attn = use_fused_attn()
+        self.head_dim_kq = dim_kq // num_heads
+        self.head_dim_v = dim_v // num_heads
+        self.scale = self.head_dim_kq ** -0.5
 
-        self.w_qs = nn.Linear(dim, dim, bias=q_bias)
-        self.w_ks = nn.Linear(dim, dim, bias=k_bias)
-        self.w_vs = nn.Linear(dim, dim, bias=v_bias)
+        self.w_qs = nn.Linear(dim_kq, dim_kq, bias=q_bias)
+        self.w_ks = nn.Linear(dim_kq, dim_kq, bias=k_bias)
+        self.w_vs = nn.Linear(dim_v, dim_v, bias=v_bias)
 
-        self.q_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
-        self.k_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
+        self.q_norm = norm_layer(self.head_dim_kq) if qk_norm else nn.Identity()
+        self.k_norm = norm_layer(self.head_dim_kq) if qk_norm else nn.Identity()
         self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
+        self.proj = nn.Linear(dim_kq, dim_kq)
         self.proj_drop = nn.Dropout(proj_drop)
 
     def forward(self, x_q, x_k, x_v):
 
-        batch_size, len_q, len_k, len_v, c = x_q.size(0), x_q.size(1), x_k.size(1), x_v.size(1), self.dim
+        batch_size, len_q, len_k, len_v, c = x_q.size(0), x_q.size(1), x_k.size(1), x_v.size(1), self.dim_v
 
         # Pass through the pre-attention projection: b x lq x (n*dv)
         # Separate different heads: b x lq x n x dv
-        q = self.w_qs(x_q).view(batch_size, self.num_heads, len_q, self.head_dim)
-        k = self.w_ks(x_k).view(batch_size, self.num_heads, len_k, self.head_dim)
-        v = self.w_vs(x_v).view(batch_size, self.num_heads, len_v, self.head_dim)
+        q = self.w_qs(x_q).view(batch_size, self.num_heads, len_q, self.head_dim_kq)
+        k = self.w_ks(x_k).view(batch_size, self.num_heads, len_k, self.head_dim_kq)
+        v = self.w_vs(x_v).view(batch_size, self.num_heads, len_v, self.head_dim_v)
 
         q, k = self.q_norm(q), self.k_norm(k)
 
-        if self.fused_attn:
-            x = F.scaled_dot_product_attention(
-                q, k, v,
-                dropout_p=self.attn_drop.p,
-            )
-        else:
-            q = q * self.scale
-            attn = q @ k.transpose(-2, -1)
-            attn = attn.softmax(dim=-1)
-            attn = self.attn_drop(attn)
-            x = attn @ v
+        q = q * self.scale
+        attn = q @ k.transpose(-2, -1)
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+        x = attn @ v
 
         x = x.transpose(1, 2).reshape(batch_size, len_q, c)
         x = self.proj(x)
@@ -295,7 +294,8 @@ class Block(nn.Module):
 
     def __init__(
             self,
-            dim,
+            dim_kq,
+            dim_v,
             num_heads,
             mlp_ratio=4.,
             q_bias=False,
@@ -311,11 +311,13 @@ class Block(nn.Module):
             mlp_layer=Mlp,
     ):
         super().__init__()
-        self.norm1 = norm_layer(dim)
-        self.norm2 = norm_layer(dim)
-        self.norm3 = norm_layer(dim)
+        self.norm1 = norm_layer(dim_kq)
+        self.norm1_v = norm_layer(dim_v)
+        self.norm2 = norm_layer(dim_v)
+        self.norm3 = norm_layer(dim_v)
         self.attn = Attention(
-            dim,
+            dim_qk,
+            dim_v,
             num_heads=num_heads,
             q_bias=q_bias,
             k_bias=k_bias,
@@ -325,20 +327,20 @@ class Block(nn.Module):
             proj_drop=proj_drop,
             norm_layer=norm_layer,
         )
-        self.ls1 = LayerScale(dim, init_values=init_values) if init_values else nn.Identity()
+        self.ls1 = LayerScale(dim_kq, init_values=init_values) if init_values else nn.Identity()
         self.drop_path1 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.mlp = mlp_layer(
-            in_features=dim,
-            hidden_features=int(dim * mlp_ratio),
+            in_features=dim_v,
+            hidden_features=int(dim_v * mlp_ratio),
             act_layer=act_layer,
             drop=proj_drop,
         )
-        self.ls2 = LayerScale(dim, init_values=init_values) if init_values else nn.Identity()
+        self.ls2 = LayerScale(dim_v, init_values=init_values) if init_values else nn.Identity()
         self.drop_path2 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
     def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
 
-        x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1(x_v))))
+        x = x_v + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))))
         if use_mlp_layer:
             x = self.norm3(x + self.drop_path2(self.ls2(self.mlp(self.norm2(x)))))
         else:
