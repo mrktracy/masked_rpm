@@ -124,7 +124,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
 
-        x = self.tcn.inverse(x)
+        # x = self.tcn.inverse(x)
 
         # guess = self.mlp1(self.flatten(x)) # guess is (B, embed_dim)
         guess = self.mlp1(x[:,8,:].squeeze()) # guess is (B, embed_dim)
