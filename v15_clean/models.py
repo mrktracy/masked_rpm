@@ -316,7 +316,7 @@ class Block(nn.Module):
         self.norm2 = norm_layer(dim_v)
         self.norm3 = norm_layer(dim_v)
         self.attn = Attention(
-            dim_qk,
+            dim_kq,
             dim_v,
             num_heads=num_heads,
             q_bias=q_bias,
