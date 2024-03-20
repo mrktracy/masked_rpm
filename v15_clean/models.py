@@ -84,7 +84,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
             #       norm_layer=norm_layer)
             for i in range(depth-1)])
 
-        self.norm = norm_layer(self.model_dim)
+        self.norm = norm_layer(self.model_dim * self.symbol_factor)
 
         # self.flatten = nn.Flatten()
         self.mlp1 = nn.Linear(self.model_dim * symbol_factor, self.embed_dim)
