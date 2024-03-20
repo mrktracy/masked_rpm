@@ -52,7 +52,7 @@ class TemporalContextNorm(nn.Module):
         return x
 
 class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
-    def __init__(self, embed_dim=768, symbol_factor = 2, grid_size = 3, num_heads=32, \
+    def __init__(self, embed_dim=768, symbol_factor = 1, grid_size = 3, num_heads=32, \
                  mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):
         super(TransformerModelv15, self).__init__()
 
