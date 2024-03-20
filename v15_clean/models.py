@@ -52,12 +52,13 @@ class TemporalContextNorm(nn.Module):
         return x
 
 class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
-    def __init__(self, embed_dim=768, grid_size = 3, num_heads=32, \
+    def __init__(self, embed_dim=768, symbol_factor = 5, grid_size = 3, num_heads=32, \
                  mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):
         super(TransformerModelv15, self).__init__()
 
         self.cat = cat
         self.embed_dim = embed_dim
+        self.symbol_factor = symbol_factor
         self.grid_size = grid_size
         self.perception = ResNetEncoder(embed_dim=self.embed_dim)
 
@@ -86,12 +87,12 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         self.norm = norm_layer(self.model_dim)
 
         # self.flatten = nn.Flatten()
-        self.mlp1 = nn.Linear(self.model_dim, self.embed_dim)
+        self.mlp1 = nn.Linear(self.model_dim * symbol_factor, self.embed_dim)
 
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
         normal_initializer = torch.nn.init.normal_
-        self.symbols = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim)))
+        self.symbols = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim * self.symbol_factor)))
 
     def forward(self, ims, cands):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
