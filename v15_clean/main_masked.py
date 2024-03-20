@@ -12,7 +12,7 @@ from models import TransformerModelv15
 import os
 import logging
 
-logfile = "../../tr_results/v15-itr10/runlog.txt"
+logfile = "../../tr_results/v15-itr11/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -78,7 +78,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v15-itr10"
+    VERSION = "v15-itr11"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
