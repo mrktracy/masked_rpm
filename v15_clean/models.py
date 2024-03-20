@@ -255,7 +255,7 @@ class Attention(nn.Module):
         self.q_norm = norm_layer(self.head_dim_kq) if qk_norm else nn.Identity()
         self.k_norm = norm_layer(self.head_dim_kq) if qk_norm else nn.Identity()
         self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim_kq, dim_kq)
+        self.proj = nn.Linear(dim_v, dim_v)
         self.proj_drop = nn.Dropout(proj_drop)
 
     def forward(self, x_q, x_k, x_v):
