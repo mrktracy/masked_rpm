@@ -73,14 +73,14 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 15
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.005
+    LEARNING_RATE = 0.001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
     VERSION = "v15-itr9"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
