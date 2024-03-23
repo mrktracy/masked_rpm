@@ -86,11 +86,11 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
                   drop_path=0.5*((i+1)/depth))
             for i in range(depth-1)])
 
-        self.blocks_embed = nn.ModuleList([
-            Block(self.model_dim, self.model_dim, num_heads, mlp_ratio,
-                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
-                  drop_path=0.5 * ((i + 1) / depth))
-            for i in range(depth)])
+        # self.blocks_embed = nn.ModuleList([
+        #     Block(self.model_dim, self.model_dim, num_heads, mlp_ratio,
+        #           q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
+        #           drop_path=0.5 * ((i + 1) / depth))
+        #     for i in range(depth)])
 
         self.norm = norm_layer(self.model_dim * self.symbol_factor)
 
@@ -126,7 +126,7 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         symbols = self.symbols.unsqueeze(0)
         symbols = symbols.repeat(batch_size, 1, 1)
 
-        y = x.clone()
+        # y = x.clone()
 
         x = self.relBottleneck(x_q=x, x_k=x, x_v=symbols)
 
@@ -134,16 +134,17 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
 
-        for blk in self.blocks_embed: # multi-headed self-attention layer
-            y = blk(x_q=y, x_k=y, x_v=y)
-        y = self.norm(y)
+        # for blk in self.blocks_embed: # multi-headed self-attention layer
+        #     y = blk(x_q=y, x_k=y, x_v=y)
+        # y = self.norm(y)
 
         # x = self.tcn.inverse(x)
 
-        z = x + y
+        # z = x + y
 
         # guess = self.mlp1(self.flatten(x)) # guess is (B, embed_dim)
-        guess = self.mlp1(z[:,8,:].squeeze()) # guess is (B, embed_dim)
+        # guess = self.mlp1(z[:,8,:].squeeze()) # guess is (B, embed_dim)
+        guess = self.mlp1(x[:,8,:].squeeze()) # guess is (B, embed_dim)
 
         # dists = torch.bmm(cands, guess.unsqueeze(-1)).squeeze(-1) # get raw logits for softmax. dists is (B, 8) x
 
@@ -354,7 +355,9 @@ class Block(nn.Module):
 
     def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
 
-        x = x_v + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))))
+        # x = x_v + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))))
+        x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))))
+
         if use_mlp_layer:
             x = self.norm3(x + self.drop_path2(self.ls2(self.mlp(self.norm2(x)))))
         else:
