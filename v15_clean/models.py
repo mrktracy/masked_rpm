@@ -355,8 +355,7 @@ class Block(nn.Module):
 
     def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
 
-        # x = x_v + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))))
-        x = x_q + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))))
+        x = x_v + self.drop_path1(self.ls1(self.attn(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))))
 
         if use_mlp_layer:
             x = self.norm3(x + self.drop_path2(self.ls2(self.mlp(self.norm2(x)))))
