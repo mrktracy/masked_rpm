@@ -3,8 +3,6 @@
 #$ -P noc-lab           # project name
 #$ -N masked_rpm_itr    # job name
 
-#$ -l h_rt=72:00:00     # hard time limit of 72 hours
-
 #$ -m ea                # send email when finished or aborted 
 #$ -j y			# merge error and output files into one
 
