@@ -75,7 +75,7 @@ def main_BERT():
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 10
+    LOGS_PER_EPOCH = 11
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
     VERSION = "v16-itr0"
