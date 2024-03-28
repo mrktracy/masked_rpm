@@ -8,11 +8,11 @@ import time
 import random
 from evaluate_masked import evaluate_model_masked_BERT_embed as evaluation_function
 from datasets import RPMFullSentencesRaw_v1
-from models import TransformerModelv15
+from models import TransformerModelv15, TransformerModelv16
 import os
 import logging
 
-logfile = "../../tr_results/v15-itr20/runlog.txt"
+logfile = "../../tr_results/v16-itr0/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -36,7 +36,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv15(symbol_factor=2, depth=5, num_heads=64, cat=True).to(device)
+    transformer_model = TransformerModelv16(symbol_factor=1, depth=5, num_heads=64, cat=True).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -78,7 +78,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v15-itr20"
+    VERSION = "v16-itr0"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
