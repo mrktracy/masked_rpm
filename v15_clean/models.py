@@ -52,7 +52,8 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm_y = norm_layer(self.model_dim)
 
-        self.mlp1 = nn.Linear(self.model_dim * self.symbol_factor, self.model_dim)
+        self.mlp1 = nn.Linear(self.model_dim * self.symbol_factor, self.model_dim) if not self.cat_output \
+            else nn.Identity()
 
         if self.cat_output:
             self.mlp2 = nn.Linear(self.model_dim + self.model_dim * self.symbol_factor, self.embed_dim)
