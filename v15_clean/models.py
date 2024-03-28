@@ -350,7 +350,7 @@ class BackbonePerception(nn.Module):
         x = x.transpose(1,2)
 
         for block in self.blocks:
-            x = block(x)
+            x = block(x_k = x, x_q = x, x_v = x)
 
         x = x.reshape(batch_dim, 256*10*10)
 
