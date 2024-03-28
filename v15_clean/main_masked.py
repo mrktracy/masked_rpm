@@ -12,7 +12,7 @@ from models import TransformerModelv15, TransformerModelv16
 import os
 import logging
 
-logfile = "../../tr_results/v16-itr2/runlog.txt"
+logfile = "../../tr_results/v15-itr20_cont/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -36,8 +36,10 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv16(symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
-                                            cat_output=True).to(device)
+    # transformer_model = TransformerModelv16(symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
+    #                                         cat_output=True).to(device)
+
+    transformer_model = TransformerModelv15(symbol_factor=2, depth=5, num_heads=64, cat=True).to(device)  # v15-itr20
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -46,15 +48,15 @@ def main_BERT():
         transformer_model = nn.DataParallel(transformer_model)
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
+    ''' Load saved model '''
+    state_dict_tr = torch.load('../modelsaves/v15-itr20/tf_v15-itr20_ep15.pth')
+    transformer_model.load_state_dict(state_dict_tr)
+    # transformer_model.eval()
+
     if isinstance(transformer_model, nn.DataParallel):
         original_model = transformer_model.module
     else:
         original_model = transformer_model
-
-    ''' Load saved model '''
-    # state_dict_tr = torch.load('../modelsaves/v9-itr0/tf_v9-itr0_ep200.pth')
-    # transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
@@ -79,7 +81,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v16-itr2"
+    VERSION = "v15-itr20_cont"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
