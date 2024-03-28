@@ -12,7 +12,8 @@ from models import TransformerModelv15, TransformerModelv16
 import os
 import logging
 
-logfile = "../../tr_results/v15-itr20_cont/runlog.txt"
+# logfile = "../../tr_results/v15-itr20_cont/runlog.txt"
+logfile = "../../tr_results/v16-itr3/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -36,10 +37,10 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    # transformer_model = TransformerModelv16(symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
-    #                                         cat_output=True).to(device)
+    transformer_model = TransformerModelv16(symbol_factor=2, depth=5, num_heads=64, cat_pos=True, \
+                                            cat_output=True).to(device)
 
-    transformer_model = TransformerModelv15(symbol_factor=2, depth=5, num_heads=64, cat=True).to(device)  # v15-itr20
+    # transformer_model = TransformerModelv15(symbol_factor=2, depth=5, num_heads=64, cat=True).to(device)  # v15-itr20
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -49,8 +50,8 @@ def main_BERT():
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     ''' Load saved model '''
-    state_dict_tr = torch.load('../modelsaves/v15-itr20/tf_v15-itr20_ep15.pth')
-    transformer_model.load_state_dict(state_dict_tr)
+    # state_dict_tr = torch.load('../modelsaves/v15-itr20/tf_v15-itr20_ep15.pth')
+    # transformer_model.load_state_dict(state_dict_tr)
     # transformer_model.eval()
 
     if isinstance(transformer_model, nn.DataParallel):
@@ -74,14 +75,15 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 15
+    EPOCHS = 30
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v15-itr20_cont"
+    # VERSION = "v15-itr20_cont"
+    VERSION = "v16-itr3"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
