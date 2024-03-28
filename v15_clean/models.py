@@ -49,13 +49,14 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm = norm_layer(self.model_dim * self.symbol_factor)
 
-        # self.flatten = nn.Flatten()
         self.mlp1 = nn.Linear(self.model_dim * symbol_factor, self.embed_dim)
 
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
         normal_initializer = torch.nn.init.normal_
         self.symbols = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim * self.symbol_factor)))
+
+        self.mlp2 = nn.Linear(self.model_dim * symbol_factor, self.model_dim) if self.symbol_factor > 1 else nn.Identity()
 
     def forward(self, ims, cands):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
@@ -89,19 +90,18 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
 
+        # reduce dimension from symbol dimensions to embedding dimensions
+        x = self.mlp2(x)
+
         for blk in self.blocks_embed: # multi-headed self-attention layer
             y = blk(x_q=y, x_k=y, x_v=y)
         y = self.norm(y)
 
-        x = self.tcn.inverse(x)
+        y = self.tcn.inverse(y)
 
         z = x + y
 
-        # guess = self.mlp1(self.flatten(x)) # guess is (B, embed_dim)
         guess = self.mlp1(z[:,8,:].squeeze()) # guess is (B, embed_dim)
-        # guess = self.mlp1(x[:,8,:].squeeze()) # guess is (B, embed_dim)
-
-        # dists = torch.bmm(cands, guess.unsqueeze(-1)).squeeze(-1) # get raw logits for softmax. dists is (B, 8) x
 
         recreation = self.decoder.forward(x_reshaped).view(batch_size, 9, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
 
@@ -191,8 +191,6 @@ class TransformerModelv15(nn.Module): # takes in images, embeds, performs self-a
         for blk in self.blocks_symbol: # multi-headed self-attention layer
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm(x)
-
-        x = self.tcn.inverse(x)
 
         # guess = self.mlp1(self.flatten(x)) # guess is (B, embed_dim)
         guess = self.mlp1(x[:,8,:].squeeze()) # guess is (B, embed_dim)
