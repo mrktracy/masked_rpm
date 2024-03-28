@@ -51,14 +51,17 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm_y = norm_layer(self.model_dim)
 
-        self.mlp1 = nn.Linear(self.model_dim * symbol_factor, self.embed_dim)
+        self.mlp1 = nn.Linear(self.model_dim * self.symbol_factor,
+                              self.model_dim) if self.symbol_factor > 1 else nn.Identity()
+
+        self.mlp2 = nn.Linear(self.model_dim * symbol_factor, self.embed_dim)
 
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
         normal_initializer = torch.nn.init.normal_
         self.symbols = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim * self.symbol_factor)))
 
-        self.mlp2 = nn.Linear(self.model_dim * self.symbol_factor, self.model_dim) if self.symbol_factor > 1 else nn.Identity()
+
 
     def forward(self, ims, cands):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
@@ -93,7 +96,7 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
         x = self.norm_x(x)
 
         # reduce dimension from symbol dimensions to embedding dimensions
-        x = self.mlp2(x)
+        x = self.mlp1(x)
 
         for blk in self.blocks_embed: # multi-headed self-attention layer
             y = blk(x_q=y, x_k=y, x_v=y)
@@ -103,7 +106,7 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
 
         z = x + y
 
-        guess = self.mlp1(z[:,8,:].squeeze()) # guess is (B, embed_dim)
+        guess = self.mlp2(z[:,8,:].squeeze()) # guess is (B, embed_dim)
 
         recreation = self.decoder.forward(x_reshaped).view(batch_size, 9, 1, 160, 160)  # x is (B, 9, 1, 160, 160)
 
