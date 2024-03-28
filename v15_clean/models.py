@@ -58,7 +58,7 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
         normal_initializer = torch.nn.init.normal_
         self.symbols = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim * self.symbol_factor)))
 
-        self.mlp2 = nn.Linear(self.model_dim * symbol_factor, self.model_dim) if self.symbol_factor > 1 else nn.Identity()
+        self.mlp2 = nn.Linear(self.model_dim * self.symbol_factor, self.model_dim) if self.symbol_factor > 1 else nn.Identity()
 
     def forward(self, ims, cands):
         batch_size = ims.size(0)  # Get the batch size from the first dimension of x
