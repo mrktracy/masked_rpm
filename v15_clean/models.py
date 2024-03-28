@@ -322,6 +322,8 @@ class BackbonePerception(nn.Module):
         self.embed_dim = embed_dim
 
         self.depth = depth
+        self.num_heads = num_heads
+        self.mlp_ratio = mlp_ratio
 
         self.encoder = nn.Sequential( # from N, 1, 160, 160
             ResidualBlock(1, 16), # N, 16, 160, 160
@@ -332,7 +334,7 @@ class BackbonePerception(nn.Module):
         )
 
         self.blocks = nn.ModuleList([
-            Block(dim_kq=256, dim_v=256, num_heads, mlp_ratio, \
+            Block(256, 256, self.num_heads, self.mlp_ratio, \
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
                   drop_path=0.5*((i+1)/self.depth)) for i in range(self.depth)])
 
