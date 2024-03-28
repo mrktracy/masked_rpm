@@ -47,7 +47,9 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
                   drop_path=0.5 * ((i + 1) / depth))
             for i in range(depth)])
 
-        self.norm = norm_layer(self.model_dim * self.symbol_factor)
+        self.norm_x = norm_layer(self.model_dim * self.symbol_factor)
+
+        self.norm_y = norm_layer(self.model_dim)
 
         self.mlp1 = nn.Linear(self.model_dim * symbol_factor, self.embed_dim)
 
@@ -88,14 +90,14 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
 
         for blk in self.blocks_symbol: # multi-headed self-attention layer
             x = blk(x_q=x, x_k=x, x_v=x)
-        x = self.norm(x)
+        x = self.norm_x(x)
 
         # reduce dimension from symbol dimensions to embedding dimensions
         x = self.mlp2(x)
 
         for blk in self.blocks_embed: # multi-headed self-attention layer
             y = blk(x_q=y, x_k=y, x_v=y)
-        y = self.norm(y)
+        y = self.norm_y(y)
 
         y = self.tcn.inverse(y)
 
