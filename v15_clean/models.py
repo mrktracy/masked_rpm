@@ -8,7 +8,8 @@ from timm.layers import Mlp, DropPath, use_fused_attn
 
 class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self, embed_dim=768, symbol_factor = 1, grid_size = 3, num_heads=32, \
-                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat_pos=True, cat_output=True):
+                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat_pos=True, cat_output=True, \
+                 use_backbone = False):
         super(TransformerModelv16, self).__init__()
 
         assert depth >= 2, 'depth must be at least 2'
@@ -18,7 +19,10 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
         self.embed_dim = embed_dim
         self.symbol_factor = symbol_factor
         self.grid_size = grid_size
-        self.perception = ResNetEncoder(embed_dim=self.embed_dim)
+        self.use_backbone = use_backbone
+
+        self.perception = BackbonePerception(embed_dim=self.embed_dim) if self.use_backbone else \
+            ResNetEncoder(embed_dim=self.embed_dim)
 
         if self.cat_pos:
             self.model_dim = 2*self.embed_dim
@@ -309,6 +313,46 @@ class ResNetEncoder(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
+        return x
+
+class BackbonePerception(nn.Module):
+    def __init__(self, embed_dim, num_heads = 32, mlp_ratio = 4, norm_layer=nn.LayerNorm, depth = 4):
+        super(BackbonePerception, self).__init__()
+
+        self.embed_dim = embed_dim
+
+        self.encoder = nn.Sequential( # from N, 1, 160, 160
+            ResidualBlock(1, 16), # N, 16, 160, 160
+            ResidualBlock(16, 32, 2), # N, 32, 80, 80
+            ResidualBlock(32, 64, 2), # N, 64, 40, 40
+            ResidualBlock(64, 128, 2), # N, 128, 20, 20
+            ResidualBlock(128, 256, 2), # N, 256, 10, 10
+        )
+
+        self.blocks = nn.ModuleList([
+            Block(dim_kq=256, dim_v=256, num_heads, mlp_ratio,
+                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
+                  drop_path=0.5*((i+1)/depth))
+            for i in range(depth)])
+
+        self.mlp = nn.Linear(256*10*10, self.embed_dim)
+
+    def forward(self, x):
+
+        batch_dim = x.size(0)
+
+        x = self.encoder(x)
+
+        x = x.reshape(batch_dim, 256, 10*10)
+        x = x.transpose(1,2)
+
+        for block in self.blocks:
+            x = block(x)
+
+        x = x.reshape(batch_dim, 256*10*10)
+
+        x = self.mlp(x)
+
         return x
 
 class ResNetDecoder(nn.Module):
