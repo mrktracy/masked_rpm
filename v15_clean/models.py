@@ -8,18 +8,19 @@ from timm.layers import Mlp, DropPath, use_fused_attn
 
 class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self, embed_dim=768, symbol_factor = 1, grid_size = 3, num_heads=32, \
-                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat=False):
+                 mlp_ratio=4.,norm_layer=nn.LayerNorm, depth = 4, cat_pos=True, cat_output=True):
         super(TransformerModelv16, self).__init__()
 
         assert depth >= 2, 'depth must be at least 2'
 
-        self.cat = cat
+        self.cat_pos = cat_pos
+        self.cat_output = cat_output
         self.embed_dim = embed_dim
         self.symbol_factor = symbol_factor
         self.grid_size = grid_size
         self.perception = ResNetEncoder(embed_dim=self.embed_dim)
 
-        if self.cat:
+        if self.cat_pos:
             self.model_dim = 2*self.embed_dim
         else:
             self.model_dim = self.embed_dim
@@ -51,10 +52,12 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm_y = norm_layer(self.model_dim)
 
-        self.mlp1 = nn.Linear(self.model_dim * self.symbol_factor,
-                              self.model_dim) if self.symbol_factor > 1 else nn.Identity()
+        self.mlp1 = nn.Linear(self.model_dim * self.symbol_factor, self.model_dim)
 
-        self.mlp2 = nn.Linear(self.model_dim, self.embed_dim)
+        if self.cat_output:
+            self.mlp2 = nn.Linear(self.model_dim + self.model_dim * self.symbol_factor, self.embed_dim)
+        else:
+            self.mlp2 = nn.Linear(self.model_dim, self.embed_dim)
 
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
@@ -74,7 +77,7 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
 
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1) # expand to fit batch (B, 9, embed_dim)
 
-        if self.cat:
+        if self.cat_pos:
             x = torch.cat([x, final_pos_embed], dim=2)  # add positional embeddings
         else:
             x = x + final_pos_embed  # add positional embeddings
@@ -102,7 +105,10 @@ class TransformerModelv16(nn.Module): # takes in images, embeds, performs self-a
 
         y = self.tcn.inverse(y)
 
-        z = x + y
+        if self.cat_output:
+            z = torch.cat([x,y], dim=2)
+        else:
+            z = x + y
 
         guess = self.mlp2(z[:,8,:].squeeze()) # guess is (B, embed_dim)
 
