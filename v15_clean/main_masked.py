@@ -51,7 +51,7 @@ def main_BERT():
     ''' Load saved model '''
     state_dict_tr = torch.load('../../modelsaves/v16-itr4/tf_v16-itr4_ep30.pth')
     transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
+    transformer_model.eval()
 
     if isinstance(transformer_model, nn.DataParallel):
         original_model = transformer_model.module
@@ -133,8 +133,8 @@ def main_BERT():
             tot_loss += loss.item() # update running averages
             count += 1
 
-            loss.backward()
-            optimizer.step()
+            # loss.backward()
+            # optimizer.step()
 
             if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
@@ -173,7 +173,7 @@ def main_BERT():
                                         target=np.array(targets_image[0, :, :, :].squeeze().cpu()))
                     times += 1
 
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
