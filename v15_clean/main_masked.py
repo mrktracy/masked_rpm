@@ -82,7 +82,7 @@ def main_BERT():
     EPOCHS_PER_SAVE = 5
     VERSION = "v16-itr6_full"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 1 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
