@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 # Dataset for training and evaluation, corresponding to model v14
 class RPMFullSentencesRaw_v1(Dataset):
-    def __init__(self, files, embed_dim, device):
+    def __init__(self, files, device):
         self.files = files
         self.device = device
 
