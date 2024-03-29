@@ -49,7 +49,7 @@ def main_BERT():
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     ''' Load saved model '''
-    state_dict_tr = torch.load('../../modelsaves/v16-itr2/tf_v16-itr4_ep15.pth')
+    state_dict_tr = torch.load('../../modelsaves/v16-itr2/tf_v16-itr2_ep15.pth')
     transformer_model.load_state_dict(state_dict_tr)
     transformer_model.eval()
 
