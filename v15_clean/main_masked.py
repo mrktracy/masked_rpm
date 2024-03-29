@@ -12,7 +12,7 @@ from models import TransformerModelv15, TransformerModelv16
 import os
 import logging
 
-logfile = "../../tr_results/v16-itr2/runlog_cont.txt"
+logfile = "../../tr_results/v16-itr5/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -36,8 +36,8 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv16(symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
-                                            cat_output=True, use_backbone=False).to(device)
+    transformer_model = TransformerModelv16(embed_dim = 1024, symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
+                                            cat_output=True, use_backbone=True).to(device)
 
     # transformer_model = TransformerModelv15(symbol_factor=2, depth=5, num_heads=64, cat=True).to(device)  # v15-itr20
 
@@ -49,9 +49,9 @@ def main_BERT():
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     ''' Load saved model '''
-    state_dict_tr = torch.load('../../modelsaves/v16-itr2/tf_v16-itr2_ep15.pth')
-    transformer_model.load_state_dict(state_dict_tr)
-    transformer_model.eval()
+    # state_dict_tr = torch.load('../../modelsaves/v16-itr2/tf_v16-itr2_ep15.pth')
+    # transformer_model.load_state_dict(state_dict_tr)
+    # transformer_model.eval()
 
     if isinstance(transformer_model, nn.DataParallel):
         original_model = transformer_model.module
@@ -79,7 +79,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v16-itr2"
+    VERSION = "v16-itr5"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
@@ -131,8 +131,8 @@ def main_BERT():
             tot_loss += loss.item() # update running averages
             count += 1
 
-            # loss.backward()
-            # optimizer.step()
+            loss.backward()
+            optimizer.step()
 
             if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
@@ -171,14 +171,14 @@ def main_BERT():
                                         target=np.array(targets_image[0, :, :, :].squeeze().cpu()))
                     times += 1
 
-        #     optimizer.zero_grad()
-        #
-        # if (epoch+1) % EPOCHS_PER_SAVE == 0:
-        #     save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-        #     os.makedirs(os.path.dirname(save_file), exist_ok=True)
-        #     torch.save(transformer_model.state_dict(), save_file)
-        #
-        # scheduler.step()
+            optimizer.zero_grad()
+
+        if (epoch+1) % EPOCHS_PER_SAVE == 0:
+            save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+            os.makedirs(os.path.dirname(save_file), exist_ok=True)
+            torch.save(transformer_model.state_dict(), save_file)
+
+        scheduler.step()
 
 if __name__ == "__main__":
     main_BERT()

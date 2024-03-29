@@ -12,7 +12,7 @@ print(sys.executable)
 
 def displayresults_BERT():
     random.seed(time.time())
-    filepath = "../tr_results/v16-itr4/"
+    filepath = "../tr_results/v16-itr2/"
     files = os.listdir(filepath)
     npz_files = [file for file in files if file.endswith(".npz")]
 
