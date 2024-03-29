@@ -12,7 +12,7 @@ from models import TransformerModelv15, TransformerModelv16
 import os
 import logging
 
-logfile = "../../tr_results/v16-itr4/runlog_cont.txt"
+logfile = "../../tr_results/v16-itr2_cont/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -37,7 +37,7 @@ def main_BERT():
     # print(num_gpus)
 
     transformer_model = TransformerModelv16(symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
-                                            cat_output=True, use_backbone=True).to(device)
+                                            cat_output=True, use_backbone=False).to(device)
 
     # transformer_model = TransformerModelv15(symbol_factor=2, depth=5, num_heads=64, cat=True).to(device)  # v15-itr20
 
@@ -49,7 +49,7 @@ def main_BERT():
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     ''' Load saved model '''
-    state_dict_tr = torch.load('../../modelsaves/v16-itr4/tf_v16-itr4_ep30.pth')
+    state_dict_tr = torch.load('../../modelsaves/v16-itr2/tf_v16-itr4_ep15.pth')
     transformer_model.load_state_dict(state_dict_tr)
     transformer_model.eval()
 
@@ -74,16 +74,16 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 1
+    EPOCHS = 30
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v16-itr4"
+    VERSION = "v16-itr2"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA = 1 # for relative importance of guess vs. autoencoder accuracy
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -154,33 +154,33 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
-                if times%5 == 0:
-
-                    # gradfile = f"../../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
-
-                    # # Inspect gradients
-                    # for name, param in transformer_model.named_parameters():
-                    #     if param.grad is not None:
-                    #         with open(gradfile, 'a') as file:
-                    #             file.write(f"Gradient for {name}: {param.grad}\n")
-                    #     else:
-                    #         with open(logfile, 'a') as file:
-                    #             file.write(f"No gradient for {name}\n")
-
-                    np.savez_compressed(f"../../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
-                                        input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
-                                        output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
-                                        target=np.array(targets_image[0, :, :, :].squeeze().cpu()))
-                    times += 1
+                # if times%5 == 0:
+                #
+                #     # gradfile = f"../../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
+                #
+                #     # # Inspect gradients
+                #     # for name, param in transformer_model.named_parameters():
+                #     #     if param.grad is not None:
+                #     #         with open(gradfile, 'a') as file:
+                #     #             file.write(f"Gradient for {name}: {param.grad}\n")
+                #     #     else:
+                #     #         with open(logfile, 'a') as file:
+                #     #             file.write(f"No gradient for {name}\n")
+                #
+                #     np.savez_compressed(f"../../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
+                #                         input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
+                #                         output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
+                #                         target=np.array(targets_image[0, :, :, :].squeeze().cpu()))
+                #     times += 1
 
             # optimizer.zero_grad()
 
-        if (epoch+1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-            os.makedirs(os.path.dirname(save_file), exist_ok=True)
-            torch.save(transformer_model.state_dict(), save_file)
+        # if (epoch+1) % EPOCHS_PER_SAVE == 0:
+        #     save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+        #     os.makedirs(os.path.dirname(save_file), exist_ok=True)
+        #     torch.save(transformer_model.state_dict(), save_file)
 
-        scheduler.step()
+        # scheduler.step()
 
 if __name__ == "__main__":
     main_BERT()
