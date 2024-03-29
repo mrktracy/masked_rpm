@@ -12,7 +12,7 @@ from models import TransformerModelv15, TransformerModelv16
 import os
 import logging
 
-logfile = "../../tr_results/v16-itr5/runlog.txt"
+logfile = "../../tr_results/v16-itr6/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -36,7 +36,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv16(embed_dim = 1024, symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
+    transformer_model = TransformerModelv16(symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
                                             cat_output=True, use_backbone=True).to(device)
 
     # transformer_model = TransformerModelv15(symbol_factor=2, depth=5, num_heads=64, cat=True).to(device)  # v15-itr20
@@ -79,9 +79,9 @@ def main_BERT():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v16-itr5"
+    VERSION = "v16-itr6"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA = 1 # for relative importance of guess vs. autoencoder accuracy
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -152,24 +152,24 @@ def main_BERT():
                 tot_loss = 0
                 count = 0
 
-                if times%5 == 0:
-
-                    # gradfile = f"../../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
-
-                    # # Inspect gradients
-                    # for name, param in transformer_model.named_parameters():
-                    #     if param.grad is not None:
-                    #         with open(gradfile, 'a') as file:
-                    #             file.write(f"Gradient for {name}: {param.grad}\n")
-                    #     else:
-                    #         with open(logfile, 'a') as file:
-                    #             file.write(f"No gradient for {name}\n")
-
-                    np.savez_compressed(f"../../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
-                                        input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
-                                        output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
-                                        target=np.array(targets_image[0, :, :, :].squeeze().cpu()))
-                    times += 1
+                # if times%5 == 0:
+                #
+                #     # gradfile = f"../../tr_results/{VERSION}/grads_ep{epoch+1}_sv{times//5}.txt"
+                #
+                #     # # Inspect gradients
+                #     # for name, param in transformer_model.named_parameters():
+                #     #     if param.grad is not None:
+                #     #         with open(gradfile, 'a') as file:
+                #     #             file.write(f"Gradient for {name}: {param.grad}\n")
+                #     #     else:
+                #     #         with open(logfile, 'a') as file:
+                #     #             file.write(f"No gradient for {name}\n")
+                #
+                #     np.savez_compressed(f"../../tr_results/{VERSION}/{VERSION_SUBFOLDER}imgs_ep{epoch + 1}_btch{idx}.npz",
+                #                         input=np.array(inputs[0, :, :, :, :].squeeze().cpu()),
+                #                         output=np.array(outputs_image[0, :, :, :].squeeze().detach().cpu()),
+                #                         target=np.array(targets_image[0, :, :, :].squeeze().cpu()))
+                #     times += 1
 
             optimizer.zero_grad()
 
