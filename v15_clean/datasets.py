@@ -6,11 +6,9 @@ from torch.utils.data import Dataset
 class RPMFullSentencesRaw_v1(Dataset):
     def __init__(self, files, embed_dim, device):
         self.files = files
-        self.embed_dim = embed_dim
         self.device = device
 
     def __getitem__(self, idx):
-        mask_exp = torch.ones(self.embed_dim).to(self.device)  # create mask token for tensor output
 
         filename = self.files[idx]
         data = np.load(filename)
