@@ -39,16 +39,16 @@ def evaluate_model_masked_BERT_dist(model, dataloader, device, max_batches = Non
 
         num_correct = 0
         num_samples = 0
-        for idx, (inputs, cands, target_nums) in enumerate(dataloader):
+        for idx, (sentences, target_nums) in enumerate(dataloader):
 
-            batch_size = inputs.size(0)
+            batch_size = sentences.size(0)
 
             # move images to the device
-            inputs = inputs.to(device) # shape (B,9,1,160,160)
+            sentences = sentences.to(device) # shape (B,9,1,160,160)
             target_nums = target_nums.to(device)
 
             # forward pass
-            dists, _, _ = model(inputs, cands)
+            dists, _ = model(sentences)
 
             dists_softmax = F.softmax(dists, dim = 1)
 

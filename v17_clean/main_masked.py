@@ -6,7 +6,7 @@ from torch.optim.lr_scheduler import StepLR, ExponentialLR
 from funs import gather_files_pgm
 import time
 import random
-from evaluate_masked import evaluate_model_masked_BERT_embed as evaluation_function
+from evaluate_masked import evaluate_model_masked_BERT_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_v2
 from models import TransformerModelv17
 import os
