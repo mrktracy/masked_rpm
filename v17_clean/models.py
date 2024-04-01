@@ -240,7 +240,7 @@ class ResNetEncoder(nn.Module):
         return x
 
 class BackbonePerception(nn.Module):
-    def __init__(self, embed_dim, num_heads = 32, mlp_ratio = 4, norm_layer=nn.LayerNorm, depth = 4):
+    def __init__(self, embed_dim, num_heads = 32, mlp_ratio = 4, norm_layer=nn.LayerNorm, depth = 1):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
