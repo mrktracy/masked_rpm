@@ -108,7 +108,7 @@ def main_BERT():
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
 
-            batch_size = inputs.size(0)
+            batch_size = sentences.size(0)
 
             sentences = sentences.to(device) # passed to model to get output and recreation of inputs
             target_nums = target_nums.to(device)  # used to select from among candidates
