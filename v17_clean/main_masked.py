@@ -61,8 +61,8 @@ def main_BERT():
     root_dir = '../../i_raven_data_cnst/'
     # root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:5]
-    val_files = val_files[:5]
+    # train_files = train_files[:5]
+    # val_files = val_files[:5]
 
     ''' Transformer model v9 '''
     train_dataset = RPMFullSentencesRaw_v2(train_files, \
@@ -71,11 +71,11 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 300
+    EPOCHS = 15
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 1
+    LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 15
     VERSION = "v17-itr0"
