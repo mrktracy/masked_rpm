@@ -94,9 +94,9 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1) # expand to fit batch (B, 9, embed_dim)
 
         if self.cat_pos:
-            x = torch.cat([x, final_pos_embed], dim=3)  # add positional embeddings
+            x = torch.cat([x, final_pos_embed.unsqueeze(0)], dim=3)  # add positional embeddings
         else:
-            x = x + final_pos_embed  # add positional embeddings
+            x = x + final_pos_embed.unsqueeze(0)  # add positional embeddings
 
         x = self.tcn(x)
 
