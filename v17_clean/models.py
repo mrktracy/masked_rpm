@@ -91,12 +91,12 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
         embed_reshaped = self.perception.forward(sen_reshaped) # x_reshaped is (B*9*8, embed_dim)
         x = embed_reshaped.view(batch_size, 8, 9, -1) # x is (B, 8, 9, embed_dim)
 
-        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1) # expand to fit batch (B, 9, embed_dim)
+        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1) # expand to fit batch (B, 8, 9, embed_dim)
 
         if self.cat_pos:
-            x = torch.cat([x, final_pos_embed.unsqueeze(1)], dim=3)  # add positional embeddings
+            x = torch.cat([x, final_pos_embed], dim=3)  # add positional embeddings
         else:
-            x = x + final_pos_embed.unsqueeze(1)  # add positional embeddings
+            x = x + final_pos_embed  # add positional embeddings
 
         x = self.tcn(x)
 
