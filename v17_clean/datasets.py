@@ -24,7 +24,6 @@ class RPMFullSentencesRaw_v2(Dataset):
         context_expanded = context.unsqueeze(0).expand(8,-1,-1,-1,-1)
 
         # Concatenate context and candidates along the second dimension
-
         sentences = torch.cat([context_expanded, candidates.unsqueeze(1)], dim = 1)
 
         return sentences, target_num

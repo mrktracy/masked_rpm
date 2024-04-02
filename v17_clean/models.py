@@ -17,7 +17,8 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
                  depth = 5,
                  cat_pos=True,
                  cat_output=True,
-                 use_backbone = False):
+                 use_backbone = True,
+                 backbone_depth = 4):
 
         super(TransformerModelv17, self).__init__()
 
@@ -29,8 +30,9 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
         self.symbol_factor = symbol_factor
         self.grid_size = grid_size
         self.use_backbone = use_backbone
+        self.backbone_depth = backbone_depth
 
-        self.perception = BackbonePerception(embed_dim=self.embed_dim) if self.use_backbone else \
+        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.backbone_depth) if self.use_backbone else \
             ResNetEncoder(embed_dim=self.embed_dim)
 
         if self.cat_pos:
@@ -240,7 +242,7 @@ class ResNetEncoder(nn.Module):
         return x
 
 class BackbonePerception(nn.Module):
-    def __init__(self, embed_dim, num_heads = 32, mlp_ratio = 4, norm_layer=nn.LayerNorm, depth = 1):
+    def __init__(self, embed_dim, num_heads = 32, mlp_ratio = 4, norm_layer=nn.LayerNorm, depth = 4):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
