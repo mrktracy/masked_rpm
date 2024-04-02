@@ -55,7 +55,7 @@ def evaluate_model_masked_BERT_dist(model, dataloader, device, max_batches = Non
             guesses = torch.argmax(dists, dim = -1) # take highest probability guess
 
             num_correct += torch.eq(guesses, target_nums).sum().item()
-            num_samples += inputs.size(0)
+            num_samples += sentences.size(0)
 
             if max_batches is not None and idx + 1 == max_batches:
                 break
