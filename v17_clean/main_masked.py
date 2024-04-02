@@ -34,7 +34,7 @@ def main_BERT():
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
-    print(num_gpus)
+    # print(num_gpus)
 
     transformer_model = TransformerModelv17(embed_dim = 4, symbol_factor=1, depth=2, num_heads=1, cat_pos=True, \
                                             cat_output=True, use_backbone=True, backbone_depth=1).to(device)
@@ -51,18 +51,18 @@ def main_BERT():
     # transformer_model.load_state_dict(state_dict_tr)
     # transformer_model.eval()
 
-    if isinstance(transformer_model, nn.DataParallel):
-        original_model = transformer_model.module
-    else:
-        original_model = transformer_model
+    # if isinstance(transformer_model, nn.DataParallel):
+    #     original_model = transformer_model.module
+    # else:
+    #     original_model = transformer_model
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../pgm/neutral/'
     root_dir = '../../i_raven_data_cnst/'
     # root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    # train_files = train_files[:5]
-    # val_files = val_files[:5]
+    train_files = train_files[:5]
+    val_files = val_files[:5]
 
     ''' Transformer model v9 '''
     train_dataset = RPMFullSentencesRaw_v2(train_files, \
