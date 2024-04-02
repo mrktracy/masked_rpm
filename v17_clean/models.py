@@ -102,7 +102,7 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
 
         # repeat symbols along batch dimension
         symbols = self.symbols.unsqueeze(0)
-        symbols = symbols.repeat(batch_size, 1, 1)
+        symbols = symbols.repeat(batch_size*8, 1, 1)
 
         x_reshaped = x.view(-1, 9, self.model_dim)  # x is (B, 8, 9, self.model_dim)
 
