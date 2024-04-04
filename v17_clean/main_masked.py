@@ -12,7 +12,7 @@ from models import TransformerModelv17
 import os
 import logging
 
-logfile = "../../tr_results/v17-itr0_full/runlog.txt"
+logfile = "../../tr_results/v17-itr1_full/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -36,7 +36,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv17(embed_dim = 768, symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
+    transformer_model = TransformerModelv17(embed_dim = 128, symbol_factor=3, depth=5, num_heads=64, cat_pos=True, \
                                             cat_output=True, use_backbone=True, backbone_depth=4).to(device)
 
     # initialize weights
@@ -78,7 +78,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 5
-    VERSION = "v17-itr0_full"
+    VERSION = "v17-itr1_full"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
