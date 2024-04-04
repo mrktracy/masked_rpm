@@ -12,7 +12,7 @@ from models import TransformerModelv17
 import os
 import logging
 
-logfile = "../../tr_results/v17-itr1_full/runlog.txt"
+logfile = "../../tr_results/v17-itr0_full/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -36,8 +36,8 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv17(embed_dim = 192, symbol_factor=1, depth=3, num_heads=4, cat_pos=True, \
-                                            cat_output=True, use_backbone=True, backbone_depth=1).to(device)
+    transformer_model = TransformerModelv17(embed_dim = 768, symbol_factor=1, depth=5, num_heads=64, cat_pos=True, \
+                                            cat_output=True, use_backbone=True, backbone_depth=4).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -61,8 +61,8 @@ def main_BERT():
     # root_dir = '../../i_raven_data_cnst/'
     root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:100]
-    val_files = val_files[:100]
+    # train_files = train_files[:100]
+    # val_files = val_files[:100]
 
     ''' Transformer model v9 '''
     train_dataset = RPMFullSentencesRaw_v2(train_files, \
@@ -71,14 +71,14 @@ def main_BERT():
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 50
+    EPOCHS = 15
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 1
+    LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
-    EPOCHS_PER_SAVE = 50
-    VERSION = "v17-itr1_full"
+    EPOCHS_PER_SAVE = 5
+    VERSION = "v17-itr0_full"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
