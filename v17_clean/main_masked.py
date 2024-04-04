@@ -12,7 +12,7 @@ from models import TransformerModelv17
 import os
 import logging
 
-logfile = "../../tr_results/v17-itr0_full_10k/runlog.txt"
+logfile = "../../tr_results/v17-itr0_full_5k/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -61,8 +61,8 @@ def main_BERT():
     # root_dir = '../../i_raven_data_cnst/'
     root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
-    train_files = train_files[:10000]
-    val_files = val_files[:10000]
+    train_files = train_files[:5000]
+    val_files = val_files[:5000]
 
     ''' Transformer model v9 '''
     train_dataset = RPMFullSentencesRaw_v2(train_files, \
@@ -78,7 +78,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 50
-    VERSION = "v17-itr0_full_10k"
+    VERSION = "v17-itr0_full_5k"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
