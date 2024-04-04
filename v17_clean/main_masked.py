@@ -36,7 +36,7 @@ def main_BERT():
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv17(embed_dim = 384, symbol_factor=2, depth=5, num_heads=64, cat_pos=True, \
+    transformer_model = TransformerModelv17(embed_dim = 384, symbol_factor=2, depth=4, num_heads=64, cat_pos=True, \
                                             cat_output=True, use_backbone=True, backbone_depth=3).to(device)
 
     # initialize weights
