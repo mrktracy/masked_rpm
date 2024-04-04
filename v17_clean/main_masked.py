@@ -37,7 +37,7 @@ def main_BERT():
     # print(num_gpus)
 
     transformer_model = TransformerModelv17(embed_dim = 384, symbol_factor=2, depth=5, num_heads=64, cat_pos=True, \
-                                            cat_output=True, use_backbone=True, backbone_depth=4).to(device)
+                                            cat_output=True, use_backbone=True, backbone_depth=3).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
