@@ -3,7 +3,7 @@
 #$ -P noc-lab           # project name
 #$ -N v17_itr1_full          # job name
 
-#$ -m ea                # send email when finished or aborted 
+#$ -m bea                # send email when finished or aborted
 #$ -j y			# merge error and output files into one
 
 #$ -l mem_per_core=6G	# memory requirements per CPU core
