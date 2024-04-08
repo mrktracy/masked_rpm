@@ -77,7 +77,7 @@ def main_BERT():
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
-    EPOCHS_PER_SAVE = 25
+    EPOCHS_PER_SAVE = 10
     VERSION = "v17-itr5_full"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
