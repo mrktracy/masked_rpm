@@ -132,7 +132,8 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
         else:
             z = x + y
 
-        z_reshaped = z[:,:,8,:].view(batch_size * 8, -1) # z is (B, 8, 9, -1)
+        # z_reshaped = z[:,:,8,:].view(batch_size * 8, -1) # z is (B, 8, 9, -1)
+        z_reshaped = torch.mean(z, dim=2).view(batch_size * 8, -1) # z is (B, 8, 9, -1)
         dist_reshaped = self.mlp3(self.relu(self.mlp2(z_reshaped))) # dist_reshaped is (B*8, 1)
 
         dist = dist_reshaped.view(batch_size, 8)
