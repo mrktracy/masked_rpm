@@ -65,11 +65,11 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
                   drop_path=0.5 * ((i + 1) / trans_depth))
             for i in range(trans_depth)])
 
-        self.norm_x = norm_layer(self.model_dim * self.symbol_factor)
+        self.norm_x = norm_layer(self.model_dim * self.symbol_factor * 2)
 
         self.norm_y = norm_layer(self.model_dim)
 
-        self.mlp1 = nn.Linear(self.model_dim + self.model_dim * self.symbol_factor, self.embed_dim)
+        self.mlp1 = nn.Linear(self.model_dim + self.model_dim * self.symbol_factor * 2, self.embed_dim)
 
         self.relu = nn.ReLU()
 
