@@ -139,7 +139,7 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         x_reshaped = self.relBottleneck_1.forward(x_q=x_reshaped, x_k=x_reshaped, x_v=symbols_1)
 
         x_ternary = self.ternary_operation(x_reshaped)
-        x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=3)
+        x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
 
         for blk in self.blocks_abs_1: # multi-headed self-attention layer
             x_reshaped_1 = blk(x_q=x_reshaped_1, x_k=x_reshaped_1, x_v=x_reshaped_1)
