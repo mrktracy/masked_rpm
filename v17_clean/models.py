@@ -56,13 +56,13 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         self.blocks_abs_1 = nn.ModuleList([
             Block(self.model_dim * self.symbol_factor * 2, self.model_dim * self.symbol_factor * 2, abs_1_num_heads,\
                   mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, \
-                  attn_drop=0.1, drop_path=0.5*((i+1)/depth))
+                  attn_drop=0.1, drop_path=0.5*((i+1)/abs_1_depth))
             for i in range(abs_1_depth-1)])
 
         self.blocks_trans = nn.ModuleList([
             Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
-                  drop_path=0.5 * ((i + 1) / depth))
+                  drop_path=0.5 * ((i + 1) / trans_depth))
             for i in range(trans_depth)])
 
         self.norm_x = norm_layer(self.model_dim * self.symbol_factor)
@@ -233,7 +233,7 @@ class TransformerModelv18(nn.Module): # takes in images, embeds, performs self-a
         self.blocks_abs_1 = nn.ModuleList([
             Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_1_num_heads, mlp_ratio,
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
-                  drop_path=0.5*((i+1)/depth))
+                  drop_path=0.5*((i+1)/abs_1_depth))
             for i in range(abs_1_depth-1)])
 
         self.relBottleneck_2 = Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, \
@@ -243,13 +243,13 @@ class TransformerModelv18(nn.Module): # takes in images, embeds, performs self-a
         self.blocks_abs_2 = nn.ModuleList([
             Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_2_num_heads, mlp_ratio,
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
-                  drop_path=0.5 * ((i + 1) / depth))
+                  drop_path=0.5 * ((i + 1) / abs_2_depth))
             for i in range(abs_2_depth - 1)])
 
         self.blocks_trans = nn.ModuleList([
             Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
-                  drop_path=0.5 * ((i + 1) / depth))
+                  drop_path=0.5 * ((i + 1) / trans_depth))
             for i in range(trans_depth)])
 
         self.norm_x = norm_layer(self.model_dim * self.symbol_factor)

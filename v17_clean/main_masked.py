@@ -46,7 +46,7 @@ def main_BERT():
     #                                         backbone_depth=4).to(device)
     # transformer_model = TransformerModelv18(embed_dim=768,
     #                                         symbol_factor=2,
-    #                                         trans_depth=4,
+    #                                         trans_depth=8,
     #                                         abs_1_depth=4,
     #                                         abs_2_depth=4,
     #                                         trans_num_heads=64,
