@@ -99,15 +99,15 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
 
         for i in range(seq_len):
             # Extract x1, x2, x3 for the ternary operation
-            x1 = padded_x[:, i, :].unsqueeze(1)  # Shape: (batch_size, 1, embed_dim)
+            x1 = padded_x[:, i, :].unsqueeze(2)  # Shape: (batch_size, embed_dim, 1)
             x2 = padded_x[:, i + 1, :].unsqueeze(2)  # Shape: (batch_size, embed_dim, 1)
             x3 = padded_x[:, i + 2, :].unsqueeze(2)  # Shape: (batch_size, embed_dim, 1)
 
             # Perform the operation: (x1 * x2^T) * x3
             # First, compute the outer product x1 * x2^T
-            M = torch.bmm(x1, x2.transpose(1, 2))  # Shape: (batch_size, 1, 1)
+            M = torch.bmm(x1, x2.transpose(1, 2))  # Shape: (batch_size, embed_dim, embed_dim)
             # Then, compute the product with x3
-            result = torch.bmm(M, x3)  # Shape: (batch_size, 1, 1)
+            result = torch.bmm(M, x3)  # Shape: (batch_size, embed_dim, 1)
             results[:, i, :] = result.squeeze(-1)  # Remove the last dimension and store the result
 
         return results
