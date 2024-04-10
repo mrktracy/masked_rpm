@@ -145,6 +145,19 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         embed_reshaped = self.perception.forward(sen_reshaped) # x_reshaped is (B*9*8, embed_dim)
         x = embed_reshaped.view(batch_size, 8, 9, -1) # x is (B, 8, 9, embed_dim)
 
+        ##### Do ternary operation before relational bottleneck
+        ##
+        x_reshaped = x.view(-1, 9, self.model_dim)  # x is (B, 8, 9, self.model_dim)
+
+        x_ternary = self.ternary_operation(x_reshaped)
+        x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
+
+        y_reshaped = x_reshaped_1.clone()
+
+        x_reshaped_1 = self.relBottleneck_1.forward(x_q=x_reshaped_1, x_k=x_reshaped_1, x_v=symbols_1)
+        ##
+        #####
+
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1) # expand to fit batch (B, 8, 9, embed_dim)
 
         if self.cat_pos:
@@ -154,18 +167,23 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
 
         x = self.tcn(x)
 
+
         # repeat symbols along batch dimension
         symbols_1 = self.symbols_1.unsqueeze(0)
         symbols_1 = symbols_1.repeat(batch_size*8, 1, 1)
 
-        x_reshaped = x.view(-1, 9, self.model_dim)  # x is (B, 8, 9, self.model_dim)
-
-        y_reshaped = x_reshaped.clone()
-
-        x_reshaped = self.relBottleneck_1.forward(x_q=x_reshaped, x_k=x_reshaped, x_v=symbols_1)
-
-        x_ternary = self.ternary_operation(x_reshaped)
-        x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
+        # ##### Do ternary operation after relational bottleneck
+        # ##
+        # x_reshaped = x.view(-1, 9, self.model_dim)  # x is (B, 8, 9, self.model_dim)
+        #
+        # y_reshaped = x_reshaped.clone()
+        #
+        # x_reshaped = self.relBottleneck_1.forward(x_q=x_reshaped, x_k=x_reshaped, x_v=symbols_1)
+        #
+        # x_ternary = self.ternary_operation(x_reshaped)
+        # x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
+        # ##
+        # #####
 
         for blk in self.blocks_abs_1: # multi-headed self-attention layer
             x_reshaped_1 = blk(x_q=x_reshaped_1, x_k=x_reshaped_1, x_v=x_reshaped_1)
