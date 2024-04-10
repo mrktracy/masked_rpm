@@ -59,8 +59,8 @@ def main_BERT():
     #                                         bb_num_heads=32).to(device)
     transformer_model = TransformerModelv19(embed_dim=768,
                                             symbol_factor=2,
-                                            trans_depth=8,
-                                            abs_1_depth=8,
+                                            trans_depth=5,
+                                            abs_1_depth=5,
                                             trans_num_heads=64,
                                             abs_1_num_heads=64,
                                             cat_pos=True,
