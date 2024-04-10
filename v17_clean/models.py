@@ -17,7 +17,6 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
                  norm_layer=nn.LayerNorm,
                  trans_depth = 4,
                  abs_1_depth = 4,
-                 cat_pos=True,
                  use_backbone = True,
                  bb_depth = 4,
                  bb_num_heads = 32):
@@ -26,7 +25,6 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
 
         assert abs_1_depth >= 2, 'Abstractor 1 depth must be at least 2'
 
-        self.cat_pos = cat_pos
         self.embed_dim = embed_dim
         self.symbol_factor = symbol_factor
         self.grid_size = grid_size
@@ -37,10 +35,7 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads)\
             if self.use_backbone else ResNetEncoder(embed_dim=self.embed_dim)
 
-        if self.cat_pos:
-            self.model_dim = 2*self.embed_dim
-        else:
-            self.model_dim = self.embed_dim
+        self.model_dim = 3*self.embed_dim
 
         self.tcn = TemporalContextNorm(num_features=self.model_dim)
 
@@ -54,7 +49,7 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
                                    attn_drop=0.1)
 
         self.blocks_abs_1 = nn.ModuleList([
-            Block(self.model_dim * self.symbol_factor * 2, self.model_dim * self.symbol_factor * 2, abs_1_num_heads,\
+            Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_1_num_heads,\
                   mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, \
                   attn_drop=0.1, drop_path=0.5*((i+1)/abs_1_depth))
             for i in range(abs_1_depth-1)])
@@ -65,11 +60,11 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
                   drop_path=0.5 * ((i + 1) / trans_depth))
             for i in range(trans_depth)])
 
-        self.norm_x = norm_layer(self.model_dim * self.symbol_factor * 2)
+        self.norm_x = norm_layer(self.model_dim * self.symbol_factor)
 
         self.norm_y = norm_layer(self.model_dim)
 
-        self.mlp1 = nn.Linear(self.model_dim + self.model_dim * self.symbol_factor * 2, self.embed_dim)
+        self.mlp1 = nn.Linear(self.model_dim + self.model_dim * self.symbol_factor, self.embed_dim)
 
         self.relu = nn.ReLU()
 
@@ -143,60 +138,45 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
 
         sen_reshaped = sentences.view(-1, 1, 160, 160)  # x is (B, 8, 9, 1, 160, 160)
         embed_reshaped = self.perception.forward(sen_reshaped) # x_reshaped is (B*9*8, embed_dim)
-        x = embed_reshaped.view(batch_size, 8, 9, -1) # x is (B, 8, 9, embed_dim)
+        # x = embed_reshaped.view(batch_size, 8, 9, -1) # x is (B, 8, 9, embed_dim)
 
-        ##### Do ternary operation before relational bottleneck
-        ##
-        x_reshaped = x.view(-1, 9, self.model_dim)  # x is (B, 8, 9, self.model_dim)
+        x_reshaped = embed_reshaped.view(-1, 9, self.embed_dim)  # x is (B, 8, 9, self.embed_dim)
 
         x_ternary = self.ternary_operation(x_reshaped)
         x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
 
-        y_reshaped = x_reshaped_1.clone()
-
-        x_reshaped_1 = self.relBottleneck_1.forward(x_q=x_reshaped_1, x_k=x_reshaped_1, x_v=symbols_1)
+        x = x_reshaped_1.view(batch_size, 8, 9, -1) # x is (B, 8, 9, self.embed_dim*2)
         ##
         #####
 
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1) # expand to fit batch (B, 8, 9, embed_dim)
 
-        if self.cat_pos:
-            x = torch.cat([x, final_pos_embed], dim=3)  # add positional embeddings
-        else:
-            x = x + final_pos_embed  # add positional embeddings
+        x = torch.cat([x, final_pos_embed], dim=3)  # add positional embeddings
 
         x = self.tcn(x)
 
+        # clone x for passing to transformer blocks
+        y = x.clone()
 
         # repeat symbols along batch dimension
         symbols_1 = self.symbols_1.unsqueeze(0)
-        symbols_1 = symbols_1.repeat(batch_size*8, 1, 1)
+        symbols_1 = symbols_1.repeat(batch_size * 8, 1, 1)
 
-        # ##### Do ternary operation after relational bottleneck
-        # ##
-        # x_reshaped = x.view(-1, 9, self.model_dim)  # x is (B, 8, 9, self.model_dim)
-        #
-        # y_reshaped = x_reshaped.clone()
-        #
-        # x_reshaped = self.relBottleneck_1.forward(x_q=x_reshaped, x_k=x_reshaped, x_v=symbols_1)
-        #
-        # x_ternary = self.ternary_operation(x_reshaped)
-        # x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
-        # ##
-        # #####
+        # pass to relational bottleneck
+        x = self.relBottleneck_1.forward(x_q=x, x_k=x, x_v=symbols_1)
 
-        for blk in self.blocks_abs_1: # multi-headed self-attention layer
-            x_reshaped_1 = blk(x_q=x_reshaped_1, x_k=x_reshaped_1, x_v=x_reshaped_1)
-        x_reshaped_1 = self.norm_x(x_reshaped_1)
+        for blk in self.blocks_abs_1: # multi-headed self-attention blocks of abstractor
+            x = blk(x_q=x, x_k=x, x_v=x)
+        x = self.norm_x(x)
 
         # reduce dimension from symbol dimensions to embedding dimensions if self.cat_output = False
-        x = x_reshaped_1.view([batch_size, 8, 9, -1])
+        x = x.view([batch_size, 8, 9, -1])
 
         for blk in self.blocks_trans: # multi-headed self-attention layer
-            y_reshaped = blk(x_q=y_reshaped, x_k=y_reshaped, x_v=y_reshaped)
-        y_reshaped = self.norm_y(y_reshaped)
+            y = blk(x_q=y, x_k=y, x_v=y)
+        y = self.norm_y(y)
 
-        y = y_reshaped.view(batch_size, 8, 9, -1)
+        y = y.view(batch_size, 8, 9, -1)
 
         y = self.tcn.inverse(y)
 
