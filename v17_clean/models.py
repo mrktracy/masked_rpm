@@ -137,7 +137,6 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
 
         sen_reshaped = sentences.view(-1, 1, 160, 160)  # x is (B, 8, 9, 1, 160, 160)
         embed_reshaped = self.perception.forward(sen_reshaped) # x_reshaped is (B*9*8, embed_dim)
-        # x = embed_reshaped.view(batch_size, 8, 9, -1) # x is (B, 8, 9, embed_dim)
 
         x_reshaped = embed_reshaped.view(-1, 9, self.embed_dim)  # x is (B, 8, 9, self.embed_dim)
 
@@ -153,11 +152,11 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         # concatenate positional embeddings
         x = torch.cat([x, final_pos_embed], dim=3)
 
-        # reshape x for batch processing
-        x = x.view(batch_size*8, 9, -1)
-
         # apply temporal context normalization
         x = self.tcn(x)
+
+        # reshape x for batch processing
+        x = x.view(batch_size*8, 9, -1)
 
         # clone x for passing to transformer blocks
         y = x.clone()
@@ -169,17 +168,17 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         # pass to relational bottleneck
         x = self.relBottleneck_1.forward(x_q=x, x_k=x, x_v=symbols_1)
 
-        for blk in self.blocks_abs_1: # multi-headed self-attention blocks of abstractor
+        # multi-headed self-attention blocks of abstractor
+        for blk in self.blocks_abs_1:
             x = blk(x_q=x, x_k=x, x_v=x)
         x = self.norm_x(x)
 
-        # reduce dimension from symbol dimensions to embedding dimensions if self.cat_output = False
-        x = x.view([batch_size, 8, 9, -1])
-
-        for blk in self.blocks_trans: # multi-headed self-attention layer
+        # multi-headed self-attention blocks of transformer
+        for blk in self.blocks_trans:
             y = blk(x_q=y, x_k=y, x_v=y)
         y = self.norm_y(y)
 
+        x = x.view([batch_size, 8, 9, -1])
         y = y.view(batch_size, 8, 9, -1)
 
         y = self.tcn.inverse(y)
