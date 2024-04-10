@@ -98,8 +98,8 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         padded_x = torch.cat([x, padding], dim=1)  # Shape: (batch_size, seq_len + 2, embed_dim)
 
         # Extract x1, x2, x3 for all sliding windows
-        x1 = padded_x[:, :-2, :].unsqueeze(2)  # Shape: (batch_size, seq_len-2, 1, embed_dim)
-        x2 = padded_x[:, 1:-1, :].unsqueeze(3)  # Shape: (batch_size, seq_len-2, embed_dim, 1)
+        x1 = padded_x[:, :-2, :].unsqueeze(3)  # Shape: (batch_size, seq_len-2, embed_dim, 1)
+        x2 = padded_x[:, 1:-1, :].unsqueeze(2)  # Shape: (batch_size, seq_len-2, 1, embed_dim)
         x3 = padded_x[:, 2:, :].unsqueeze(3)  # Shape: (batch_size, seq_len-2, embed_dim, 1)
 
         # Compute the outer product
@@ -110,6 +110,31 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
 
         # Squeeze to remove singleton dimension
         result = result.squeeze(-1)  # Shape: (batch_size, seq_len-2, embed_dim)
+
+        return result
+
+    def ternary_hadamard(self, x):
+        """
+        Perform the Hadamard product operation for sliding windows across the sequence.
+        Input x is of shape (batch_size, 9, embed_dim), and we pad the sequence by repeating
+        the last vector twice to handle edge cases.
+        """
+        batch_size, seq_len, embed_dim = x.shape
+
+        # Ensure seq_len is sufficient for at least one sliding window
+        assert seq_len >= 3, "Sequence length must be at least 3 for a sliding window."
+
+        # Pad the sequence by repeating the last vector twice
+        padding = x[:, -1, :].unsqueeze(1).repeat(1, 2, 1)  # Shape: (batch_size, 2, embed_dim)
+        padded_x = torch.cat([x, padding], dim=1)  # Shape: (batch_size, seq_len + 2, embed_dim)
+
+        # Extract x1, x2, x3 for all sliding windows
+        x1 = padded_x[:, :-2, :]  # Shape: (batch_size, seq_len-2, embed_dim)
+        x2 = padded_x[:, 1:-1, :]  # Shape: (batch_size, seq_len-2, embed_dim)
+        x3 = padded_x[:, 2:, :]  # Shape: (batch_size, seq_len-2, embed_dim)
+
+        # element-wise multiplication
+        result = x1 * x2 * x3
 
         return result
 
