@@ -87,9 +87,10 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         # Ensure seq_len is sufficient for at least one sliding window
         assert seq_len >= 3, "Sequence length must be at least 3 for a sliding window."
 
-        # Pad the sequence by repeating the last vector twice
-        padding = x[:, -1, :].unsqueeze(1).repeat(1, 2, 1)  # Shape: (batch_size, 2, embed_dim)
-        padded_x = torch.cat([x, padding], dim=1)  # Shape: (batch_size, seq_len + 2, embed_dim)
+        # Pad the sequence by repeating the first and last vectors
+        padding_1 = x[:, 0, :].unsqueeze(1)  # Shape: (batch_size, 1, embed_dim)
+        padding_2 = x[:, -1, :].unsqueeze(1)  # Shape: (batch_size, 1, embed_dim)
+        padded_x = torch.cat([padding_1, x, padding_2], dim=1)  # Shape: (batch_size, seq_len + 2, embed_dim)
 
         # Extract x1, x2, x3 for all sliding windows
         x1 = padded_x[:, :-2, :].unsqueeze(3)  # Shape: (batch_size, seq_len-2, embed_dim, 1)
@@ -118,9 +119,10 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         # Ensure seq_len is sufficient for at least one sliding window
         assert seq_len >= 3, "Sequence length must be at least 3 for a sliding window."
 
-        # Pad the sequence by repeating the last vector twice
-        padding = x[:, -1, :].unsqueeze(1).repeat(1, 2, 1)  # Shape: (batch_size, 2, embed_dim)
-        padded_x = torch.cat([x, padding], dim=1)  # Shape: (batch_size, seq_len + 2, embed_dim)
+        # Pad the sequence by repeating the first and last vectors
+        padding_1 = x[:, 0, :].unsqueeze(1)  # Shape: (batch_size, 1, embed_dim)
+        padding_2 = x[:, -1, :].unsqueeze(1)  # Shape: (batch_size, 1, embed_dim)
+        padded_x = torch.cat([padding_1, x, padding_2], dim=1)  # Shape: (batch_size, seq_len + 2, embed_dim)
 
         # Extract x1, x2, x3 for all sliding windows
         x1 = padded_x[:, :-2, :]  # Shape: (batch_size, seq_len-2, embed_dim)
