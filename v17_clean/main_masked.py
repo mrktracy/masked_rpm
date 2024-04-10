@@ -12,7 +12,7 @@ from models import TransformerModelv17, TransformerModelv18, TransformerModelv19
 import os
 import logging
 
-logfile = "../../tr_results/v18-itr1_full/runlog.txt"
+logfile = "../../tr_results/v19-itr1_full/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -44,29 +44,29 @@ def main_BERT():
     #                                         cat_output=True,
     #                                         use_backbone=True,
     #                                         backbone_depth=4).to(device)
-    transformer_model = TransformerModelv18(embed_dim=768,
-                                            symbol_factor=2,
-                                            trans_depth=8,
-                                            abs_1_depth=8,
-                                            abs_2_depth=4,
-                                            trans_num_heads=64,
-                                            abs_1_num_heads=64,
-                                            abs_2_num_heads=64,
-                                            cat_pos=True,
-                                            cat_output=True,
-                                            use_backbone=True,
-                                            bb_depth=4,
-                                            bb_num_heads=32).to(device)
-    # transformer_model = TransformerModelv19(embed_dim=768,
+    # transformer_model = TransformerModelv18(embed_dim=768,
     #                                         symbol_factor=2,
-    #                                         trans_depth=5,
-    #                                         abs_1_depth=5,
+    #                                         trans_depth=8,
+    #                                         abs_1_depth=8,
+    #                                         abs_2_depth=4,
     #                                         trans_num_heads=64,
     #                                         abs_1_num_heads=64,
+    #                                         abs_2_num_heads=64,
     #                                         cat_pos=True,
+    #                                         cat_output=True,
     #                                         use_backbone=True,
     #                                         bb_depth=4,
     #                                         bb_num_heads=32).to(device)
+    transformer_model = TransformerModelv19(embed_dim=768,
+                                            symbol_factor=2,
+                                            trans_depth=8,
+                                            abs_1_depth=8,
+                                            trans_num_heads=64,
+                                            abs_1_num_heads=64,
+                                            cat_pos=True,
+                                            use_backbone=True,
+                                            bb_depth=4,
+                                            bb_num_heads=32).to(device)
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
@@ -101,14 +101,14 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 50
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 10
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 10
-    VERSION = "v18-itr1_full"
+    VERSION = "v19-itr1_full"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)

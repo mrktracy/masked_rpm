@@ -90,27 +90,28 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         """
         batch_size, seq_len, embed_dim = x.shape
 
+        # Ensure seq_len is sufficient for at least one sliding window
+        assert seq_len >= 3, "Sequence length must be at least 3 for a sliding window."
+
         # Pad the sequence by repeating the last vector twice
         padding = x[:, -1, :].unsqueeze(1).repeat(1, 2, 1)  # Shape: (batch_size, 2, embed_dim)
-        padded_x = torch.cat([x, padding], dim=1)  # Shape: (batch_size, 11, embed_dim)
+        padded_x = torch.cat([x, padding], dim=1)  # Shape: (batch_size, seq_len + 2, embed_dim)
 
-        # Initialize a tensor to store the results
-        results = torch.zeros(batch_size, seq_len, embed_dim, device=x.device)
+        # Extract x1, x2, x3 for all sliding windows
+        x1 = padded_x[:, :-2, :].unsqueeze(2)  # Shape: (batch_size, seq_len-2, 1, embed_dim)
+        x2 = padded_x[:, 1:-1, :].unsqueeze(3)  # Shape: (batch_size, seq_len-2, embed_dim, 1)
+        x3 = padded_x[:, 2:, :].unsqueeze(3)  # Shape: (batch_size, seq_len-2, embed_dim, 1)
 
-        for i in range(seq_len):
-            # Extract x1, x2, x3 for the ternary operation
-            x1 = padded_x[:, i, :].unsqueeze(2)  # Shape: (batch_size, embed_dim, 1)
-            x2 = padded_x[:, i + 1, :].unsqueeze(2)  # Shape: (batch_size, embed_dim, 1)
-            x3 = padded_x[:, i + 2, :].unsqueeze(2)  # Shape: (batch_size, embed_dim, 1)
+        # Compute the outer product
+        outer_product = torch.matmul(x1, x2)  # Shape: (batch_size, seq_len-2, embed_dim, embed_dim)
 
-            # Perform the operation: (x1 * x2^T) * x3
-            # First, compute the outer product x1 * x2^T
-            M = torch.bmm(x1, x2.transpose(1, 2))  # Shape: (batch_size, embed_dim, embed_dim)
-            # Then, compute the product with x3
-            result = torch.bmm(M, x3)  # Shape: (batch_size, embed_dim, 1)
-            results[:, i, :] = result.squeeze(-1)  # Remove the last dimension and store the result
+        # Matrix-vector multiplication on the last two dimensions
+        result = torch.matmul(outer_product, x3)
 
-        return results
+        # Squeeze to remove singleton dimension
+        result = result.squeeze(-1)  # Shape: (batch_size, seq_len-2, embed_dim)
+
+        return result
 
     def forward(self, sentences):
         batch_size = sentences.size(0)  # Get the batch size from the first dimension of x
