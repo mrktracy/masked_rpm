@@ -75,7 +75,6 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         # define symbols
         normal_initializer = torch.nn.init.normal_
         self.symbols_1 = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim * self.symbol_factor)))
-        self.symbols_2 = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim * self.symbol_factor)))
 
     def ternary_operation(self, x):
         """
@@ -145,14 +144,19 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         x_ternary = self.ternary_operation(x_reshaped)
         x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
 
+        # reshape for concatenating positional embeddings
         x = x_reshaped_1.view(batch_size, 8, 9, -1) # x is (B, 8, 9, self.embed_dim*2)
-        ##
-        #####
 
-        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1) # expand to fit batch (B, 8, 9, embed_dim)
+        # expand positional embeddings to fit batch (B, 8, 9, embed_dim)
+        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1)
 
-        x = torch.cat([x, final_pos_embed], dim=3)  # add positional embeddings
+        # concatenate positional embeddings
+        x = torch.cat([x, final_pos_embed], dim=3)
 
+        # reshape x for batch processing
+        x = x.view(batch_size*8, 9, -1)
+
+        # apply temporal context normalization
         x = self.tcn(x)
 
         # clone x for passing to transformer blocks
