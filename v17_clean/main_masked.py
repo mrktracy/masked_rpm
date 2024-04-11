@@ -12,7 +12,7 @@ from models import TransformerModelv17, TransformerModelv18, TransformerModelv19
 import os
 import logging
 
-logfile = "../../tr_results/v20-itr0_full/runlog.txt"
+logfile = "../../tr_results/v20-itr1_full/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -79,6 +79,18 @@ def main_BERT():
                                             bb_depth=4,
                                             bb_num_heads=32,
                                             use_hadamard=False).to(device)
+    # transformer_model = TransformerModelv21(embed_dim=768,
+    #                                         symbol_factor=1,
+    #                                         trans_1_depth=4,
+    #                                         trans_2_depth=4,
+    #                                         abs_1_depth=4,
+    #                                         trans_1_num_heads=64,
+    #                                         trans_2_num_heads=64,
+    #                                         abs_1_num_heads=64,
+    #                                         use_backbone=True,
+    #                                         bb_depth=4,
+    #                                         bb_num_heads=32,
+    #                                         use_hadamard=False).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -119,7 +131,7 @@ def main_BERT():
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 10
-    VERSION = "v20-itr0_full"
+    VERSION = "v20-itr1_full"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
