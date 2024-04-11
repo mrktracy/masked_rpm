@@ -8,11 +8,11 @@ import time
 import random
 from evaluate_masked import evaluate_model_masked_BERT_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_v2
-from models import TransformerModelv17, TransformerModelv18, TransformerModelv19
+from models import TransformerModelv17, TransformerModelv18, TransformerModelv19, TransformerModelv20
 import os
 import logging
 
-logfile = "../../tr_results/v19-itr8_full/runlog.txt"
+logfile = "../../tr_results/v20-itr0_full/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -57,16 +57,29 @@ def main_BERT():
     #                                         use_backbone=True,
     #                                         bb_depth=4,
     #                                         bb_num_heads=32).to(device)
-    transformer_model = TransformerModelv19(embed_dim=768,
+    # transformer_model = TransformerModelv19(embed_dim=768,
+    #                                         symbol_factor=1,
+    #                                         trans_depth=4,
+    #                                         abs_1_depth=4,
+    #                                         trans_num_heads=64,
+    #                                         abs_1_num_heads=64,
+    #                                         use_backbone=True,
+    #                                         bb_depth=4,
+    #                                         bb_num_heads=32,
+    #                                         use_hadamard=True).to(device)
+    transformer_model = TransformerModelv20(embed_dim=768,
                                             symbol_factor=1,
                                             trans_depth=4,
                                             abs_1_depth=4,
+                                            abs_2_depth=4,
                                             trans_num_heads=64,
                                             abs_1_num_heads=64,
+                                            abs_2_num_heads=64,
                                             use_backbone=True,
                                             bb_depth=4,
                                             bb_num_heads=32,
-                                            use_hadamard=True).to(device)
+                                            use_hadamard=False).to(device)
+
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
@@ -101,12 +114,12 @@ def main_BERT():
     ''' Define Hyperparameters '''
     EPOCHS = 50
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 10
-    VERSION = "v19-itr8_full"
+    VERSION = "v20-itr0_full"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
 
