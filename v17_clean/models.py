@@ -204,7 +204,7 @@ class TransformerModelv21(nn.Module): # takes in images, embeds, performs self-a
         y_2 = self.norm_y_2(y_2)
 
         x_1 = x_1.view([batch_size, 8, 9, -1])
-        y_1 = x_1.view([batch_size, 8, 9, -1])
+        y_1 = y_1.view([batch_size, 8, 9, -1])
         y_2 = y_2.view([batch_size, 8, 9, -1])
 
         y_1 = self.tcn_1.inverse(y_1)
