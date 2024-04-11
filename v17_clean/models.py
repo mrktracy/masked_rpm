@@ -76,6 +76,8 @@ class TransformerModelv21(nn.Module): # takes in images, embeds, performs self-a
         self.norm_y_1 = norm_layer(self.model_dim)
         self.norm_y_2 = norm_layer(self.model_dim)
 
+        self.norm_z = norm_layer(self.model_dim * self.symbol_factor + 2 * self.model_dim)
+
         self.mlp1 = nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim)
 
         self.relu = nn.ReLU()
@@ -155,11 +157,10 @@ class TransformerModelv21(nn.Module): # takes in images, embeds, performs self-a
         x_reshaped = embed_reshaped.view(-1, 9, self.embed_dim)  # x is (B, 8, 9, self.embed_dim)
 
         x_ternary = self.ternary_hadamard(x_reshaped) if self.use_hadamard else self.ternary_operation(x_reshaped)
-        # x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
 
         # reshape for concatenating positional embeddings
-        x_1 = x_reshaped.view(batch_size, 8, 9, -1) # x is (B, 8, 9, self.embed_dim*2)
-        y_1 = x_ternary.view(batch_size, 8, 9, -1)  # x is (B, 8, 9, self.embed_dim*2)
+        x_1 = x_reshaped.view(batch_size, 8, 9, -1) # x_1 is (B, 8, 9, self.embed_dim*2)
+        y_1 = x_ternary.view(batch_size, 8, 9, -1)  # y_1 is (B, 8, 9, self.embed_dim*2)
 
         # expand positional embeddings to fit batch (B, 8, 9, embed_dim)
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1)
@@ -211,6 +212,8 @@ class TransformerModelv21(nn.Module): # takes in images, embeds, performs self-a
         y_2 = self.tcn_2.inverse(y_2)
 
         z = torch.cat([x_1, y_1, y_2], dim=3)
+
+        z = self.norm_z(z)
 
         # z_reshaped = z[:,:,8,:].view(batch_size * 8, -1) # z is (B, 8, 9, -1)
         z_reshaped = torch.mean(z, dim=2).view(batch_size * 8, -1) # z is (B, 8, 9, -1)
