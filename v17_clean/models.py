@@ -19,7 +19,8 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
                  abs_1_depth = 4,
                  use_backbone = True,
                  bb_depth = 4,
-                 bb_num_heads = 32):
+                 bb_num_heads = 32,
+                 use_hadamard = False):
 
         super(TransformerModelv19, self).__init__()
 
@@ -31,6 +32,7 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         self.use_backbone = use_backbone
         self.bb_depth = bb_depth
         self.bb_num_heads = bb_num_heads
+        self.use_hadamard = use_hadamard
 
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads)\
             if self.use_backbone else ResNetEncoder(embed_dim=self.embed_dim)
@@ -142,7 +144,7 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
 
         x_reshaped = embed_reshaped.view(-1, 9, self.embed_dim)  # x is (B, 8, 9, self.embed_dim)
 
-        x_ternary = self.ternary_operation(x_reshaped)
+        x_ternary = self.ternary_hadamard(x_reshaped) if self.use_hadamard else self.ternary_operation(x_reshaped)
         x_reshaped_1 = torch.cat([x_reshaped, x_ternary], dim=-1)
 
         # reshape for concatenating positional embeddings
