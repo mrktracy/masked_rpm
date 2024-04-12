@@ -12,7 +12,9 @@ from models import TransformerModelv19, TransformerModelv20, TransformerModelv21
 import os
 import logging
 
-logfile = "../../tr_results/v19-itr9_full/runlog.txt"
+version = "v20-itr2_full"
+
+logfile = f"../../tr_results/{version}/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 # logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
@@ -29,7 +31,7 @@ def initialize_weights_he(m):
         if m.bias is not None:
             nn.init.constant_(m.bias, 0)
 
-def main_BERT():
+def main_BERT(VERSION):
 
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,28 +59,28 @@ def main_BERT():
     #                                         use_backbone=True,
     #                                         bb_depth=4,
     #                                         bb_num_heads=32).to(device)
-    transformer_model = TransformerModelv19(embed_dim=768,
-                                            symbol_factor=1,
-                                            trans_depth=4,
-                                            abs_1_depth=4,
-                                            trans_num_heads=64,
-                                            abs_1_num_heads=64,
-                                            use_backbone=True,
-                                            bb_depth=4,
-                                            bb_num_heads=32,
-                                            use_hadamard=False).to(device)
-    # transformer_model = TransformerModelv20(embed_dim=768,
+    # transformer_model = TransformerModelv19(embed_dim=768,
     #                                         symbol_factor=1,
     #                                         trans_depth=4,
     #                                         abs_1_depth=4,
-    #                                         abs_2_depth=4,
     #                                         trans_num_heads=64,
     #                                         abs_1_num_heads=64,
-    #                                         abs_2_num_heads=64,
     #                                         use_backbone=True,
     #                                         bb_depth=4,
     #                                         bb_num_heads=32,
     #                                         use_hadamard=False).to(device)
+    transformer_model = TransformerModelv20(embed_dim=768,
+                                            symbol_factor=1,
+                                            trans_depth=4,
+                                            abs_1_depth=4,
+                                            abs_2_depth=4,
+                                            trans_num_heads=32,
+                                            abs_1_num_heads=32,
+                                            abs_2_num_heads=32,
+                                            use_backbone=True,
+                                            bb_depth=4,
+                                            bb_num_heads=16,
+                                            use_hadamard=False).to(device)
     # transformer_model = TransformerModelv21(embed_dim=768,
     #                                         symbol_factor=1,
     #                                         trans_1_depth=4,
@@ -131,9 +133,8 @@ def main_BERT():
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 10
-    VERSION = "v19-itr9_full"
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    ALPHA = 0.75 # for relative importance of guess vs. autoencoder accuracy
+    ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -204,4 +205,4 @@ def main_BERT():
         scheduler.step()
 
 if __name__ == "__main__":
-    main_BERT()
+    main_BERT(version)
