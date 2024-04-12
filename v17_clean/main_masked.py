@@ -12,7 +12,7 @@ from models import TransformerModelv19, TransformerModelv20, TransformerModelv21
 import os
 import logging
 
-version = "v20-itr3_full"
+version = "v20-itr4_full"
 
 logfile = f"../../tr_results/{version}/runlog.txt"
 
@@ -68,17 +68,17 @@ def main_BERT(VERSION):
     #                                         bb_depth=4,
     #                                         bb_num_heads=32,
     #                                         use_hadamard=False).to(device)
-    transformer_model = TransformerModelv20(embed_dim=512,
+    transformer_model = TransformerModelv20(embed_dim=128,
                                             symbol_factor=1,
-                                            trans_depth=3,
-                                            abs_1_depth=3,
-                                            abs_2_depth=3,
-                                            trans_num_heads=16,
-                                            abs_1_num_heads=16,
-                                            abs_2_num_heads=16,
+                                            trans_depth=2,
+                                            abs_1_depth=2,
+                                            abs_2_depth=2,
+                                            trans_num_heads=8,
+                                            abs_1_num_heads=8,
+                                            abs_2_num_heads=8,
                                             use_backbone=True,
-                                            bb_depth=2,
-                                            bb_num_heads=8,
+                                            bb_depth=1,
+                                            bb_num_heads=4,
                                             use_hadamard=False).to(device)
     # transformer_model = TransformerModelv21(embed_dim=768,
     #                                         symbol_factor=1,
