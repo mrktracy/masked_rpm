@@ -17,8 +17,7 @@ version = "v20-itr3_full"
 logfile = f"../../tr_results/{version}/runlog.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
-# logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
-# logging.info("Test initializing logger.")
+logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
 
 seed = 42
 random.seed(seed)
@@ -180,17 +179,15 @@ def main_BERT(VERSION):
             if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                print(f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}")
-                # print(f"Output all zeros: {torch.equal(outputs, torch.zeros_like(outputs))}")
+                output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}"
+                logging.info(output)
 
             if (idx+1) % batches_per_log == 0:
                 val_loss = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                # output = f"Epoch {epoch + 1} - {idx + 1}/{train_length}. loss: {tot_loss / count:.4f}."
-                print(output)
-                # logging.info(output)
-                with open(logfile, 'a') as file:
-                    file.write(output)
+                logging.info(output)
+                # with open(logfile, 'a') as file:
+                #     file.write(output)
 
                 tot_loss = 0
                 count = 0
