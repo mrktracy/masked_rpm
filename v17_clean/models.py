@@ -532,6 +532,8 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm_y = norm_layer(self.model_dim)
 
+        self.norm_z = norm_layer(self.model_dim * symbol_factor + self.model_dim)
+
         self.mlp1 = nn.Linear(self.model_dim + self.model_dim * self.symbol_factor, self.embed_dim)
 
         self.relu = nn.ReLU()
@@ -654,6 +656,7 @@ class TransformerModelv19(nn.Module): # takes in images, embeds, performs self-a
         y = self.tcn.inverse(y)
 
         z = torch.cat([x,y], dim=3)
+        z = self.norm_z(z)
 
         # z_reshaped = z[:,:,8,:].view(batch_size * 8, -1) # z is (B, 8, 9, -1)
         z_reshaped = torch.mean(z, dim=2).view(batch_size * 8, -1) # z is (B, 8, 9, -1)
