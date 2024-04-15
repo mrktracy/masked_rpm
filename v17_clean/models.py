@@ -251,7 +251,8 @@ class TransformerModelv20(nn.Module): # takes in images, embeds, performs self-a
                  use_backbone = True,
                  bb_depth = 4,
                  bb_num_heads = 32,
-                 use_hadamard = False):
+                 use_hadamard = False,
+                 mlp_dropout = 0.5):
 
         super(TransformerModelv20, self).__init__()
 
@@ -316,6 +317,8 @@ class TransformerModelv20(nn.Module): # takes in images, embeds, performs self-a
         self.relu = nn.ReLU()
 
         self.mlp2 = nn.Linear(self.embed_dim, 1)
+
+        self.dropout = nn.Dropout(p=mlp_dropout)
 
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
@@ -454,7 +457,9 @@ class TransformerModelv20(nn.Module): # takes in images, embeds, performs self-a
 
         # z_reshaped = z[:,:,8,:].view(batch_size * 8, -1) # z is (B, 8, 9, -1)
         z_reshaped = torch.mean(z, dim=2).view(batch_size * 8, -1) # z is (B, 8, 9, -1)
-        dist_reshaped = self.mlp2(self.relu(self.mlp1(z_reshaped))) # dist_reshaped is (B*8, 1)
+        z_reshaped = self.mlp1(z_reshaped)
+        z_reshaped = self.dropout(z_reshaped)
+        dist_reshaped = self.mlp2(self.relu(z_reshaped)) # dist_reshaped is (B*8, 1)
 
         dist = dist_reshaped.view(batch_size, 8)
 

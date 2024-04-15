@@ -79,7 +79,8 @@ def main_BERT(VERSION):
                                             use_backbone=True,
                                             bb_depth=2,
                                             bb_num_heads=8,
-                                            use_hadamard=False).to(device)
+                                            use_hadamard=False,
+                                            mlp_dropout=0.5).to(device)
     # transformer_model = TransformerModelv21(embed_dim=768,
     #                                         symbol_factor=1,
     #                                         trans_1_depth=4,
@@ -127,7 +128,7 @@ def main_BERT(VERSION):
     ''' Define Hyperparameters '''
     EPOCHS = 50
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 60
