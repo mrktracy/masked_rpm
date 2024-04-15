@@ -12,7 +12,7 @@ from models import TransformerModelv19, TransformerModelv20, TransformerModelv21
 import os
 import logging
 
-version = "v20-itr5_full"
+version = "v20-itr6_full"
 
 logfile = f"../../tr_results/{version}/runlog.txt"
 
@@ -80,7 +80,9 @@ def main_BERT(VERSION):
                                             bb_depth=2,
                                             bb_num_heads=8,
                                             use_hadamard=False,
-                                            mlp_dropout=0.5).to(device)
+                                            mlp_dropout=0.5,
+                                            proj_drop=0.5,
+                                            attn_drop=0.5).to(device)
     # transformer_model = TransformerModelv21(embed_dim=768,
     #                                         symbol_factor=1,
     #                                         trans_1_depth=4,
@@ -145,7 +147,9 @@ def main_BERT(VERSION):
 
     # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(list(transformer_model.parameters()),
+                                 lr=LEARNING_RATE,
+                                 weight_decay=1e-4)
 
     scheduler = ExponentialLR(optimizer, gamma=0.95)
 
