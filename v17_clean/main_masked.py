@@ -12,7 +12,7 @@ from models import TransformerModelv19, TransformerModelv20, TransformerModelv21
 import os
 import logging
 
-version = "v20-itr6_full"
+version = "v20-itr7_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 
@@ -76,6 +76,7 @@ def main_BERT(VERSION):
                                             trans_num_heads=16,
                                             abs_1_num_heads=16,
                                             abs_2_num_heads=16,
+                                            mlp_ratio=2,
                                             use_backbone=True,
                                             bb_depth=2,
                                             bb_num_heads=8,
@@ -137,6 +138,7 @@ def main_BERT(VERSION):
     EPOCHS_PER_SAVE = 10
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
+    L1 = 0.01
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -171,9 +173,10 @@ def main_BERT(VERSION):
             sentences = sentences.to(device) # passed to model to get output and recreation of inputs
             target_nums = target_nums.to(device)  # used to select from among candidates
 
-            dist, recreation = transformer_model(sentences)
+            dist, recreation, embeddings = transformer_model(sentences)
 
-            loss = ALPHA*criterion_1(dist, target_nums) + (1-ALPHA)*criterion_2(sentences, recreation)
+            loss = ALPHA*criterion_1(dist, target_nums) + (1-ALPHA)*criterion_2(sentences, recreation) + \
+                L1*torch.norm(embeddings, p=1)
 
             tot_loss += loss.item() # update running averages
             count += 1

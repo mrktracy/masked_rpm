@@ -400,7 +400,10 @@ class TransformerModelv20(nn.Module): # takes in images, embeds, performs self-a
 
         # reshape for concatenating positional embeddings
         x_1 = x_reshaped.view(batch_size, 8, 9, -1) # x is (B, 8, 9, self.embed_dim*2)
+        embeddings = x_1.clone()
+
         x_2 = x_ternary.view(batch_size, 8, 9, -1)  # x is (B, 8, 9, self.embed_dim*2)
+
 
         # expand positional embeddings to fit batch (B, 8, 9, embed_dim)
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1)
@@ -467,7 +470,7 @@ class TransformerModelv20(nn.Module): # takes in images, embeds, performs self-a
 
         recreation = self.decoder.forward(embed_reshaped).view(batch_size, 8, 9, 1, 160, 160)
 
-        return dist, recreation
+        return dist, recreation, embeddings
 
     def encode(self, images):
         embeddings = self.perception.forward(images) # takes input (B, 1, 160, 160), gives output (B, embed_dim)
