@@ -48,7 +48,7 @@ def evaluate_model_masked_BERT_dist(model, dataloader, device, max_batches = Non
             target_nums = target_nums.to(device)
 
             # forward pass
-            dists, _ = model(sentences)
+            dists, _, _ = model(sentences)
 
             dists_softmax = F.softmax(dists, dim = 1)
 
