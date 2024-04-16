@@ -66,7 +66,7 @@ class TransformerModelv21(nn.Module): # takes in images, embeds, performs self-a
             for i in range(trans_1_depth)])
 
         self.blocks_trans_2 = nn.ModuleList([
-            Block(self.model_dim, self.model_dim, trans_1_num_heads, mlp_ratio,
+            Block(self.model_dim, self.model_dim, trans_2_num_heads, mlp_ratio,
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
                   drop_path=0.5 * ((i + 1) / trans_2_depth))
             for i in range(trans_2_depth)])
