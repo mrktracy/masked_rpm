@@ -252,7 +252,7 @@ class TransformerModelv20(nn.Module): # takes in images, embeds, performs self-a
                  bb_depth = 4,
                  bb_num_heads = 32,
                  use_hadamard = False,
-                 mlp_dropout = 0.1,
+                 mlp_drop = 0.1,
                  proj_drop = 0.1,
                  attn_drop = 0.1):
 
@@ -320,7 +320,7 @@ class TransformerModelv20(nn.Module): # takes in images, embeds, performs self-a
 
         self.mlp2 = nn.Linear(self.embed_dim, 1)
 
-        self.dropout = nn.Dropout(p=mlp_dropout)
+        self.dropout = nn.Dropout(p=mlp_drop)
 
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
@@ -875,7 +875,11 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
                  cat_pos=True,
                  cat_output=True,
                  use_backbone = True,
-                 backbone_depth = 4):
+                 backbone_depth = 4,
+                 bb_num_heads=8,
+                 proj_drop = 0.5,
+                 attn_drop = 0.5,
+                 mlp_drop = 0.5):
 
         super(TransformerModelv17, self).__init__()
 
@@ -887,9 +891,8 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
         self.symbol_factor = symbol_factor
         self.grid_size = grid_size
         self.use_backbone = use_backbone
-        self.backbone_depth = backbone_depth
 
-        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.backbone_depth) if self.use_backbone else \
+        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=backbone_depth, num_heads=bb_num_heads) if self.use_backbone else \
             ResNetEncoder(embed_dim=self.embed_dim)
 
         if self.cat_pos:
@@ -905,19 +908,19 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.relBottleneck = Block(self.model_dim, self.model_dim * self.symbol_factor, num_heads, mlp_ratio, \
-                                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, \
-                                   attn_drop=0.1)
+                                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
+                                   attn_drop=attn_drop)
 
         self.blocks_symbol = nn.ModuleList([
             Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, num_heads, mlp_ratio,
-                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
-                  drop_path=0.5*((i+1)/depth))
+                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
+                  attn_drop=attn_drop, drop_path=0.5*((i+1)/depth))
             for i in range(depth-1)])
 
         self.blocks_embed = nn.ModuleList([
             Block(self.model_dim, self.model_dim, num_heads, mlp_ratio,
-                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
-                  drop_path=0.5 * ((i + 1) / depth))
+                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
+                  attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / depth))
             for i in range(depth)])
 
         self.norm_x = norm_layer(self.model_dim * self.symbol_factor)
@@ -936,6 +939,8 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
 
         self.mlp3 = nn.Linear(self.embed_dim, 1)
 
+        self.dropout = nn.Dropout(p=mlp_drop)
+
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
         normal_initializer = torch.nn.init.normal_
@@ -947,6 +952,7 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
         sen_reshaped = sentences.view(-1, 1, 160, 160)  # x is (B, 8, 9, 1, 160, 160)
         embed_reshaped = self.perception.forward(sen_reshaped) # x_reshaped is (B*9*8, embed_dim)
         x = embed_reshaped.view(batch_size, 8, 9, -1) # x is (B, 8, 9, embed_dim)
+        embeddings = x.clone()
 
         final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1) # expand to fit batch (B, 8, 9, embed_dim)
 
@@ -991,13 +997,16 @@ class TransformerModelv17(nn.Module): # takes in images, embeds, performs self-a
 
         # z_reshaped = z[:,:,8,:].view(batch_size * 8, -1) # z is (B, 8, 9, -1)
         z_reshaped = torch.mean(z, dim=2).view(batch_size * 8, -1) # z is (B, 8, 9, -1)
-        dist_reshaped = self.mlp3(self.relu(self.mlp2(z_reshaped))) # dist_reshaped is (B*8, 1)
+
+        z_reshaped = self.mlp2(z_reshaped)
+        z_reshaped = self.dropout(z_reshaped)
+        dist_reshaped = self.mlp3(self.relu(z_reshaped))  # dist_reshaped is (B*8, 1)
 
         dist = dist_reshaped.view(batch_size, 8)
 
         recreation = self.decoder.forward(embed_reshaped).view(batch_size, 8, 9, 1, 160, 160)
 
-        return dist, recreation
+        return dist, recreation, embeddings
 
     def encode(self, images):
         embeddings = self.perception.forward(images) # takes input (B, 1, 160, 160), gives output (B, embed_dim)

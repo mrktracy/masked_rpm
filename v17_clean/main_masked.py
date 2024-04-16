@@ -8,11 +8,11 @@ import time
 import random
 from evaluate_masked import evaluate_model_masked_BERT_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_v2
-from models import TransformerModelv19, TransformerModelv20, TransformerModelv21
+from models import TransformerModelv17, TransformerModelv20, TransformerModelv21
 import os
 import logging
 
-version = "v20-itr8_full"
+version = "v17-itr6_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 
@@ -37,15 +37,20 @@ def main_BERT(VERSION):
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    # transformer_model = TransformerModelv17(embed_dim=768,
-    #                                         symbol_factor=2,
-    #                                         depth=8,
-    #                                         num_heads=64,
-    #                                         cat_pos=True, \
-    #                                         cat_output=True,
-    #                                         use_backbone=True,
-    #                                         backbone_depth=4).to(device)
     # transformer_model = TransformerModelv18(embed_dim=768,
+    transformer_model = TransformerModelv17(embed_dim=512,
+                                            symbol_factor=1,
+                                            depth=3,
+                                            num_heads=16,
+                                            mlp_ratio = 2,
+                                            cat_pos=True,
+                                            cat_output=True,
+                                            use_backbone=True,
+                                            backbone_depth=2,
+                                            bb_num_heads = 8,
+                                            proj_drop = 0.5,
+                                            attn_drop = 0.5,
+                                            mlp_drop = 0.5).to(device)
     #                                         symbol_factor=2,
     #                                         trans_depth=8,
     #                                         abs_1_depth=8,
@@ -68,22 +73,22 @@ def main_BERT(VERSION):
     #                                         bb_depth=4,
     #                                         bb_num_heads=32,
     #                                         use_hadamard=False).to(device)
-    transformer_model = TransformerModelv20(embed_dim=512,
-                                            symbol_factor=1,
-                                            trans_depth=3,
-                                            abs_1_depth=3,
-                                            abs_2_depth=3,
-                                            trans_num_heads=16,
-                                            abs_1_num_heads=16,
-                                            abs_2_num_heads=16,
-                                            mlp_ratio=2,
-                                            use_backbone=True,
-                                            bb_depth=2,
-                                            bb_num_heads=8,
-                                            use_hadamard=False,
-                                            mlp_dropout=0.5,
-                                            proj_drop=0.5,
-                                            attn_drop=0.5).to(device)
+    # transformer_model = TransformerModelv20(embed_dim=512,
+    #                                         symbol_factor=1,
+    #                                         trans_depth=3,
+    #                                         abs_1_depth=3,
+    #                                         abs_2_depth=3,
+    #                                         trans_num_heads=16,
+    #                                         abs_1_num_heads=16,
+    #                                         abs_2_num_heads=16,
+    #                                         mlp_ratio=2,
+    #                                         use_backbone=True,
+    #                                         bb_depth=2,
+    #                                         bb_num_heads=8,
+    #                                         use_hadamard=False,
+    #                                         mlp_drop=0.5,
+    #                                         proj_drop=0.5,
+    #                                         attn_drop=0.5).to(device)
     # transformer_model = TransformerModelv21(embed_dim=768,
     #                                         symbol_factor=1,
     #                                         trans_1_depth=4,
