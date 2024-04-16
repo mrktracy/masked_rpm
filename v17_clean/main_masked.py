@@ -12,7 +12,7 @@ from models import TransformerModelv19, TransformerModelv20, TransformerModelv21
 import os
 import logging
 
-version = "v20-itr7_full"
+version = "v20-itr8_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 
@@ -138,7 +138,7 @@ def main_BERT(VERSION):
     EPOCHS_PER_SAVE = 10
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    L1 = 1e-5
+    L1 = 1e-6
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
