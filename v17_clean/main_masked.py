@@ -14,7 +14,7 @@ import logging
 
 version = "v20-itr6_full"
 
-logfile = f"../../tr_results/{version}/runlog.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 
 os.makedirs(os.path.dirname(logfile), exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
