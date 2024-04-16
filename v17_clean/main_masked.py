@@ -138,7 +138,7 @@ def main_BERT(VERSION):
     EPOCHS_PER_SAVE = 10
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    L1 = 0.01
+    L1 = 1e-5
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
