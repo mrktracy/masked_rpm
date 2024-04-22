@@ -10,19 +10,12 @@ class RPMFullSentencesRaw_v3(Dataset):
 
     def __getitem__(self, idx):
 
-        rot_idx = idx // 16 # index of rotation for data augmentation
-        inner_rot = idx // 4 # inner rotation
+        fileidx = idx // 16
+        rot_idx = idx % 16 # index of rotation for data augmentation
+        inner_rot = idx % 4 # inner rotation
+        outer_rot = rot_idx // 4
 
-        if rot_idx < 4:
-            outer_rot = 0 # outer rotation
-        elif rot_idx < 8:
-            outer_rot = 1
-        elif rot_idx < 12:
-            outer_rot = 2
-        else:
-            outer_rot = 3
-
-        filename = self.files[idx]
+        filename = self.files[fileidx]
         data = np.load(filename)
         image = data['image']
         imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
