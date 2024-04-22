@@ -7,12 +7,12 @@ from funs import gather_files_pgm
 import time
 import random
 from evaluate_masked import evaluate_model_masked_BERT_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_v2
+from datasets import RPMFullSentencesRaw_v3 as rpm_dataset
 from models import TransformerModelv17, TransformerModelv20, TransformerModelv21
 import os
 import logging
 
-version = "v20-itr8_full"
+version = "v20-itr9_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 
@@ -81,7 +81,7 @@ def main_BERT(VERSION):
                                             trans_num_heads=16,
                                             abs_1_num_heads=16,
                                             abs_2_num_heads=16,
-                                            mlp_ratio=2,
+                                            mlp_ratio=4,
                                             use_backbone=True,
                                             bb_depth=2,
                                             bb_num_heads=8,
@@ -128,9 +128,9 @@ def main_BERT(VERSION):
     # val_files = val_files[:10000]
 
     ''' Transformer model v9 '''
-    train_dataset = RPMFullSentencesRaw_v2(train_files, \
+    train_dataset = rpm_dataset(train_files, \
                                            device=device)
-    val_dataset = RPMFullSentencesRaw_v2(val_files, \
+    val_dataset = rpm_dataset(val_files, \
                                             device=device)
 
     ''' Define Hyperparameters '''
@@ -143,7 +143,7 @@ def main_BERT(VERSION):
     EPOCHS_PER_SAVE = 10
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    L1 = 1e-6
+    L1 = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
