@@ -115,13 +115,13 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         x3 = x[:, slice_idx + 2 * increment, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
 
         # Compute the outer product
-        outer_product = torch.matmul(x1, x2)  # Shape: (batch_size, seq_len-2, embed_dim, embed_dim)
+        outer_product = torch.matmul(x1, x2)  # Shape: (batch_size, 6, embed_dim, embed_dim)
 
         # Matrix-vector multiplication on the last two dimensions
         result = torch.matmul(outer_product, x3)
 
         # Squeeze to remove singleton dimension
-        result = result.squeeze(-1)  # Shape: (batch_size, seq_len-2, embed_dim)
+        result = result.squeeze(-1)  # Shape: (batch_size, 6, embed_dim)
 
         return result
 
