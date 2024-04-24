@@ -107,11 +107,12 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         """
 
         slice_idx = torch.tensor([0, 3, 6, 0, 1, 2])
+        increment = torch.tensor([1, 1, 1, 3, 3, 3])
 
         # Extract x1, x2, x3 for all sliding windows
         x1 = x[:, slice_idx, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
-        x2 = x[:, slice_idx + 1, :].unsqueeze(2)  # Shape: (batch_size, 6, 1, embed_dim)
-        x3 = x[:, slice_idx + 2, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
+        x2 = x[:, slice_idx + increment, :].unsqueeze(2)  # Shape: (batch_size, 6, 1, embed_dim)
+        x3 = x[:, slice_idx + 2 * increment, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
 
         # Compute the outer product
         outer_product = torch.matmul(x1, x2)  # Shape: (batch_size, seq_len-2, embed_dim, embed_dim)
@@ -131,11 +132,12 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         """
 
         slice_idx = torch.tensor([0, 3, 6, 0, 1, 2])
+        increment = torch.tensor([1, 1, 1, 3, 3, 3])
 
         # Extract x1, x2, x3 for all sliding windows
         x1 = x[:, slice_idx, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
-        x2 = x[:, slice_idx + 1, :].unsqueeze(2)  # Shape: (batch_size, 6, 1, embed_dim)
-        x3 = x[:, slice_idx + 2, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
+        x2 = x[:, slice_idx + increment, :].unsqueeze(2)  # Shape: (batch_size, 6, 1, embed_dim)
+        x3 = x[:, slice_idx + 2*increment, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
 
         # element-wise multiplication
         result = x1 * x2 * x3
