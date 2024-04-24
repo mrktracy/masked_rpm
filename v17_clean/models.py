@@ -137,7 +137,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         # Extract x1, x2, x3 for all sliding windows
         x1 = x[:, slice_idx, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
         x2 = x[:, slice_idx + increment, :].unsqueeze(2)  # Shape: (batch_size, 6, 1, embed_dim)
-        x3 = x[:, slice_idx + 2*increment, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
+        x3 = x[:, slice_idx + 2 * increment, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
 
         # element-wise multiplication
         result = x1 * x2 * x3
