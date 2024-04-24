@@ -208,9 +208,9 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         y = y.view(batch_size, 8, 9, -1)
         y = self.tcn_1.inverse(y)
 
-        z = torch.cat([x_1, y], dim=3)
+        z = torch.cat([x_1, y], dim=-1)
 
-        z_reshaped = torch.cat([z.mean(dim=-2), x_2.mean(dim=-2)]).view(batch_size * 8, -1)
+        z_reshaped = torch.cat([z.mean(dim=-2), x_2.mean(dim=-2)], dim=-1).view(batch_size * 8, -1)
         z_reshaped = self.mlp1(z_reshaped)
         z_reshaped = self.dropout(z_reshaped)
         dist_reshaped = self.mlp2(self.relu(z_reshaped)) # dist_reshaped is (B*8, 1)
