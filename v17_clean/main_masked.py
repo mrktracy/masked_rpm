@@ -12,7 +12,7 @@ from models import TransformerModelv17, TransformerModelv20, TransformerModelv21
 import os
 import logging
 
-version = "v22-itr0_full"
+version = "v22-itr1_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 
@@ -150,13 +150,13 @@ def main_BERT(VERSION):
                                             device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 50
+    EPOCHS = 20
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 60
-    EPOCHS_PER_SAVE = 10
+    EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     L1 = 0
@@ -196,8 +196,11 @@ def main_BERT(VERSION):
 
             dist, recreation, embeddings = transformer_model(sentences)
 
-            loss = ALPHA*criterion_1(dist, target_nums) + (1-ALPHA)*criterion_2(sentences, recreation) + \
-                L1*torch.norm(embeddings, p=1)
+            # loss = ALPHA*criterion_1(dist, target_nums) + (1-ALPHA)*criterion_2(sentences, recreation) + \
+            #     L1*torch.norm(embeddings, p=1)
+
+            loss = criterion_1(dist, target_nums) * criterion_2(sentences, recreation) + \
+                   L1 * torch.norm(embeddings, p=1)
 
             tot_loss += loss.item() # update running averages
             count += 1
