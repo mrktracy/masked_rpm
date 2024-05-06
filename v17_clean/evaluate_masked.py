@@ -84,8 +84,8 @@ def evaluate_model_by_type(model, dataloader, device, max_batches = None):
 
             guesses = torch.argmax(dists, dim = -1) # take highest probability guess
 
-            record = record.append({"file": files, "folder": folders, \
-                                    "correct": torch.eq(guesses, target_nums)}, ignore_index=True)
+            row = pd.DataFrame({"file": files, "folder": folders, "correct": torch.eq(guesses, target_nums)})
+            record = pd.concat(objs=[record, row], ignore_index=True)
 
             if max_batches is not None and idx + 1 == max_batches:
                 break

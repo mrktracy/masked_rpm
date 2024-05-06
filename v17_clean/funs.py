@@ -41,7 +41,8 @@ def gather_files_by_type(root_dir):
             for filename in os.listdir(folder_path):
                 if filename.endswith('.npz'):
                     file_path = os.path.join(dirpath, filename)
-                    all_files = all_files.append({"folder": foldername, "file": file_path}, ignore_index=True)
+                    row = pd.DataFrame({"folder": foldername, "file": file_path})
+                    all_files = pd.concat(objs=[all_files, row], ignore_index=True)
 
     train_pattern = "train"
     val_pattern = "val"
