@@ -41,15 +41,15 @@ def gather_files_by_type(root_dir):
             for filename in os.listdir(folder_path):
                 if filename.endswith('.npz'):
                     file_path = os.path.join(dirpath, filename)
-                    row = pd.DataFrame({"folder": foldername, "file": file_path})
+                    row = pd.DataFrame({"folder": [foldername], "file": [file_path]})
                     all_files = pd.concat(objs=[all_files, row], ignore_index=True)
 
     train_pattern = "train"
     val_pattern = "val"
     test_pattern = "test"
 
-    train_files = all_files.loc[map(lambda x: re.search(train_pattern, x), all_files['file'])]
-    val_files = all_files.loc[map(lambda x: re.search(val_pattern, x), all_files['file'])]
-    test_files = all_files.loc[map(lambda x: re.search(test_pattern, x), all_files['file'])]
+    train_df = all_files.loc[map(lambda x: re.search(train_pattern, x), all_files['file'])]
+    val_df = all_files.loc[map(lambda x: re.search(val_pattern, x), all_files['file'])]
+    test_df = all_files.loc[map(lambda x: re.search(test_pattern, x), all_files['file'])]
 
-    return train_files, val_files, test_files
+    return train_df, val_df, test_df
