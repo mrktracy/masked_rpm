@@ -40,7 +40,7 @@ def gather_files_by_type(root_dir):
             folder_path = os.path.join(dirpath, foldername)
             for filename in os.listdir(folder_path):
                 if filename.endswith('.npz'):
-                    file_path = os.path.join(dirpath, filename)
+                    file_path = os.path.join(dirpath, foldername, filename)
                     row = pd.DataFrame({"folder": [foldername], "file": [file_path]})
                     all_files = pd.concat(objs=[all_files, row], ignore_index=True)
 
