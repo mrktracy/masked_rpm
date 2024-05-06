@@ -48,8 +48,8 @@ def gather_files_by_type(root_dir):
     val_pattern = "val"
     test_pattern = "test"
 
-    train_df = all_files.loc[map(lambda x: re.search(train_pattern, x), all_files['file'])]
-    val_df = all_files.loc[map(lambda x: re.search(val_pattern, x), all_files['file'])]
-    test_df = all_files.loc[map(lambda x: re.search(test_pattern, x), all_files['file'])]
+    train_df = all_files[[bool(re.search(train_pattern, x)) for x in all_files['file']]]
+    val_df = all_files[[bool(re.search(val_pattern, x)) for x in all_files['file']]]
+    test_df = all_files[[bool(re.search(test_pattern, x)) for x in all_files['file']]]
 
     return train_df, val_df, test_df
