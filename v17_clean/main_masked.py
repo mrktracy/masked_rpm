@@ -18,7 +18,7 @@ logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
-logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
+# logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
 
 seed = 42
 random.seed(seed)
@@ -127,7 +127,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     ''' Load saved model '''
-    state_dict_tr = torch.load('../../modelsaves/v22-itr0/tf_v22-itr0_full_ep10.pth')
+    state_dict_tr = torch.load('../../modelsaves/v22-itr0_full/tf_v22-itr0_full_ep10.pth')
     transformer_model.load_state_dict(state_dict_tr)
     transformer_model.eval()
 
