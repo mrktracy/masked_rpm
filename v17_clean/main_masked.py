@@ -161,7 +161,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     ''' Evaluate model on different types of problems '''
     record = evaluation_function(transformer_model, val_dataloader, device, max_batches=None)

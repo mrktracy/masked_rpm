@@ -8,8 +8,8 @@ class RPMFullSentencesRaw_v4(Dataset):
         assert "file" in df.columns, "Dataframe must have column 'file'"
         assert "folder" in df.columns, "Dataframe must have column 'folder'"
 
-        self.files = df["file"]
-        self.folders = df["folder"]
+        self.files = df["file"].reset_index(drop=True)
+        self.folders = df["folder"].reset_index(drop=True)
         self.device = device
 
     def __getitem__(self, idx):
@@ -41,7 +41,7 @@ class RPMFullSentencesRaw_v4(Dataset):
         sentences_grid = torch.rot90(sentences_grid, k=outer_rot, dims=[1,2]) # rotate
         sentences = sentences_grid.reshape(8, 9, 1, 160, 160) # reshape
 
-        folder = self.folders[fileidx]
+        folder = self.folders.loc[fileidx]
 
         return sentences, target_num, folder, filename
 
