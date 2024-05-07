@@ -40,7 +40,7 @@ def evaluate_model_dist(model, dataloader, device, max_batches = None):
 
         num_correct = 0
         num_samples = 0
-        for idx, (sentences, target_nums) in enumerate(dataloader):
+        for idx, (sentences, target_nums, _, _) in enumerate(dataloader):
 
             batch_size = sentences.size(0)
 

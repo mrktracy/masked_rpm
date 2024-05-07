@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import Dataset
 
 # Dataset for training and evaluation, corresponding to model v17
-class RPMFullSentencesRaw_v4(Dataset):
+class RPMFullSentences_evalByType(Dataset):
     def __init__(self, df, device):
         assert "file" in df.columns, "Dataframe must have column 'file'"
         assert "folder" in df.columns, "Dataframe must have column 'folder'"
@@ -50,7 +50,7 @@ class RPMFullSentencesRaw_v4(Dataset):
         return length
 
 # Dataset for training and evaluation, corresponding to model v17
-class RPMFullSentencesRaw_v3(Dataset):
+class RPMFullSentencesRaw_dataAug(Dataset):
     def __init__(self, files, device):
         self.files = files
         self.device = device
@@ -84,14 +84,14 @@ class RPMFullSentencesRaw_v3(Dataset):
         sentences_grid = torch.rot90(sentences_grid, k=outer_rot, dims=[1,2]) # rotate
         sentences = sentences_grid.reshape(8, 9, 1, 160, 160) # reshape
 
-        return sentences, target_num
+        return sentences, target_num, None, None
 
     def __len__(self):
         length = len(self.files) * 16
         return length
 
 # Dataset for training and evaluation, corresponding to model v17
-class RPMFullSentencesRaw_v2(Dataset):
+class RPMFullSentencesRaw_base(Dataset):
     def __init__(self, files, device):
         self.files = files
         self.device = device
@@ -114,7 +114,7 @@ class RPMFullSentencesRaw_v2(Dataset):
         # Concatenate context and candidates along the second dimension
         sentences = torch.cat([context_expanded, candidates.unsqueeze(1)], dim = 1)
 
-        return sentences, target_num
+        return sentences, target_num, None, None
 
     def __len__(self):
         length = len(self.files)
