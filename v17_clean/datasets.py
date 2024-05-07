@@ -21,7 +21,7 @@ class RPMFullSentences_evalByType(Dataset):
 
         filename = self.files[fileidx]
         data = np.load(filename)
-        image = data['image']
+        image = data['image'].reshape(16, 160, 160)
         imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
         imagetensor = imagetensor.unsqueeze(1).to(self.device) # shape (16, 1, 160, 160)
 
@@ -64,7 +64,7 @@ class RPMFullSentencesRaw_dataAug(Dataset):
 
         filename = self.files[fileidx]
         data = np.load(filename)
-        image = data['image']
+        image = data['image'].reshape(16, 160, 160)
         imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
         imagetensor = imagetensor.unsqueeze(1).to(self.device) # shape (16, 1, 160, 160)
 
@@ -100,7 +100,7 @@ class RPMFullSentencesRaw_base(Dataset):
 
         filename = self.files[idx]
         data = np.load(filename)
-        image = data['image']
+        image = data['image'].reshape(16, 160, 160)
         imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
         imagetensor = imagetensor.unsqueeze(1).to(self.device) # shape (16, 1, 160, 160)
 
