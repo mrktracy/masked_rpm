@@ -165,10 +165,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Evaluate model on different types of problems '''
     record = evaluation_function(transformer_model, val_dataloader, device, max_batches=None)
-    record.to_csv(RESULTS_FOLDER, f"record_{VERSION}")
+    record.to_csv(os.path.join(RESULTS_FOLDER, f"record_{VERSION}"))
 
     record_by_type = record.groupby("folder")["correct"].mean()
-    record_by_type.to_csv(RESULTS_FOLDER, f"record_by_type_{VERSION}")
+    record_by_type.to_csv(os.path.join(RESULTS_FOLDER, f"record_by_type_{VERSION}"))
 
     ''' Train model '''
     # train_length = len(train_dataloader)
