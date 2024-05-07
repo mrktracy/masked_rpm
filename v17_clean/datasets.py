@@ -84,7 +84,7 @@ class RPMFullSentencesRaw_dataAug(Dataset):
         sentences_grid = torch.rot90(sentences_grid, k=outer_rot, dims=[1,2]) # rotate
         sentences = sentences_grid.reshape(8, 9, 1, 160, 160) # reshape
 
-        return sentences, target_num, None, None
+        return sentences, target_num, 0, 0
 
     def __len__(self):
         length = len(self.files) * 16
@@ -114,7 +114,7 @@ class RPMFullSentencesRaw_base(Dataset):
         # Concatenate context and candidates along the second dimension
         sentences = torch.cat([context_expanded, candidates.unsqueeze(1)], dim = 1)
 
-        return sentences, target_num, None, None
+        return sentences, target_num, 0, 0
 
     def __len__(self):
         length = len(self.files)
