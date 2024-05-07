@@ -7,12 +7,12 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 from models import TransformerModelv17, TransformerModelv20, TransformerModelv21, TransformerModelv22
 import os
 import logging
 
-version = "v22-itr3_pgm"
+version = "v22-itr2_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -20,7 +20,7 @@ results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
 
-seed = 42
+seed = 76
 random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
@@ -137,9 +137,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     #     original_model = transformer_model
 
     ''' Use for PGM or I-RAVEN dataset '''
-    root_dir = '../../pgm_data/neutral/'
+    # root_dir = '../../pgm_data/neutral/'
     # root_dir = '../../i_raven_data_cnst/'
-    # root_dir = '../../i_raven_data_full/'
+    root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
@@ -163,12 +163,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    ''' Evaluate model on different types of problems '''
-    record = evaluation_function(transformer_model, val_dataloader, device, max_batches=None)
-    record.to_csv(os.path.join(RESULTS_FOLDER, f"record_{VERSION}.csv"))
-
-    record_by_type = record.groupby("folder")["correct"].mean()
-    record_by_type.to_csv(os.path.join(RESULTS_FOLDER, f"record_by_type_{VERSION}.csv"))
+    # ''' Evaluate model on different types of problems '''
+    # record = evaluation_function(transformer_model, val_dataloader, device, max_batches=None)
+    # record.to_csv(os.path.join(RESULTS_FOLDER, f"record_{VERSION}.csv"))
+    #
+    # record_by_type = record.groupby("folder")["correct"].mean()
+    # record_by_type.to_csv(os.path.join(RESULTS_FOLDER, f"record_by_type_{VERSION}.csv"))
 
     ''' Train model '''
     train_length = len(train_dataloader)
