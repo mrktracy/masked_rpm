@@ -8,7 +8,7 @@ import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from models import TransformerModelv17, TransformerModelv20, TransformerModelv21, TransformerModelv22
+from models import TransformerModelv21, TransformerModelv22
 import os
 import logging
 
