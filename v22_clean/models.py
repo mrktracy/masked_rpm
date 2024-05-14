@@ -656,7 +656,7 @@ class BackboneDecoder(nn.Module):
 
     def forward(self, x):
 
-        batch_dim = x.size[0]
+        batch_dim = x.size(0)
 
         # pass through MLP and reshape
         x = self.mlp_to_tr(x)
