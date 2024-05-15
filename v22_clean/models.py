@@ -93,8 +93,10 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         self.dropout = nn.Dropout(p=mlp_drop)
 
-        self.decoder = BackboneDecoder(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads) \
-            if self.use_backbone else ResNetDecoder(embed_dim=self.embed_dim)
+        # self.decoder = BackboneDecoder(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads) \
+        #     if self.use_backbone else ResNetDecoder(embed_dim=self.embed_dim)
+
+        self.decoder = MLPDecoder(embed_dim=self.embed_dim)
 
         # define symbols
         normal_initializer = torch.nn.init.normal_
@@ -673,6 +675,20 @@ class BackboneDecoder(nn.Module):
 
         return x
 
+class MLPDecoder(nn.Module):
+    def __init__(self, embed_dim=512):
+        super(MLPDecoder, self).__init__()
+        self.decoder = nn.Sequential(
+            nn.Linear(embed_dim, 80 * 80),
+            nn.ReLU(),
+            nn.Linear(80 * 80, 160 * 160),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.decoder(x)
+        x = x.view(-1, 1, 160, 160)  # Reshape the output to the desired dimensions
+        return x
 
 """ Modification of "Vision Transformer (ViT) in PyTorch"
 https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py

@@ -58,7 +58,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             trans_num_heads=4,
                                             abs_1_num_heads=4,
                                             abs_2_num_heads=4,
-                                            mlp_ratio=2,
+                                            mlp_ratio=4,
                                             use_backbone=True,
                                             bb_depth=1,
                                             bb_num_heads=2,
