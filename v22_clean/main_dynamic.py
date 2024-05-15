@@ -136,7 +136,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
 
-    err_history = torch.zeros(HISTORY_SIZE)
+    err_history = torch.zeros(HISTORY_SIZE).to(device)
 
     # Training loop
     for epoch in range(EPOCHS):
