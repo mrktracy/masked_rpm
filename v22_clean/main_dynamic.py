@@ -163,7 +163,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
 
-            err_history = torch.cat([err_history[2:], task_err, rec_err], dim=-1)
+            err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), rec_err.unsqueeze(0)], dim=-1)
 
             logging.info(f"err_history: {err_history.shape}")
 
