@@ -8,24 +8,24 @@ from timm.layers import Mlp, DropPath, use_fused_attn
 
 class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,
-                 embed_dim=768,
+                 embed_dim=512,
                  symbol_factor = 1,
                  grid_size = 3,
-                 trans_num_heads=64,
-                 abs_1_num_heads=64,
-                 abs_2_num_heads=64,
+                 trans_num_heads=4,
+                 abs_1_num_heads=4,
+                 abs_2_num_heads=4,
                  mlp_ratio=4.,
                  norm_layer=nn.LayerNorm,
-                 trans_depth = 4,
-                 abs_1_depth = 4,
-                 abs_2_depth = 4,
+                 trans_depth = 2,
+                 abs_1_depth = 2,
+                 abs_2_depth = 2,
                  use_backbone = True,
-                 bb_depth = 4,
-                 bb_num_heads = 32,
+                 bb_depth = 1,
+                 bb_num_heads = 2,
                  use_hadamard = False,
-                 mlp_drop = 0.1,
-                 proj_drop = 0.1,
-                 attn_drop = 0.1):
+                 mlp_drop = 0.5,
+                 proj_drop = 0.5,
+                 attn_drop = 0.5):
 
         super(TransformerModelv22, self).__init__()
 
@@ -236,20 +236,20 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
 class TransformerModelv21(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,
-                 embed_dim=768,
+                 embed_dim=512,
                  symbol_factor = 1,
                  grid_size = 3,
-                 trans_1_num_heads=64,
-                 trans_2_num_heads=64,
-                 abs_1_num_heads=64,
+                 trans_1_num_heads=4,
+                 trans_2_num_heads=4,
+                 abs_1_num_heads=4,
                  mlp_ratio=4.,
                  norm_layer=nn.LayerNorm,
-                 trans_1_depth = 4,
-                 trans_2_depth = 4,
-                 abs_1_depth = 4,
+                 trans_1_depth = 2,
+                 trans_2_depth = 2,
+                 abs_1_depth = 2,
                  use_backbone = True,
-                 bb_depth = 4,
-                 bb_num_heads = 32,
+                 bb_depth = 1,
+                 bb_num_heads = 2,
                  use_hadamard = False):
 
         super(TransformerModelv21, self).__init__()
