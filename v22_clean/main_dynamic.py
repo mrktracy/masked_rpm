@@ -196,8 +196,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
             os.makedirs(os.path.dirname(save_file), exist_ok=True)
-            torch.save(transformer_model.state_dict(), save_file)
-            torch.save(dynamic_weights.state_dict(), save_file)
+            torch.save({
+                'transformer_model_state_dict': transformer_model.state_dict(),
+                'dynamic_weights_state_dict': dynamic_weights.state_dict(),
+                'optimizer_1_state_dict': optimizer_1.state_dict(),
+                'optimizer_2_state_dict': optimizer_2.state_dict(),
+                'scheduler_1_state_dict': scheduler_1.state_dict(),
+                'scheduler_2_state_dict': scheduler_2.state_dict()
+            }, save_file)
 
         scheduler_1.step()
         scheduler_2.step()
