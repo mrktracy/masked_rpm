@@ -173,7 +173,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # loss = ALPHA * task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
-            loss = weights[[0]] * task_err + weights[[1]]*rec_err + L1*torch.norm(embeddings, p=1)
+            loss = weights[0] * task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1)
 
             tot_loss += loss.item() # update running averages
             count += 1
