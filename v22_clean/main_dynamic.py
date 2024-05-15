@@ -150,6 +150,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             batch_size = sentences.size(0)
 
+            optimizer_1.zero_grad()
+            optimizer_2.zero_grad()
+
             sentences = sentences.to(device) # passed to model to get output and recreation of inputs
             target_nums = target_nums.to(device)  # used to select from among candidates
 
@@ -158,10 +161,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
 
-            err_history[0:-2] = err_history[2:]
-            err_history = err_history.cat([err_history, task_err, rec_err], dim = 1) # weights = dynamic_weights()
+            err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), rec_err.unsqueeze(0)], dim=0)
 
-            weights = dynamic_weights(err_history)
+            weights = dynamic_weights(err_history.unsqueeze(0))
 
             # loss = ALPHA * task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
@@ -171,6 +173,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             count += 1
 
             loss.backward()
+
             optimizer_1.step()
             optimizer_2.step()
 
@@ -189,9 +192,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
                 tot_loss = 0
                 count = 0
-
-            optimizer_1.zero_grad()
-            optimizer_2.zero_grad()
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"

@@ -21,13 +21,13 @@ class DynamicWeighting(nn.Module):
         self.drop2 = nn.Dropout(p=mlp_drop)
         self.lin3 = nn.Linear(embed_dim*mlp_ratio, embed_dim)
         self.drop3 = nn.Dropout(p=mlp_drop)
-        self.lin4 = nn.Linear(embed_dim * mlp_ratio, embed_dim)
+        self.lin4 = nn.Linear(embed_dim, output_dim)
 
     def forward(self, x):
         x = self.relu(self.drop1(self.lin1(x)))
         x = self.relu(self.drop2(self.lin2(x)))
         x = self.relu(self.drop3(self.lin3(x)))
-        x = F.softmax(self.lin4(x))
+        x = F.softmax(self.lin4(x), dim=-1)
 
         return x
 
