@@ -161,7 +161,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
 
-            err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), rec_err.unsqueeze(0)], dim=0)
+            err_history = torch.cat([err_history[2:], task_err, rec_err], dim=-1)
 
             weights = dynamic_weights(err_history)
 
