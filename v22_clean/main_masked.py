@@ -8,7 +8,7 @@ import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from models import TransformerModelv21, TransformerModelv22
+from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
@@ -33,6 +33,8 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
+    HISTORY_SIZE = 20
+
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
@@ -56,11 +58,18 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             attn_drop=0.5,
                                             per_mlp_drop=0.3).to(device)
 
+    # dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE,
+    #                                    mlp_ratio=2,
+    #                                    mlp_drop=0.1,
+    #                                    output_dim=2).to(device)
+
     # initialize weights
     transformer_model.apply(initialize_weights_he)
+    # dynamic_weights.apply(initialize_weights_he)
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
+        # dynamic_weights = nn.DataParallel(dynamic_weights)
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     ''' Load saved model '''
@@ -113,14 +122,21 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     # optimizer = torch.optim.SGD(list(transformer_model.parameters()),
     #                              lr=LEARNING_RATE, momentum = MOMENTUM)
-    optimizer = torch.optim.Adam(list(transformer_model.parameters()),
+    optimizer_1 = torch.optim.Adam(list(transformer_model.parameters()),
                                  lr=LEARNING_RATE,
                                  weight_decay=1e-4)
 
-    scheduler = ExponentialLR(optimizer, gamma=0.95)
+    # optimizer_2 = torch.optim.Adam(list(dynamic_weights.parameters()),
+    #                                lr=LEARNING_RATE,
+    #                                weight_decay=1e-4)
+
+    scheduler_1 = ExponentialLR(optimizer_1, gamma=0.95)
+    # scheduler_2 = ExponentialLR(optimizer_2, gamma=0.95)
 
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
+
+    # err_history = torch.zeros(HISTORY_SIZE)
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -139,8 +155,17 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             dist, recreation, embeddings = transformer_model(sentences)
 
-            loss = ALPHA*criterion_1(dist, target_nums) + (1-ALPHA)*criterion_2(sentences, recreation) + \
-                L1*torch.norm(embeddings, p=1)
+            task_err = criterion_1(dist, target_nums)
+            rec_err = criterion_2(sentences, recreation)
+
+            # err_history[0:-2] = err_history[2:]
+            # err_history = err_history.cat([err_history, task_err, rec_err], dim = 1) # weights = dynamic_weights()
+
+            # weights = dynamic_weights(err_history)
+
+            loss = ALPHA * task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
+
+            # loss = weights[0] * task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1)
 
             # loss = criterion_1(dist, target_nums) * criterion_2(sentences, recreation) + \
             #        L1 * torch.norm(embeddings, p=1)
@@ -149,7 +174,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             count += 1
 
             loss.backward()
-            optimizer.step()
+            optimizer_1.step()
+            # optimizer_2.step()
 
             if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
@@ -159,7 +185,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             if (idx+1) % batches_per_log == 0:
                 val_loss = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
                 # with open(logfile, 'a') as file:
                 #     file.write(output)
@@ -167,12 +193,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 tot_loss = 0
                 count = 0
 
-            optimizer.zero_grad()
+            optimizer_1.zero_grad()
+            # optimizer_2.zero_grad()
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
             os.makedirs(os.path.dirname(save_file), exist_ok=True)
             torch.save(transformer_model.state_dict(), save_file)
+            # torch.save(dynamic_weights.state_dict(), save_file)
 
         scheduler.step()
 

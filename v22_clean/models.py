@@ -6,6 +6,31 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
+class DynamicWeighting(nn.Module):
+    def __init__(self,
+                 embed_dim=20,
+                 mlp_ratio=2,
+                 mlp_drop=0.1,
+                 output_dim = 2):
+        super(DynamicWeighting, self).__init__()
+
+        self.lin1 = nn.Linear(embed_dim, embed_dim*mlp_ratio)
+        self.drop1 = nn.Dropout(p=mlp_drop)
+        self.relu = nn.ReLU()
+        self.lin2 = nn.Linear(embed_dim*mlp_ratio, embed_dim*mlp_ratio)
+        self.drop2 = nn.Dropout(p=mlp_drop)
+        self.lin3 = nn.Linear(embed_dim*mlp_ratio, embed_dim)
+        self.drop3 = nn.Dropout(p=mlp_drop)
+        self.lin4 = nn.Linear(embed_dim * mlp_ratio, embed_dim)
+
+    def forward(self, x):
+        x = self.relu(self.drop1(self.lin1(x)))
+        x = self.relu(self.drop2(self.lin2(x)))
+        x = self.relu(self.drop3(self.lin3(x)))
+        x = F.softmax(self.lin4(x))
+
+        return x
+
 class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,
                  embed_dim=512,
@@ -358,7 +383,7 @@ class ResNetDecoder(nn.Module):
         return self.decoder(x)
 
 class BackbonePerception(nn.Module):
-    def __init__(self, embed_dim, num_heads=32, mlp_ratio=4, norm_layer=nn.LayerNorm, depth=4, mlp_drop=0.5):
+    def __init__(self, embed_dim, num_heads=32, mlp_ratio=4, norm_layer=nn.LayerNorm, depth=4, mlp_drop=0.3):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
