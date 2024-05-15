@@ -53,7 +53,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             use_hadamard=False,
                                             mlp_drop=0.5,
                                             proj_drop=0.5,
-                                            attn_drop=0.5).to(device)
+                                            attn_drop=0.5,
+                                            per_mlp_drop=0.3).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
