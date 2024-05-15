@@ -163,7 +163,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), rec_err.unsqueeze(0)], dim=0)
 
-            weights = dynamic_weights(err_history.unsqueeze(0))
+            weights = dynamic_weights(err_history)
 
             # loss = ALPHA * task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
