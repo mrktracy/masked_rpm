@@ -29,7 +29,7 @@ class DynamicWeighting(nn.Module):
         x = self.relu(self.drop3(self.lin3(x)))
         x = F.softmax(self.lin4(x), dim=-1)
 
-        return x
+        return x.squeeze(0)
 
 class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,

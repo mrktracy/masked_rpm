@@ -167,13 +167,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"err_history: {err_history.shape}")
 
-            weights = dynamic_weights(err_history.unsqueeze(0))
+            weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
 
             logging.info(f"Weights: {weights}")
 
             # loss = ALPHA * task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
-            loss = weights[0] * task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1)
+            loss = weights[[0]] * task_err + weights[[1]]*rec_err + L1*torch.norm(embeddings, p=1)
 
             tot_loss += loss.item() # update running averages
             count += 1
