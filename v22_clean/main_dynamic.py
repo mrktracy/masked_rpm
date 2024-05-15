@@ -161,13 +161,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
 
-            logging.info(f"task_err: {task_err}, rec_err: {rec_err}")
+            logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
 
             err_history = torch.cat([err_history[2:], task_err, rec_err], dim=-1)
 
+            logging.info(f"err_history: {err_history.shape}")
+
             weights = dynamic_weights(err_history)
 
-            logging.info(f"Shape of weights: {weights.shape}")
             logging.info(f"Weights: {weights}")
 
             # loss = ALPHA * task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
