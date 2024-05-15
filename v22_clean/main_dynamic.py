@@ -33,7 +33,7 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
-    HISTORY_SIZE = 20
+    HISTORY_SIZE = 25
 
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
