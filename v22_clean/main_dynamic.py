@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
-version = "v22-itr7_full"
+version = "v22-itr8_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -56,7 +56,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             mlp_drop=0.5,
                                             proj_drop=0.5,
                                             attn_drop=0.5,
-                                            per_mlp_drop=0.3).to(device)
+                                            per_mlp_drop=0).to(device)
 
     dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE,
                                        mlp_ratio=2,
@@ -103,6 +103,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
+    BETA = 2
     L1 = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -169,9 +170,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
 
-            # loss = ALPHA * task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
+            # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
-            loss = weights[0] * task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1)
+            loss = weights[0]*task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1) + \
+                BETA*torch.var(weights)
 
             tot_loss += loss.item() # update running averages
             count += 1
