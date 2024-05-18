@@ -122,11 +122,11 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         self.dropout = nn.Dropout(p=mlp_drop)
 
-        self.decoder = BackboneDecoder(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads,
-                                       mlp_drop=per_mlp_drop) if self.use_backbone_dec else (
-            ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop))
+        # self.decoder = BackboneDecoder(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads,
+        #                                mlp_drop=per_mlp_drop) if self.use_backbone_dec else (
+        #     ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop))
 
-        # self.decoder = MLPDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
+        self.decoder = MLPDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
 
         # define symbols
         normal_initializer = torch.nn.init.normal_
