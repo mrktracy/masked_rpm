@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
-version = "v22-itr9_full"
+version = "v22-itr10_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -48,6 +48,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
                                             use_backbone=True,
+                                            use_backbone_dec=False,
                                             bb_depth=1,
                                             bb_num_heads=2,
                                             use_hadamard=False,
