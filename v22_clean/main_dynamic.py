@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
-version = "v22-itr10_full"
+version = "v22-itr11_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -50,7 +50,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
-                                            decoder_num = 1,
+                                            decoder_num = 2,
                                             bb_depth=1,
                                             bb_num_heads=2,
                                             use_hadamard=False,
@@ -104,7 +104,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    BETA = 1
+    BETA = 2
     L1 = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
