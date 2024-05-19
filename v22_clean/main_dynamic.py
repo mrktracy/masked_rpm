@@ -40,7 +40,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv22(embed_dim=256,
+    transformer_model = TransformerModelv22(embed_dim=128,
                                             symbol_factor=1,
                                             trans_depth=2,
                                             abs_1_depth=2,
