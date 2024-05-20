@@ -33,7 +33,7 @@ class DynamicWeighting(nn.Module):
 
 class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,
-                 embed_dim=512,
+                 embed_dim=256,
                  symbol_factor = 1,
                  grid_size = 3,
                  trans_num_heads=4,
