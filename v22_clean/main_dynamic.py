@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
-version = "v22-itr13_full"
+version = "v22-itr12_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -40,7 +40,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv22(embed_dim=256,
+    transformer_model = TransformerModelv22(embed_dim=512,
                                             symbol_factor=1,
                                             trans_depth=2,
                                             abs_1_depth=2,
