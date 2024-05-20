@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
-version = "v22-itr13_full"
+version = "v22-itr12_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -138,7 +138,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
 
-    err_history = torch.zeros(HISTORY_SIZE).to(device)
+    err_history = torch.zeros(4*HISTORY_SIZE).to(device)
     weights = torch.zeros(2).to(device)
 
     # Training loop
@@ -166,7 +166,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
 
-            err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), \
+            err_history = torch.cat([err_history[4:], task_err.unsqueeze(0), \
                                      rec_err.unsqueeze(0), weights], dim=-1).detach()
 
             # logging.info(f"err_history: {err_history.shape}")
