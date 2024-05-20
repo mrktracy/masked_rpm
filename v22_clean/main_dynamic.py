@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
-version = "v22-itr13_full"
+version = "v22-itr12_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -40,7 +40,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv22(embed_dim=256,
+    transformer_model = TransformerModelv22(embed_dim=512,
                                             symbol_factor=1,
                                             trans_depth=2,
                                             abs_1_depth=2,
@@ -59,7 +59,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             attn_drop=0.5,
                                             per_mlp_drop=0).to(device)
 
-    dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE,
+    dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE*4,
                                        mlp_ratio=2,
                                        mlp_drop=0.1,
                                        output_dim=2).to(device)
@@ -138,7 +138,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
 
-    err_history = torch.zeros(4*HISTORY_SIZE).to(device)
+    err_history = torch.zeros(HISTORY_SIZE*4).to(device)
     weights = torch.zeros(2).to(device)
 
     # Training loop
