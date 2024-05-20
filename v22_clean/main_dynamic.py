@@ -40,7 +40,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv22(embed_dim=256,
+    transformer_model = TransformerModelv22(embed_dim=512,
                                             symbol_factor=1,
                                             trans_depth=2,
                                             abs_1_depth=2,
@@ -50,7 +50,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
-                                            decoder_num = 1,
+                                            decoder_num = 2,
                                             bb_depth=1,
                                             bb_num_heads=2,
                                             use_hadamard=False,
@@ -139,6 +139,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_2 = nn.MSELoss()
 
     err_history = torch.zeros(HISTORY_SIZE).to(device)
+    weights = torch.zeros(2)
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -165,7 +166,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
 
-            err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), rec_err.unsqueeze(0)], dim=-1).detach()
+            err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), \
+                                     rec_err.unsqueeze(0), weights], dim=-1).detach()
 
             # logging.info(f"err_history: {err_history.shape}")
 
