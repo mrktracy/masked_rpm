@@ -34,7 +34,7 @@ def initialize_weights_he(m):
 def main_BERT(VERSION, RESULTS_FOLDER):
 
     HISTORY_SIZE = 10
-    AUTO_REG = False
+    AUTO_REG = True
 
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
