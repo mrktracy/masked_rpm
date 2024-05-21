@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
-version = "v22-itr14_full"
+version = "v22-itr15_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -34,6 +34,7 @@ def initialize_weights_he(m):
 def main_BERT(VERSION, RESULTS_FOLDER):
 
     HISTORY_SIZE = 10
+    AUTO_REG = False
 
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -59,10 +60,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             attn_drop=0.5,
                                             per_mlp_drop=0).to(device)
 
-    dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE*4,
-                                       mlp_ratio=2,
-                                       mlp_drop=0.1,
-                                       output_dim=2).to(device)
+    if AUTO_REG:
+        dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE*4,
+                                           mlp_ratio=2,
+                                           mlp_drop=0.1,
+                                           output_dim=2).to(device)
+    else:
+        dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE*2,
+                                           mlp_ratio=2,
+                                           mlp_drop=0.1,
+                                           output_dim=2).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -138,7 +145,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
 
-    err_history = torch.zeros(HISTORY_SIZE*4).to(device)
+    err_history = torch.zeros(HISTORY_SIZE*4).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE*2).to(device)
     weights = torch.zeros(2).to(device)
 
     # Training loop
@@ -166,8 +173,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
 
-            err_history = torch.cat([err_history[4:], task_err.unsqueeze(0), \
-                                     rec_err.unsqueeze(0), weights], dim=-1).detach()
+            if AUTO_REG:
+                err_history = torch.cat([err_history[4:], task_err.unsqueeze(0), \
+                                         rec_err.unsqueeze(0), weights], dim=-1).detach()
+            else:
+                err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), \
+                                         rec_err.unsqueeze(0)], dim=-1).detach()
 
             # logging.info(f"err_history: {err_history.shape}")
 
