@@ -1,9 +1,9 @@
 #!/bin/bash -l
 
 #$ -P noc-lab           # project name
-#$ -N v22-itr12_full          # job name
+#$ -N v22-itr14_full          # job name
 
-#$ -l h_rt=30:00:00     # hard time limit of 72 hours
+#$ -l h_rt=22:00:00     # hard time limit of 72 hours
 #$ -m bea                # send email when finished or aborted
 #$ -j y			# merge error and output files into one
 
