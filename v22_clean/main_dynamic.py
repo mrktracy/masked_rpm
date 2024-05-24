@@ -33,7 +33,7 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
-    HISTORY_SIZE = 10
+    HISTORY_SIZE = 12
     AUTO_REG = True
 
     # Initialize device, model
