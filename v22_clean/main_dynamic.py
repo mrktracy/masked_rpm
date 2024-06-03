@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting
 import os
 import logging
 
-version = "v22-itr18_full"
+version = "v22-itr19_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)

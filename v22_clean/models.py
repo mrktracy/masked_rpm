@@ -82,25 +82,17 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.embed_dim, grid_size=self.grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
-        self.relBottleneck_1 = Block(self.model_dim, self.model_dim * self.symbol_factor, abs_1_num_heads, mlp_ratio, \
-                                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
-                                   attn_drop=attn_drop)
-
         self.blocks_abs_1 = nn.ModuleList([
             Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_1_num_heads,\
                   mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
                   attn_drop=attn_drop, drop_path=0.5*((i+1)/abs_1_depth))
-            for i in range(abs_1_depth-1)])
-
-        self.relBottleneck_2 = Block(self.model_dim, self.model_dim * self.symbol_factor, abs_2_num_heads, mlp_ratio, \
-                                     q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
-                                     attn_drop=attn_drop)
+            for i in range(abs_1_depth)])
 
         self.blocks_abs_2 = nn.ModuleList([
             Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_2_num_heads, \
                   mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
                   attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / abs_2_depth))
-            for i in range(abs_2_depth - 1)])
+            for i in range(abs_2_depth)])
 
         self.blocks_trans = nn.ModuleList([
             Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
@@ -129,8 +121,6 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         else:
             self.decoder = BackboneDecoder(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads, \
                                        mlp_drop=per_mlp_drop)
-
-
 
         # define symbols
         normal_initializer = torch.nn.init.normal_
@@ -213,6 +203,9 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         # clone x for passing to transformer blocks
         y = x_1.clone()
 
+        selector = torch.cat((torch.ones(1, 1, self.embed_dim), torch.zeros(1, 1, self.embed_dim)), dim = -1)
+        y_pos = y*selector # broadcasting will take care of dimensions
+
         # repeat symbols along batch dimension
         symbols_1 = self.symbols_1.unsqueeze(0)
         symbols_1 = symbols_1.repeat(batch_size * 8, 1, 1)
@@ -223,21 +216,30 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         x_1 = self.relBottleneck_1.forward(x_q=x_1, x_k=x_1, x_v=symbols_1)
 
         # multi-headed self-attention blocks of abstractor
-        for blk in self.blocks_abs_1:
-            x_1 = blk(x_q=x_1, x_k=x_1, x_v=x_1)
+        for idx, blk in enumerate(self.blocks_abs_1):
+            if idx == 0:
+                x_1 = blk(x_q=x_1, x_k=x_1, x_v=symbols_1)
+            else:
+               x_1 = blk(x_q=x_1, x_k=x_1, x_v=x_1)
+
         x_1 = self.norm_x_1(x_1)
 
-        # pass to relational bottleneck
-        x_2 = self.relBottleneck_2.forward(x_q=x_2, x_k=x_2, x_v=symbols_2)
-
         # multi-headed self-attention blocks of abstractor
-        for blk in self.blocks_abs_2:
-            x_2 = blk(x_q=x_2, x_k=x_2, x_v=x_2)
+        for idx, blk in enumerate(self.blocks_abs_2):
+            if idx == 0:
+                x_2 = blk(x_q=x_2, x_k=x_2, x_v=symbols_2)
+            else:
+                x_2 = blk(x_q=x_2, x_k=x_2, x_v=x_2)
+
         x_2 = self.norm_x_2(x_2)
 
         # multi-headed self-attention blocks of transformer
-        for blk in self.blocks_trans:
-            y = blk(x_q=y, x_k=y, x_v=y)
+        for idx, blk in enumerate(self.blocks_trans):
+            if idx == 0:
+                y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
+            else:
+                y = blk(x_q=y, x_k=y, x_v=y)
+
         y = self.norm_y(y)
 
         x_1 = x_1.view([batch_size, 8, 9, -1])
