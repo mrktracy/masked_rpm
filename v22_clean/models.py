@@ -203,7 +203,8 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         # clone x for passing to transformer blocks
         y = x_1.clone()
 
-        selector = torch.cat((torch.ones(1, 1, self.embed_dim), torch.zeros(1, 1, self.embed_dim)), dim = -1)
+        selector = torch.cat((torch.ones(1, 1, self.embed_dim), \
+                              torch.zeros(1, 1, self.embed_dim)), dim = -1).to(y.device)
         y_pos = y*selector # broadcasting will take care of dimensions
 
         # repeat symbols along batch dimension
