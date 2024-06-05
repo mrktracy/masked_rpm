@@ -213,9 +213,6 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         symbols_2 = self.symbols_2.unsqueeze(0)
         symbols_2 = symbols_2.repeat(batch_size * 8, 1, 1)
 
-        # pass to relational bottleneck
-        x_1 = self.relBottleneck_1.forward(x_q=x_1, x_k=x_1, x_v=symbols_1)
-
         # multi-headed self-attention blocks of abstractor
         for idx, blk in enumerate(self.blocks_abs_1):
             if idx == 0:
