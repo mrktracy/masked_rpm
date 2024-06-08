@@ -6,6 +6,34 @@ import torch.utils.checkpoint
 from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
+class SymmetricLinear(nn.Module):
+    def __init__(self, in_features, out_features, bias=True):
+        super(SymmetricLinear, self).__init__()
+
+        assert in_features == out_features, 'in_features and out_features must be the same'
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
+        if bias:
+            self.bias = nn.Parameter(torch.Tensor(out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.xavier_uniform_(self.weight)
+        if self.bias is not None:
+            nn.init.zeros_(self.bias)
+
+    def forward(self, input):
+        weight_symmetric = (self.weight + self.weight.t()) / 2
+        return F.linear(input, weight_symmetric, self.bias)
+
+    def extra_repr(self):
+        return 'in_features={}, out_features={}, bias={}'.format(
+            self.in_features, self.out_features, self.bias is not None
+        )
+
 class DynamicWeighting(nn.Module):
     def __init__(self,
                  embed_dim=20,
@@ -233,10 +261,11 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         # multi-headed self-attention blocks of transformer
         for idx, blk in enumerate(self.blocks_trans):
-            if idx == 0:
-                y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
-            else:
-                y = blk(x_q=y, x_k=y, x_v=y)
+            y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
+            # if idx == 0:
+            #     y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
+            # else:
+            #     y = blk(x_q=y, x_k=y, x_v=y)
 
         y = self.norm_y(y)
 
