@@ -8,11 +8,11 @@ import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from models import TransformerModelv22, DynamicWeighting
+from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr20_full"
+version = "v22-itr21_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -33,8 +33,14 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
+    MLP_DW = False
     HISTORY_SIZE = 12
     AUTO_REG = False
+
+    if AUTO_REG:
+        max_history_length = HISTORY_SIZE*4
+    else:
+        max_history_length = HISTORY_SIZE*2
 
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -60,16 +66,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             attn_drop=0.5,
                                             per_mlp_drop=0).to(device)
 
-    if AUTO_REG:
-        dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE*4,
-                                           mlp_ratio=2,
-                                           mlp_drop=0.1,
-                                           output_dim=2).to(device)
+    if MLP_DW:
+        dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
+                                            mlp_ratio=2,
+                                            mlp_drop=0.1,
+                                            output_dim=2).to(device)
     else:
-        dynamic_weights = DynamicWeighting(embed_dim=HISTORY_SIZE*2,
-                                           mlp_ratio=2,
-                                           mlp_drop=0.1,
-                                           output_dim=2).to(device)
+        dynamic_weights = DynamicWeightingRNN(input_dim=max_history_length).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
@@ -145,7 +148,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
 
-    err_history = torch.zeros(HISTORY_SIZE*4).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE*2).to(device)
+    err_history = torch.zeros(max_history_length).to(device)
     weights = torch.zeros(2).to(device)
 
     # Training loop
@@ -173,16 +176,48 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
 
-            if AUTO_REG:
-                err_history = torch.cat([err_history[4:], task_err.unsqueeze(0), \
-                                         rec_err.unsqueeze(0), weights], dim=-1).detach()
+            if MLP_DW:
+                if AUTO_REG:
+                    err_history = torch.cat([err_history[4:], task_err.unsqueeze(0), \
+                                             rec_err.unsqueeze(0), weights], dim=-1).detach()
+
+                    err_history = err_history.unsqueeze(0)
+
+                else:
+                    err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), \
+                                             rec_err.unsqueeze(0)], dim=-1).detach()
+
+                    err_history = err_history.unsqueeze(0)
             else:
-                err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), \
-                                         rec_err.unsqueeze(0)], dim=-1).detach()
+                if AUTO_REG:
+                    # Concatenate the current task error and reconstruction error to the history
+                    err_history = torch.cat([err_history, \
+                                             torch.stack([task_err, rec_err, weights], dim=-1).unsqueeze(0)], dim=0)
+
+                    # Remove the oldest entry if the history length exceeds the desired length
+                    if err_history.size(0) > max_history_length:
+                        err_history = err_history[-max_history_length:]
+
+                    # Reshape err_history to have shape (1, history_length, 2)
+                    # where 1 is the batch size (assuming a single sequence)
+                    err_history = err_history.unsqueeze(0)
+
+                else:
+                    # Concatenate the current task error and reconstruction error to the history
+                    err_history = torch.cat([err_history, torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0)
+
+                    # Remove the oldest entry if the history length exceeds the desired length
+                    if err_history.size(0) > max_history_length:
+                        err_history = err_history[-max_history_length:]
+
+                    # Reshape err_history to have shape (1, history_length, 2)
+                    # where 1 is the batch size (assuming a single sequence)
+                    err_history = err_history.unsqueeze(0)
+
 
             # logging.info(f"err_history: {err_history.shape}")
 
-            weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
+            weights = dynamic_weights(err_history) # unsqueeze to create "batch" dimension expected
 
             # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 

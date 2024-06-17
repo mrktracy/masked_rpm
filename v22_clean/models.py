@@ -34,6 +34,42 @@ class SymmetricLinear(nn.Module):
             self.in_features, self.out_features, self.bias is not None
         )
 
+
+class DynamicWeightingRNN(nn.Module):
+    def __init__(self,
+                 input_dim=20,
+                 hidden_dim=64,
+                 num_layers=1,
+                 dropout=0.1,
+                 output_dim=2):
+        super(DynamicWeightingRNN, self).__init__()
+
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=dropout)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+
+        # Initialize hidden state and cell state
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(x.device)
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(x.device)
+
+        # Forward propagate LSTM
+        out, _ = self.lstm(x, (h0, c0))
+
+        # Take the output from the last time step
+        out = out[:, -1, :]
+
+        # Pass through the final fully connected layer
+        out = self.fc(out)
+
+        # Apply softmax to get the weights
+        out = F.softmax(out, dim=-1)
+
+        return out.squeeze(0)
+
 class DynamicWeighting(nn.Module):
     def __init__(self,
                  embed_dim=20,
@@ -261,11 +297,10 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         # multi-headed self-attention blocks of transformer
         for idx, blk in enumerate(self.blocks_trans):
-            y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
-            # if idx == 0:
-            #     y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
-            # else:
-            #     y = blk(x_q=y, x_k=y, x_v=y)
+            if idx == 0:
+                y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
+            else:
+                y = blk(x_q=y, x_k=y, x_v=y)
 
         y = self.norm_y(y)
 
