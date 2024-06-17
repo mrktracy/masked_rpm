@@ -8,11 +8,11 @@ import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
+from models import TransformerModelv23, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr22_full"
+version = "v23-itr0_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -33,7 +33,7 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
-    MLP_DW = False
+    MLP_DW = True
     HISTORY_SIZE = 12
     AUTO_REG = False
 
@@ -47,7 +47,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = TransformerModelv22(embed_dim=512,
+    transformer_model = TransformerModelv23(embed_dim=256,
                                             symbol_factor=1,
                                             trans_depth=2,
                                             abs_1_depth=2,
@@ -56,8 +56,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             abs_1_num_heads=4,
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
-                                            use_backbone_enc=True,
-                                            decoder_num = 2,
                                             bb_depth=1,
                                             bb_num_heads=2,
                                             use_hadamard=False,
