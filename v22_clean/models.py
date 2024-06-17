@@ -37,9 +37,9 @@ class SymmetricLinear(nn.Module):
 
 class DynamicWeightingRNN(nn.Module):
     def __init__(self,
-                 input_dim=20,
+                 input_dim=2,
                  hidden_dim=64,
-                 num_layers=1,
+                 num_layers=2,
                  dropout=0.1,
                  output_dim=2):
         super(DynamicWeightingRNN, self).__init__()

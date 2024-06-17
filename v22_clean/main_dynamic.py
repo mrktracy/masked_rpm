@@ -148,7 +148,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
 
-    err_history = torch.zeros(max_history_length).to(device)
+    if MLP_DW:
+        err_history = torch.zeros(max_history_length).to(device)
+    else:
+        err_history = torch.zeros(HISTORY_SIZE, 4).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE, 2).to(
+            device)
+
     weights = torch.zeros(2).to(device)
 
     # Training loop
@@ -181,13 +186,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                     err_history = torch.cat([err_history[4:], task_err.unsqueeze(0), \
                                              rec_err.unsqueeze(0), weights], dim=-1).detach()
 
-                    err_history = err_history.unsqueeze(0)
-
                 else:
                     err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), \
                                              rec_err.unsqueeze(0)], dim=-1).detach()
 
-                    err_history = err_history.unsqueeze(0)
             else:
                 if AUTO_REG:
                     # Concatenate the current task error and reconstruction error to the history
@@ -195,12 +197,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                              torch.stack([task_err, rec_err, weights], dim=-1).unsqueeze(0)], dim=0)
 
                     # Remove the oldest entry if the history length exceeds the desired length
-                    if err_history.size(0) > max_history_length:
-                        err_history = err_history[-max_history_length:]
-
-                    # Reshape err_history to have shape (1, history_length, 2)
-                    # where 1 is the batch size (assuming a single sequence)
-                    err_history = err_history.unsqueeze(0)
+                    if err_history.size(1) > HISTORY_SIZE:
+                        err_history = err_history[:, -HISTORY_SIZE:, :]
 
                 else:
                     # Concatenate the current task error and reconstruction error to the history
@@ -210,14 +208,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                     if err_history.size(0) > max_history_length:
                         err_history = err_history[-max_history_length:]
 
-                    # Reshape err_history to have shape (1, history_length, 2)
-                    # where 1 is the batch size (assuming a single sequence)
-                    err_history = err_history.unsqueeze(0)
-
 
             # logging.info(f"err_history: {err_history.shape}")
 
-            weights = dynamic_weights(err_history) # unsqueeze to create "batch" dimension expected
+            weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
 
             # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
