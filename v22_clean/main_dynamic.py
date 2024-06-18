@@ -197,11 +197,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 if AUTO_REG:
                     # Concatenate the current task error and reconstruction error to the history
                     err_history = torch.cat([err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
-                                             weights.unsqueeze(0)], dim=-1)], dim=0)
+                                             weights.unsqueeze(0)], dim=-1)], dim=0).detach()
 
                 else:
                     # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0)
+                    err_history = torch.cat([err_history, \
+                                             torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
 
                 # Remove the oldest entry if the history length exceeds the desired length
                 if err_history.size(1) > HISTORY_SIZE:
