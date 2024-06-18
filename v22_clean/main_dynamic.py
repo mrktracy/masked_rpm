@@ -186,30 +186,26 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             if MLP_DW:
                 if AUTO_REG:
-                    err_history = torch.cat([err_history[4:], task_err.unsqueeze(0), \
-                                             rec_err.unsqueeze(0), weights], dim=-1).detach()
+                    err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
+                                             weights], dim=-1).detach()
 
                 else:
-                    err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), \
-                                             rec_err.unsqueeze(0)], dim=-1).detach()
+                    err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], \
+                                            dim=-1).detach()
 
             else:
                 if AUTO_REG:
                     # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, \
-                                             torch.stack([task_err, rec_err, weights], dim=-1).unsqueeze(0)], dim=0)
-
-                    # Remove the oldest entry if the history length exceeds the desired length
-                    if err_history.size(1) > HISTORY_SIZE:
-                        err_history = err_history[:, -HISTORY_SIZE:, :]
+                    err_history = torch.cat([err_history, torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
+                                             weights], dim=0)
 
                 else:
                     # Concatenate the current task error and reconstruction error to the history
                     err_history = torch.cat([err_history, torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0)
 
-                    # Remove the oldest entry if the history length exceeds the desired length
-                    if err_history.size(0) > max_history_length:
-                        err_history = err_history[-max_history_length:]
+                # Remove the oldest entry if the history length exceeds the desired length
+                if err_history.size(1) > HISTORY_SIZE:
+                    err_history = err_history[:, -HISTORY_SIZE:, :]
 
 
             # logging.info(f"err_history: {err_history.shape}")
