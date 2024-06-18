@@ -196,8 +196,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             else:
                 if AUTO_REG:
                     # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, \
-                                             torch.cat([task_err, rec_err, weights], dim=-1).unsqueeze(0)], dim=0)
+                    err_history = torch.cat([err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
+                                             weights.unsqueeze(0)], dim=-1)], dim=0)
 
                 else:
                     # Concatenate the current task error and reconstruction error to the history
