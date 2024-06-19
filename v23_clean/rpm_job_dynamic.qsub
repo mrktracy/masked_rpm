@@ -9,7 +9,7 @@
 
 #$ -l mem_per_core=6G	# memory requirements per CPU core
 
-#$ -l gpus=3		# number of GPUs
+#$ -l gpus=2		# number of GPUs
 #$ -l gpu_c=6		# GPU minimum capability
 #$ -l gpu_type=A100	# GPU type
 
