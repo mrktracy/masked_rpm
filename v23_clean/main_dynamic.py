@@ -12,7 +12,7 @@ from models import TransformerModelv23, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v23-itr1_full"
+version = "v23-itr0_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -35,7 +35,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     MLP_DW = False
     HISTORY_SIZE = 12
-    AUTO_REG = True
+    AUTO_REG = False
 
     if AUTO_REG:
         max_history_length = HISTORY_SIZE*4
@@ -111,7 +111,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
-    BATCHES_PER_PRINT = 20
+    BATCHES_PER_PRINT = 60
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = ""  # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
