@@ -33,7 +33,7 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
-    MLP_DW = False
+    MLP_DW = True
     HISTORY_SIZE = 12
     AUTO_REG = False
 
