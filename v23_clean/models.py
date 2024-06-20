@@ -275,9 +275,9 @@ class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-a
         # clone x for passing to transformer blocks
         y = x_1.clone()
 
-        selector = torch.cat((torch.ones(1, 1, self.embed_dim), \
-                              torch.zeros(1, 1, self.embed_dim)), dim = -1).to(y.device)
-        y_pos = y*selector # broadcasting will take care of dimensions
+        # selector = torch.cat((torch.ones(1, 1, self.embed_dim), \
+        #                       torch.zeros(1, 1, self.embed_dim)), dim = -1).to(y.device)
+        # y_pos = y*selector # broadcasting will take care of dimensions
 
         # repeat symbols along ,batch dimension
         symbols_1 = self.symbols_1.unsqueeze(0)
@@ -305,10 +305,12 @@ class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-a
 
         # multi-headed self-attention blocks of transformer
         for idx, blk in enumerate(self.blocks_trans):
-            if idx == 0:
-                y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
-            else:
-                y = blk(x_q=y, x_k=y, x_v=y)
+            # if idx == 0:
+            #     y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
+            # else:
+            #     y = blk(x_q=y, x_k=y, x_v=y)
+
+            y = blk(x_q=y, x_k=y, x_v=y)
 
         y = self.norm_y(y)
 
