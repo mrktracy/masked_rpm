@@ -423,6 +423,8 @@ class ResNetDecoder(nn.Module):
         self.embed_dim = embed_dim
 
         self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 256, 10, 10
+            nn.ReLU(),
             nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 128, 20, 20
             nn.ReLU(),
             nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 64, 40, 40
@@ -436,7 +438,7 @@ class ResNetDecoder(nn.Module):
         )
 
     def forward(self, x):
-        x = x.view(x.size(0), 256, 10, 10)
+        x = x.view(x.size(0), 512, 5, 5)
         return self.decoder(x)
 
 class BackbonePerception(nn.Module):
@@ -455,10 +457,11 @@ class BackbonePerception(nn.Module):
             ResidualBlock(32, 64, 2), # N, 64, 40, 40
             ResidualBlock(64, 128, 2), # N, 128, 20, 20
             ResidualBlock(128, 256, 2), # N, 256, 10, 10
+            ResidualBlock(256, 512, 2)  # N, 512, 5, 5
         )
 
         self.blocks = nn.ModuleList([
-            Block(256, 256, self.num_heads, self.mlp_ratio, \
+            Block(512, 512, self.num_heads, self.mlp_ratio, \
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
                   drop_path=0.5*((i+1)/self.depth)) for i in range(self.depth)])
 
@@ -471,13 +474,13 @@ class BackbonePerception(nn.Module):
 
         x = self.encoder(x)
 
-        x = x.reshape(batch_dim, 256, 10*10)
+        x = x.reshape(batch_dim, 512, 5*5)
         x = x.transpose(1,2)
 
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        x = x.reshape(batch_dim, 10*10, 256)
+        x = x.reshape(batch_dim, 5*5, 512)
 
         return x
 
@@ -574,7 +577,7 @@ class Block(nn.Module):
             drop_path=0.,
             act_layer=nn.GELU,
             norm_layer=nn.LayerNorm,
-            mlp_layer=Mlp,
+            mlp_layer=Mlp
     ):
         super().__init__()
         self.norm1 = norm_layer(dim_kq)
@@ -591,7 +594,7 @@ class Block(nn.Module):
             qk_norm=qk_norm,
             attn_drop=attn_drop,
             proj_drop=proj_drop,
-            norm_layer=norm_layer,
+            norm_layer=norm_layer
         )
         self.ls1 = LayerScale(dim_kq, init_values=init_values) if init_values else nn.Identity()
         self.drop_path1 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
@@ -599,7 +602,7 @@ class Block(nn.Module):
             in_features=dim_v,
             hidden_features=int(dim_v * mlp_ratio),
             act_layer=act_layer,
-            drop=proj_drop,
+            drop=proj_drop
         )
         self.ls2 = LayerScale(dim_v, init_values=init_values) if init_values else nn.Identity()
         self.drop_path2 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
