@@ -12,7 +12,7 @@ from models import TransformerModelv23, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v23-itr1_full"
+version = "v23-itr2_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -57,8 +57,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             abs_1_num_heads=4,
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
-                                            bb_depth=1,
-                                            bb_num_heads=2,
+                                            bb_depth=2,
+                                            bb_num_heads=4,
                                             use_hadamard=False,
                                             mlp_drop=0.5,
                                             proj_drop=0.5,
@@ -109,7 +109,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ''' Define Hyperparameters '''
     EPOCHS = 20
     BATCH_SIZE = 20
-    LEARNING_RATE = 0.00005
+    LEARNING_RATE = 0.00001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 20
