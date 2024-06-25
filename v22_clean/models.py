@@ -140,7 +140,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         if self.restrict_qk:
             self.blocks_trans = nn.ModuleList([
-                Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
+                Block(self.embed_dim, self.model_dim, trans_num_heads, mlp_ratio,
                       q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
                       attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth), restrict_qk=self.restrict_qk)
                 for i in range(trans_depth)])
