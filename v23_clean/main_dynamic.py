@@ -12,7 +12,7 @@ from models import TransformerModelv23, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v23-itr2_full"
+version = "v23-itr3_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -60,10 +60,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             bb_depth=2,
                                             bb_num_heads=4,
                                             use_hadamard=False,
-                                            mlp_drop=0.5,
-                                            proj_drop=0.5,
-                                            attn_drop=0.5,
-                                            per_mlp_drop=0).to(device)
+                                            mlp_drop=0.25,
+                                            proj_drop=0.25,
+                                            attn_drop=0.25,
+                                            per_mlp_drop=0,
+                                            topk=5).to(device)
 
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
@@ -109,7 +110,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ''' Define Hyperparameters '''
     EPOCHS = 20
     BATCH_SIZE = 20
-    LEARNING_RATE = 0.00001
+    LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 20

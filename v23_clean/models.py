@@ -132,7 +132,8 @@ class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-a
                  mlp_drop = 0.5,
                  proj_drop = 0.5,
                  attn_drop = 0.5,
-                 per_mlp_drop=0.3):
+                 per_mlp_drop=0.3,
+                 topk=5):
 
         super(TransformerModelv23, self).__init__()
 
@@ -146,6 +147,7 @@ class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-a
         self.bb_depth = bb_depth
         self.bb_num_heads = bb_num_heads
         self.use_hadamard = use_hadamard
+        self.topk = topk
 
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads,
                                              mlp_drop=per_mlp_drop)
@@ -274,6 +276,8 @@ class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-a
 
         # clone x for passing to transformer blocks
         y = x_1.clone()
+        y_skip = x_1.clone() # create copies for skip connection
+
 
         # selector = torch.cat((torch.ones(1, 1, self.embed_dim), \
         #                       torch.zeros(1, 1, self.embed_dim)), dim = -1).to(y.device)
@@ -305,14 +309,10 @@ class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-a
 
         # multi-headed self-attention blocks of transformer
         for idx, blk in enumerate(self.blocks_trans):
-            # if idx == 0:
-            #     y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
-            # else:
-            #     y = blk(x_q=y, x_k=y, x_v=y)
-
             y = blk(x_q=y, x_k=y, x_v=y)
 
         y = self.norm_y(y)
+        y = y + y_skip # add skip connection
 
         x_1 = x_1.view([batch_size * self.patch_size**2, 8, 9, -1])
 
@@ -328,7 +328,8 @@ class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-a
         z_reshaped = self.dropout(z_reshaped)
         dist_reshaped = self.mlp2(self.relu(z_reshaped)) # dist_reshaped is (B * self.patch_size**2 * 8, 1)
 
-        dist = dist_reshaped.view(batch_size, self.patch_size**2, 8).mean(dim=-2)
+        dist, _ = torch.topk(dist_reshaped.view(batch_size, self.patch_size**2, 8), k = self.topk, dim = -2)
+        dist = dist.mean(dim=-2)
 
         recreation = self.decoder.forward(embed_reshaped).view(batch_size, 8, 9, 1, 160, 160)
 
