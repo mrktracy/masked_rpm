@@ -138,11 +138,18 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
                   attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / abs_2_depth))
             for i in range(abs_2_depth)])
 
-        self.blocks_trans = nn.ModuleList([
-            Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
-                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
-                  attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth), restrict_qk=self.restrict_qk)
-            for i in range(trans_depth)])
+        if self.restrict_qk:
+            self.blocks_trans = nn.ModuleList([
+                Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
+                      q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
+                      attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth), restrict_qk=self.restrict_qk)
+                for i in range(trans_depth)])
+        else:
+            self.blocks_trans = nn.ModuleList([
+                Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
+                      q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
+                      attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth), restrict_qk=self.restrict_qk)
+                for i in range(trans_depth)])
 
         self.norm_x_1 = norm_layer(self.model_dim * self.symbol_factor)
 
@@ -247,9 +254,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         # clone x for passing to transformer blocks
         y = x_1.clone()
 
-        selector = torch.cat((torch.ones(1, 1, self.embed_dim), \
-                              torch.zeros(1, 1, self.embed_dim)), dim = -1).to(y.device)
-        y_pos = y*selector # broadcasting will take care of dimensions
+        y_pos = final_pos_embed.reshape(batch_size*8, 9, self.embed_dim)
 
         # repeat symbols along batch dimension
         symbols_1 = self.symbols_1.unsqueeze(0)
@@ -277,12 +282,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         # multi-headed self-attention blocks of transformer
         for idx, blk in enumerate(self.blocks_trans):
-            # if idx == 0:
-            #     y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
-            # else:
-            #     y = blk(x_q=y, x_k=y, x_v=y)
-
-            y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
+            y = blk(x_q=y_pos, x_k=y_pos, x_v=y) if self.restrict_qk else blk(x_q=y, x_k=y, x_v=y)
 
         y = self.norm_y(y)
 
