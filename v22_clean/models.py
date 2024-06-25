@@ -132,7 +132,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         self.blocks_trans = nn.ModuleList([
             Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
-                  attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth))
+                  attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth), restrict_qk=True)
             for i in range(trans_depth)])
 
         self.norm_x_1 = norm_layer(self.model_dim * self.symbol_factor)
@@ -268,10 +268,12 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         # multi-headed self-attention blocks of transformer
         for idx, blk in enumerate(self.blocks_trans):
-            if idx == 0:
-                y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
-            else:
-                y = blk(x_q=y, x_k=y, x_v=y)
+            # if idx == 0:
+            #     y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
+            # else:
+            #     y = blk(x_q=y, x_k=y, x_v=y)
+
+            y = blk(x_q=y_pos, x_k=y_pos, x_v=y)
 
         y = self.norm_y(y)
 
@@ -424,14 +426,21 @@ class ResNetDecoder(nn.Module):
         return self.decoder(x)
 
 class BackbonePerception(nn.Module):
-    def __init__(self, embed_dim, num_heads=32, mlp_ratio=4, norm_layer=nn.LayerNorm, depth=4, mlp_drop=0.3):
+    def __init__(self,
+                 embed_dim,
+                 num_heads=32,
+                 mlp_ratio=4,
+                 norm_layer=nn.LayerNorm,
+                 depth=4,
+                 mlp_drop=0.3,
+                 grid_size=10):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
-
         self.depth = depth
         self.num_heads = num_heads
         self.mlp_ratio = mlp_ratio
+        self.grid_size = grid_size
 
         self.encoder = nn.Sequential( # from N, 1, 160, 160
             ResidualBlock(1, 16), # N, 16, 160, 160
@@ -441,10 +450,15 @@ class BackbonePerception(nn.Module):
             ResidualBlock(128, 256, 2), # N, 256, 10, 10
         )
 
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size ** 2, self.embed_dim]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.embed_dim, grid_size=self.grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
         self.blocks = nn.ModuleList([
             Block(256, 256, self.num_heads, self.mlp_ratio, \
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
-                  drop_path=0.5*((i+1)/self.depth)) for i in range(self.depth)])
+                  drop_path=0.5*((i+1)/self.depth), restrict_qk=True) for i in range(self.depth)])
 
         self.mlp = nn.Linear(256*10*10, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
@@ -459,7 +473,7 @@ class BackbonePerception(nn.Module):
         x = x.transpose(1,2)
 
         for block in self.blocks:
-            x = block(x_q=x, x_k=x, x_v=x)
+            x = block(x_q=self.pos_embed, x_k=self.pos_embed, x_v=x)
 
         x = x.reshape(batch_dim, 256*10*10)
 
@@ -556,6 +570,7 @@ class Attention(nn.Module):
             attn_drop=0.,
             proj_drop=0.,
             norm_layer=nn.LayerNorm,
+            restrict_qk=False
     ):
         super().__init__()
 
@@ -570,14 +585,17 @@ class Attention(nn.Module):
         self.scale = self.head_dim_kq ** -0.5
 
         self.w_qs = nn.Linear(dim_kq, dim_kq, bias=q_bias)
-        self.w_ks = nn.Linear(dim_kq, dim_kq, bias=k_bias)
+        self.w_ks = self.w_qs if restrict_qk else nn.Linear(dim_kq, dim_kq, bias=k_bias)
         self.w_vs = nn.Linear(dim_v, dim_v, bias=v_bias)
 
         self.q_norm = norm_layer(self.head_dim_kq) if qk_norm else nn.Identity()
         self.k_norm = norm_layer(self.head_dim_kq) if qk_norm else nn.Identity()
+        self.qk_norm = norm_layer(self.head_dim_kq) if qk_norm and restrict_qk else nn.Identity()
+
         self.attn_drop = nn.Dropout(attn_drop)
         self.proj = nn.Linear(dim_v, dim_v)
         self.proj_drop = nn.Dropout(proj_drop)
+        self.restrict_qk = restrict_qk
 
     def forward(self, x_q, x_k, x_v):
 
@@ -589,7 +607,10 @@ class Attention(nn.Module):
         k = self.w_ks(x_k).view(batch_size, self.num_heads, len_k, self.head_dim_kq)
         v = self.w_vs(x_v).view(batch_size, self.num_heads, len_v, self.head_dim_v)
 
-        q, k = self.q_norm(q), self.k_norm(k)
+        if self.restrict_qk:
+            q, k = self.qk_norm(q), self.qk_norm(k)
+        else:
+            q, k = self.q_norm(q), self.k_norm(k)
 
         q = q * self.scale
         attn = q @ k.transpose(-2, -1)
@@ -630,6 +651,7 @@ class Block(nn.Module):
             act_layer=nn.GELU,
             norm_layer=nn.LayerNorm,
             mlp_layer=Mlp,
+            restrict_qk = False
     ):
         super().__init__()
         self.norm1 = norm_layer(dim_kq)
@@ -647,6 +669,7 @@ class Block(nn.Module):
             attn_drop=attn_drop,
             proj_drop=proj_drop,
             norm_layer=norm_layer,
+            restrict_qk=restrict_qk
         )
         self.ls1 = LayerScale(dim_kq, init_values=init_values) if init_values else nn.Identity()
         self.drop_path1 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
