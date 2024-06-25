@@ -87,7 +87,8 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
                  mlp_drop = 0.5,
                  proj_drop = 0.5,
                  attn_drop = 0.5,
-                 per_mlp_drop=0.3):
+                 per_mlp_drop=0.3,
+                 restrict_qk = False):
 
         super(TransformerModelv22, self).__init__()
 
@@ -102,10 +103,18 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         self.bb_depth = bb_depth
         self.bb_num_heads = bb_num_heads
         self.use_hadamard = use_hadamard
+        self.restrict_qk = restrict_qk
 
-        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads,
-                                             mlp_drop=per_mlp_drop) if self.use_backbone_enc else \
-            ResNetEncoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
+        if self.use_backbone_enc:
+            if restrict_qk:
+                self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth,
+                                                     num_heads=bb_num_heads,
+                                                     mlp_drop=per_mlp_drop)
+            else:
+                self.perception = BackbonePerception_old(embed_dim=self.embed_dim, depth=self.bb_depth,
+                                                         num_heads=bb_num_heads, mlp_drop=per_mlp_drop)
+        else:
+            self.perception = ResNetEncoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
 
         self.model_dim = 2*self.embed_dim
 
@@ -132,7 +141,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         self.blocks_trans = nn.ModuleList([
             Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
-                  attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth), restrict_qk=True)
+                  attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth), restrict_qk=self.restrict_qk)
             for i in range(trans_depth)])
 
         self.norm_x_1 = norm_layer(self.model_dim * self.symbol_factor)
@@ -428,6 +437,7 @@ class ResNetDecoder(nn.Module):
 class BackbonePerception(nn.Module):
     def __init__(self,
                  embed_dim,
+                 out_channels=256,
                  num_heads=32,
                  mlp_ratio=4,
                  norm_layer=nn.LayerNorm,
@@ -437,6 +447,7 @@ class BackbonePerception(nn.Module):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
+        self.out_channels = out_channels
         self.depth = depth
         self.num_heads = num_heads
         self.mlp_ratio = mlp_ratio
@@ -451,16 +462,16 @@ class BackbonePerception(nn.Module):
         )
 
         # initialize and retrieve positional embeddings
-        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size ** 2, self.embed_dim]), requires_grad=False)
-        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.embed_dim, grid_size=self.grid_size, cls_token=False)
+        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size ** 2, self.out_channels]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.out_channels, grid_size=self.grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
-            Block(256, 256, self.num_heads, self.mlp_ratio, \
+            Block(self.out_channels*2, self.out_channels*2, self.num_heads, self.mlp_ratio, \
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
                   drop_path=0.5*((i+1)/self.depth), restrict_qk=True) for i in range(self.depth)])
 
-        self.mlp = nn.Linear(256*10*10, self.embed_dim)
+        self.mlp = nn.Linear(self.out_channels * 2 * self.grid_size**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
 
     def forward(self, x):
@@ -469,13 +480,75 @@ class BackbonePerception(nn.Module):
 
         x = self.encoder(x)
 
-        x = x.reshape(batch_dim, 256, 10*10)
-        x = x.transpose(1,2)
+        x = x.reshape(batch_dim, self.grid_size**2, self.out_channels)
 
         for block in self.blocks:
             x = block(x_q=self.pos_embed, x_k=self.pos_embed, x_v=x)
 
-        x = x.reshape(batch_dim, 256*10*10)
+        x = x.reshape(batch_dim, self.out_channels * 2 * self.grid_size**2)
+
+        x = self.dropout(self.mlp(x))
+
+        return x
+
+class BackbonePerception_old(nn.Module):
+    def __init__(self,
+                 embed_dim,
+                 out_channels = 256,
+                 num_heads=32,
+                 mlp_ratio=4,
+                 norm_layer=nn.LayerNorm,
+                 depth=4,
+                 mlp_drop=0.3,
+                 grid_size=10):
+        super(BackbonePerception_old, self).__init__()
+
+        self.embed_dim = embed_dim
+        self.out_channels = out_channels
+        self.depth = depth
+        self.num_heads = num_heads
+        self.mlp_ratio = mlp_ratio
+        self.grid_size = grid_size
+
+        self.encoder = nn.Sequential( # from N, 1, 160, 160
+            ResidualBlock(1, 16), # N, 16, 160, 160
+            ResidualBlock(16, 32, 2), # N, 32, 80, 80
+            ResidualBlock(32, 64, 2), # N, 64, 40, 40
+            ResidualBlock(64, 128, 2), # N, 128, 20, 20
+            ResidualBlock(128, 256, 2), # N, 256, 10, 10
+        )
+
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size ** 2, self.out_channels]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.out_channels, grid_size=self.grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
+        self.blocks = nn.ModuleList([
+            Block(self.out_channels*2, self.out_channels*2, self.num_heads, self.mlp_ratio, \
+                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
+                  drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
+
+        self.mlp = nn.Linear(self.out_channels * self.grid_size**2, self.embed_dim)
+        self.dropout = nn.Dropout(p=mlp_drop)
+
+    def forward(self, x):
+
+        batch_dim = x.size(0)
+
+        x = self.encoder(x)
+
+        # expand positional embeddings to fit batch (B, self.grid_size**2, embed_dim)
+        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_dim, self.grid_size ** 2, self.out_channels)
+
+        # concatenate positional embeddings
+        x = torch.cat([x, final_pos_embed], dim=-1)
+
+        x = x.reshape(batch_dim, self.grid_size**2, self.out_channels*2)
+
+        for block in self.blocks:
+            x = block(x_q=x, x_k=x, x_v=x)
+
+        x = x.reshape(batch_dim, self.out_channels * 2 * self.grid_size**2)
 
         x = self.dropout(self.mlp(x))
 
