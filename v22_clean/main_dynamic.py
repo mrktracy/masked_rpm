@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr25_full"
+version = "v22-itr27_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -49,12 +49,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     transformer_model = TransformerModelv22(embed_dim=512,
                                             symbol_factor=1,
-                                            trans_depth=1,
-                                            abs_1_depth=1,
-                                            abs_2_depth=1,
-                                            trans_num_heads=2,
-                                            abs_1_num_heads=2,
-                                            abs_2_num_heads=2,
+                                            trans_depth=2,
+                                            abs_1_depth=2,
+                                            abs_2_depth=2,
+                                            trans_num_heads=4,
+                                            abs_1_num_heads=4,
+                                            abs_2_num_heads=4,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
                                             decoder_num = 2,
@@ -185,25 +185,48 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
 
+            # if MLP_DW:
+            #     if AUTO_REG:
+            #         err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1),
+            #                                  weights], dim=-1).detach()
+            #
+            #     else:
+            #         err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1)],
+            #                                 dim=-1).detach()
+            #
+            # else:
+            #     if AUTO_REG:
+            #         # Concatenate the current task error and reconstruction error to the history
+            #         err_history = torch.cat([err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
+            #                                  weights.unsqueeze(0)], dim=-1)], dim=0).detach()
+            #
+            #     else:
+            #         # Concatenate the current task error and reconstruction error to the history
+            #         err_history = torch.cat([err_history, \
+            #                                  torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
+
+            task_share = task_err / (task_err + rec_err)
+            rec_share = 1 - task_share
+
             if MLP_DW:
                 if AUTO_REG:
-                    err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1),
+                    err_history = torch.cat([err_history[4:], torch.stack([task_share, rec_share], dim=-1),
                                              weights], dim=-1).detach()
 
                 else:
-                    err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1)],
+                    err_history = torch.cat([err_history[2:], torch.stack([task_share, rec_share], dim=-1)],
                                             dim=-1).detach()
 
             else:
                 if AUTO_REG:
                     # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
+                    err_history = torch.cat([err_history, torch.cat([torch.stack([task_share, rec_share], dim=-1).unsqueeze(0), \
                                              weights.unsqueeze(0)], dim=-1)], dim=0).detach()
 
                 else:
                     # Concatenate the current task error and reconstruction error to the history
                     err_history = torch.cat([err_history, \
-                                             torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
+                                             torch.stack([task_share, rec_share], dim=-1).unsqueeze(0)], dim=0).detach()
 
                 # Remove the oldest entry if the history length exceeds the desired length
                 if err_history.size(1) > HISTORY_SIZE:
