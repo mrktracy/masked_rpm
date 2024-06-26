@@ -541,7 +541,7 @@ class BackbonePerceptionOld(nn.Module):
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
                   drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
 
-        self.mlp = nn.Linear(self.out_channels * self.grid_size**2, self.embed_dim)
+        self.mlp = nn.Linear(self.out_channels * 2 * self.grid_size**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
 
     def forward(self, x):
