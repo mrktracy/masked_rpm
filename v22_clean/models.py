@@ -95,9 +95,6 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         super(TransformerModelv22, self).__init__()
 
-        assert abs_1_depth >= 2, 'Abstractor 1 depth must be at least 2'
-        assert abs_2_depth >= 2, 'Abstractor 2 depth must be at least 2'
-
         self.embed_dim = embed_dim
         self.symbol_factor = symbol_factor
         self.grid_size = grid_size
