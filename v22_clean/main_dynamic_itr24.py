@@ -187,11 +187,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             if MLP_DW:
                 if AUTO_REG:
-                    err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
+                    err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1),
                                              weights], dim=-1).detach()
 
                 else:
-                    err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], \
+                    err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1)],
                                             dim=-1).detach()
 
             else:
