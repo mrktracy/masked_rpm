@@ -65,7 +65,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             proj_drop=0.5,
                                             attn_drop=0.5,
                                             per_mlp_drop=0,
-                                            restrict_qk=True).to(device)
+                                            restrict_qk=False).to(device)
 
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
