@@ -48,8 +48,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # print(num_gpus)
 
     transformer_model = SAViRt(embed_dim=512,
-                               bb_depth=2,
-                               bb_num_heads=4,
+                               bb_depth=1,
+                               bb_num_heads=5,
                                per_mlp_drop=0).to(device)
 
     if MLP_DW:
