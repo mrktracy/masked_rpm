@@ -67,228 +67,133 @@ class DynamicWeighting(nn.Module):
         return x.squeeze(0)
 
 
-class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
+class SAViRt(nn.Module):
+    """
+    SAViR-T: Spatially Attentive Visual Reasoning with Transformers
+    This model implements the SAViR-T architecture for solving Raven's Progressive Matrices (RPM).
+    """
+
     def __init__(self,
                  embed_dim=256,
-                 patch_size = 10,
-                 symbol_factor = 1,
-                 grid_size = 3,
-                 trans_num_heads=4,
-                 abs_1_num_heads=4,
-                 abs_2_num_heads=4,
-                 mlp_ratio=4.,
-                 norm_layer=nn.LayerNorm,
-                 trans_depth = 2,
-                 abs_1_depth = 2,
-                 abs_2_depth = 2,
-                 bb_depth = 1,
-                 bb_num_heads = 2,
-                 use_hadamard = False,
-                 mlp_drop = 0.5,
-                 proj_drop = 0.5,
-                 attn_drop = 0.5,
-                 per_mlp_drop=0.3,
-                 topk=5):
-
-        super(TransformerModelv23, self).__init__()
-
-        assert abs_1_depth >= 2, 'Abstractor 1 depth must be at least 2'
-        assert abs_2_depth >= 2, 'Abstractor 2 depth must be at least 2'
+                 bb_depth=1,
+                 bb_num_heads=2,
+                 per_mlp_drop=0.3):
+        super(SAViRt, self).__init__()
 
         self.embed_dim = embed_dim
-        self.patch_size = patch_size
-        self.symbol_factor = symbol_factor
-        self.grid_size = grid_size
         self.bb_depth = bb_depth
         self.bb_num_heads = bb_num_heads
-        self.use_hadamard = use_hadamard
-        self.topk = topk
 
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads,
                                              mlp_drop=per_mlp_drop)
 
-        self.model_dim = 2*self.embed_dim
+        self.model_dim = 2 * self.embed_dim
 
-        self.tcn_1 = TemporalContextNorm(num_features=self.model_dim)
-        self.tcn_2 = TemporalContextNorm(num_features=self.model_dim)
+        # Define Φ_MLP for relation extraction
+        self.phi_mlp = nn.Sequential(
+            nn.Linear(3 * self.embed_dim, self.embed_dim),
+            nn.ReLU(),
+            nn.Linear(self.embed_dim, self.embed_dim)
+        )
 
-        # initialize and retrieve positional embeddings
-        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size**2, self.embed_dim]), requires_grad=False)
-        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.embed_dim, grid_size=self.grid_size, cls_token=False)
-        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
-
-        self.blocks_abs_1 = nn.ModuleList([
-            Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_1_num_heads,\
-                  mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
-                  attn_drop=attn_drop, drop_path=0.5*((i+1)/abs_1_depth))
-            for i in range(abs_1_depth)])
-
-        self.blocks_abs_2 = nn.ModuleList([
-            Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_2_num_heads, \
-                  mlp_ratio, q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
-                  attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / abs_2_depth))
-            for i in range(abs_2_depth)])
-
-        self.blocks_trans = nn.ModuleList([
-            Block(self.model_dim, self.model_dim, trans_num_heads, mlp_ratio,
-                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=proj_drop, \
-                  attn_drop=attn_drop, drop_path=0.5 * ((i + 1) / trans_depth))
-            for i in range(trans_depth)])
-
-        self.norm_x_1 = norm_layer(self.model_dim * self.symbol_factor)
-
-        self.norm_x_2 = norm_layer(self.model_dim * self.symbol_factor)
-
-        self.norm_y = norm_layer(self.model_dim)
-
-        self.mlp1 = nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim)
-
-        self.relu = nn.ReLU()
-
-        self.mlp2 = nn.Linear(self.embed_dim, 1)
-
-        self.dropout = nn.Dropout(p=mlp_drop)
+        # Define Ψ_MLP for shared rule extraction
+        self.psi_mlp = nn.Sequential(
+            nn.Linear(2 * self.embed_dim, self.embed_dim),
+            nn.ReLU(),
+            nn.Linear(self.embed_dim, self.embed_dim)
+        )
 
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
 
-        # define symbols
-        normal_initializer = torch.nn.init.normal_
-        self.symbols_1 = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim * self.symbol_factor)))
-        self.symbols_2 = nn.Parameter(normal_initializer(torch.empty(6, self.model_dim * self.symbol_factor)))
-
-    def ternary_operation(self, x):
+    def extract_relations(self, x):
         """
-        Perform the ternary operation C(x1, x2, x3) for rows and columns across the sequence.
-        Input x is of shape (batch_size, 9, embed_dim)
+        Extract relations from rows and columns of the input.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, 9, patch_size**2, embed_dim)
+
+        Returns:
+            tuple: Row and column relations, each of shape (batch_size, 3, patch_size**2, embed_dim)
         """
+        batch_size, _, num_patches, embed_dim = x.shape
 
-        slice_idx = torch.tensor([0, 3, 6, 0, 1, 2])
-        increment = torch.tensor([1, 1, 1, 3, 3, 3])
+        # Group by rows and columns
+        rows = x.view(batch_size, 3, 3, num_patches, embed_dim)
+        cols = x.view(batch_size, 3, 3, num_patches, embed_dim).transpose(1, 2)
 
-        # Extract x1, x2, x3 for all sliding windows
-        x1 = x[:, slice_idx, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
-        x2 = x[:, slice_idx + increment, :].unsqueeze(2)  # Shape: (batch_size, 6, 1, embed_dim)
-        x3 = x[:, slice_idx + 2 * increment, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
+        # Apply Φ_MLP to each row and column
+        row_relations = self.phi_mlp(rows.reshape(-1, 3 * embed_dim)).view(batch_size, 3, num_patches, embed_dim)
+        col_relations = self.phi_mlp(cols.reshape(-1, 3 * embed_dim)).view(batch_size, 3, num_patches, embed_dim)
 
-        # Compute the outer product
-        outer_product = torch.matmul(x1, x2)  # Shape: (batch_size, 6, embed_dim, embed_dim)
+        return row_relations, col_relations
 
-        # Matrix-vector multiplication on the last two dimensions
-        result = torch.matmul(outer_product, x3)
-
-        # Squeeze to remove singleton dimension
-        result = result.squeeze(-1)  # Shape: (batch_size, 6, embed_dim)
-
-        return result
-
-    def ternary_hadamard(self, x):
+    def extract_shared_rule(self, r_i, r_j):
         """
-        Perform the Hadamard product operation for rows and columns in the sequence.
-        Input x is of shape (batch_size, 9, embed_dim).
+        Extract shared rules between two relation vectors.
+
+        Args:
+            r_i, r_j (torch.Tensor): Relation vectors of shape (batch_size, num_patches, embed_dim)
+
+        Returns:
+            torch.Tensor: Shared rule of shape (batch_size, num_patches, embed_dim)
         """
-
-        slice_idx = torch.tensor([0, 3, 6, 0, 1, 2])
-        increment = torch.tensor([1, 1, 1, 3, 3, 3])
-
-        # Extract x1, x2, x3 for all sliding windows
-        x1 = x[:, slice_idx, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
-        x2 = x[:, slice_idx + increment, :].unsqueeze(2)  # Shape: (batch_size, 6, 1, embed_dim)
-        x3 = x[:, slice_idx + 2 * increment, :].unsqueeze(3)  # Shape: (batch_size, 6, embed_dim, 1)
-
-        # element-wise multiplication
-        result = x1 * x2 * x3
-
-        return result
+        shared_input = torch.cat([r_i, r_j], dim=-1)
+        shared_rule = self.psi_mlp(shared_input)
+        return shared_rule
 
     def forward(self, sentences):
-        batch_size = sentences.size(0)  # Get the batch size from the first dimension of x
+        """
+        Forward pass of the SAViR-T model.
 
-        sen_reshaped = sentences.view(-1, 1, 160, 160)  # sentences is (B, 8, 9, 1, 160, 160)
-        embed_reshaped = self.perception.forward(sen_reshaped) # x_reshaped is (B*9*8, self.patch_size**2, 256)
+        Args:
+            sentences (torch.Tensor): Input tensor of shape (batch_size, 8, 9, 1, 160, 160)
 
-        # reshape for concatenating positional embeddings
-        x_1 = embed_reshaped.view(batch_size * self.patch_size**2, 8, 9, -1) # x is (B * self.patch_size**2, 8, 9, 256)
-        embeddings = x_1.clone()
+        Returns:
+            tuple: Distribution over choices and reconstructed images
+        """
+        batch_size = sentences.size(0)
+        # Reshape input: (batch_size * 8 * 9, 1, 160, 160)
+        sen_reshaped = sentences.view(-1, 1, 160, 160)
+        # Extract features: (batch_size * 8 * 9, patch_size**2, embed_dim)
+        embed_reshaped = self.perception.forward(sen_reshaped)
 
-        # expand positional embeddings to fit batch (B * self.patch_size**2, 8, 9, embed_dim)
-        final_pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size * self.patch_size**2, 8, 9, -1)
+        # Reshape embeddings for relation extraction: (batch_size*8, 9, patch_size**2, embed_dim)
+        x = embed_reshaped.view(batch_size * 8, 9, self.patch_size ** 2, -1)
 
-        # concatenate positional embeddings
-        x_1 = torch.cat([x_1, final_pos_embed], dim=-1)
+        # Extract relations: (batch_size*8, 3, patch_size**2, embed_dim)
+        row_relations, col_relations = self.extract_relations(x)
 
-        x_1_reshaped = x_1.view(batch_size * self.patch_size**2 * 8, 9, self.model_dim)
+        # Extract shared rules between first two rows and columns
+        r_12 = self.extract_shared_rule(row_relations[:, 0], row_relations[:, 1])
+        c_12 = self.extract_shared_rule(col_relations[:, 0], col_relations[:, 1])
 
-        x_ternary = self.ternary_hadamard(x_1_reshaped) if self.use_hadamard else self.ternary_operation(x_1_reshaped)
-        x_2 = x_ternary.view(batch_size * self.patch_size**2, 8, 6, -1)
+        # Combine row and column shared rules: (batch_size*8, patch_size**2, 2*embed_dim)
+        rc_12 = torch.cat([r_12, c_12], dim=-1)
 
-        # apply temporal context normalization
-        x_1 = self.tcn_1(x_1)
-        x_2 = self.tcn_2(x_2)
+        # Average across patches: (batch_size*8, 2*embed_dim)
+        rc_12 = rc_12.mean(dim=1)
 
-        # reshape x for batch processing
-        x_1 = x_1.view(batch_size * self.patch_size**2 * 8, 9, -1)
-        x_2 = x_2.view(batch_size * self.patch_size**2 * 8, 6, -1)
+        # Extract shared rules involving the third row/column
+        r_1a = self.extract_shared_rule(row_relations[:, 0], row_relations[:, 2])
+        c_1a = self.extract_shared_rule(col_relations[:, 0], col_relations[:, 2])
+        rc_1a = torch.cat([r_1a, c_1a], dim=-1).mean(dim=1)
 
-        # clone x for passing to transformer blocks
-        y = x_1.clone()
-        y_skip = x_1.clone() # create copies for skip connection
+        r_2a = self.extract_shared_rule(row_relations[:, 1], row_relations[:, 2])
+        c_2a = self.extract_shared_rule(col_relations[:, 1], col_relations[:, 2])
+        rc_2a = torch.cat([r_2a, c_2a], dim=-1).mean(dim=1)
 
+        # Average the two shared rules: (batch_size*8, 2*embed_dim)
+        rc_a = 0.5 * (rc_1a + rc_2a)
 
-        # selector = torch.cat((torch.ones(1, 1, self.embed_dim), \
-        #                       torch.zeros(1, 1, self.embed_dim)), dim = -1).to(y.device)
-        # y_pos = y*selector # broadcasting will take care of dimensions
+        # Compute similarity score: (batch_size*8,)
+        scores = F.cosine_similarity(rc_12, rc_a, dim=-1)
+        # Reshape to (batch_size, 8)
+        dist = scores.reshape(batch_size, 8)
 
-        # repeat symbols along ,batch dimension
-        symbols_1 = self.symbols_1.unsqueeze(0)
-        symbols_1 = symbols_1.repeat(batch_size * self.patch_size**2 * 8, 1, 1)
-        symbols_2 = self.symbols_2.unsqueeze(0)
-        symbols_2 = symbols_2.repeat(batch_size * self.patch_size**2 * 8, 1, 1)
-
-        # multi-headed self-attention blocks of abstractor
-        for idx, blk in enumerate(self.blocks_abs_1):
-            if idx == 0:
-                x_1 = blk(x_q=x_1, x_k=x_1, x_v=symbols_1)
-            else:
-               x_1 = blk(x_q=x_1, x_k=x_1, x_v=x_1)
-
-        x_1 = self.norm_x_1(x_1)
-
-        # multi-headed self-attention blocks of abstractor
-        for idx, blk in enumerate(self.blocks_abs_2):
-            if idx == 0:
-                x_2 = blk(x_q=x_2, x_k=x_2, x_v=symbols_2)
-            else:
-                x_2 = blk(x_q=x_2, x_k=x_2, x_v=x_2)
-
-        x_2 = self.norm_x_2(x_2)
-
-        # multi-headed self-attention blocks of transformer
-        for idx, blk in enumerate(self.blocks_trans):
-            y = blk(x_q=y, x_k=y, x_v=y)
-
-        y = self.norm_y(y)
-        y = y + y_skip # add skip connection
-
-        x_1 = x_1.view([batch_size * self.patch_size**2, 8, 9, -1])
-
-        x_2 = x_2.view([batch_size * self.patch_size**2, 8, 6, -1])
-
-        y = y.view(batch_size * self.patch_size**2, 8, 9, -1)
-        y = self.tcn_1.inverse(y)
-
-        z = torch.cat([x_1, y], dim=-1)
-
-        z_reshaped = torch.cat([z.mean(dim=-2), x_2.mean(dim=-2)], dim=-1).view(batch_size * self.patch_size**2 * 8, -1)
-        z_reshaped = self.mlp1(z_reshaped)
-        z_reshaped = self.dropout(z_reshaped)
-        dist_reshaped = self.mlp2(self.relu(z_reshaped)) # dist_reshaped is (B * self.patch_size**2 * 8, 1)
-
-        dist, _ = torch.topk(dist_reshaped.view(batch_size, self.patch_size**2, 8), k = self.topk, dim = -2)
-        dist = dist.mean(dim=-2)
-
+        # Compute recreation for autoencoder loss: (batch_size, 8, 9, 1, 160, 160)
         recreation = self.decoder.forward(embed_reshaped).view(batch_size, 8, 9, 1, 160, 160)
 
-        return dist, recreation, embeddings
+        return dist, recreation
 
     def encode(self, images):
         embeddings = self.perception.forward(images) # takes input (B, 1, 160, 160), gives output (B, embed_dim)
@@ -300,55 +205,10 @@ class TransformerModelv23(nn.Module): # takes in images, embeds, performs self-a
 
         return images
 
-class TemporalContextNorm(nn.Module):
-    def __init__(self, num_features=768, eps=1e-5, affine=True):
-        super(TemporalContextNorm, self).__init__()
-
-        self.num_features = num_features
-        self.eps = eps
-        self.affine = affine
-
-        if self.affine:
-            self.gamma = nn.Parameter(torch.Tensor(num_features))
-            self.beta = nn.Parameter(torch.Tensor(num_features))
-        else:
-            self.register_parameter('gamma', None)
-            self.register_parameter('beta', None)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        if self.affine:
-            nn.init.ones_(self.gamma)
-            nn.init.zeros_(self.beta)
-
-    def forward(self, x):
-        # x has shape (batch_size, 8, 9, num_features)
-        self.mean = x.mean(dim=-2, keepdim=True)
-        self.var = x.var(dim=-2, unbiased=False, keepdim=True)
-
-        # Normalize
-        x_norm = (x - self.mean) / (self.var + self.eps).sqrt()
-
-        # Apply affine transformation
-        if self.affine:
-            x_norm = x_norm * self.gamma + self.beta
-
-        return x_norm
-
-    def inverse(self, x_norm):
-
-        # Invert normalization
-        if self.affine:
-            x = (x_norm - self.beta) / self.gamma
-        else:
-            x = x_norm
-
-        x = x * (self.var + self.eps).sqrt() + self.mean
-
-        return x
-
 
 ''' ResNet Encoder '''
+
+
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super(ResidualBlock, self).__init__()
@@ -421,8 +281,6 @@ class BackbonePerception(nn.Module):
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
                   drop_path=0.5*((i+1)/self.depth)) for i in range(self.depth)])
 
-        # self.mlp = nn.Linear(256*10*10, self.embed_dim)
-        # self.dropout = nn.Dropout(p=mlp_drop)
 
     def forward(self, x):
 

@@ -1,0 +1,9 @@
+matplotlib
+numpy
+Pillow
+timm
+tokenizers
+torch
+torchvision
+tqdm
+transformers
