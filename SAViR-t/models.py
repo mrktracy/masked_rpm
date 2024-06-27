@@ -74,7 +74,8 @@ class SAViRt(nn.Module):
     """
 
     def __init__(self,
-                 embed_dim=256,
+                 embed_dim=512,
+                 grid_dim=5,
                  bb_depth=1,
                  bb_num_heads=2,
                  per_mlp_drop=0.3):
@@ -83,6 +84,7 @@ class SAViRt(nn.Module):
         self.embed_dim = embed_dim
         self.bb_depth = bb_depth
         self.bb_num_heads = bb_num_heads
+        self.grid_dim = grid_dim
 
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads,
                                              mlp_drop=per_mlp_drop)
@@ -110,10 +112,10 @@ class SAViRt(nn.Module):
         Extract relations from rows and columns of the input.
 
         Args:
-            x (torch.Tensor): Input tensor of shape (batch_size, 9, patch_size**2, embed_dim)
+            x (torch.Tensor): Input tensor of shape (batch_size, 9, grid_dim**2, embed_dim)
 
         Returns:
-            tuple: Row and column relations, each of shape (batch_size, 3, patch_size**2, embed_dim)
+            tuple: Row and column relations, each of shape (batch_size, 3, grid_dim**2, embed_dim)
         """
         batch_size, _, num_patches, embed_dim = x.shape
 
@@ -154,20 +156,20 @@ class SAViRt(nn.Module):
         batch_size = sentences.size(0)
         # Reshape input: (batch_size * 8 * 9, 1, 160, 160)
         sen_reshaped = sentences.view(-1, 1, 160, 160)
-        # Extract features: (batch_size * 8 * 9, patch_size**2, embed_dim)
+        # Extract features: (batch_size * 8 * 9, grid_dim**2, embed_dim)
         embed_reshaped = self.perception.forward(sen_reshaped)
 
-        # Reshape embeddings for relation extraction: (batch_size*8, 9, patch_size**2, embed_dim)
-        x = embed_reshaped.view(batch_size * 8, 9, self.patch_size ** 2, -1)
+        # Reshape embeddings for relation extraction: (batch_size*8, 9, grid_dim**2, embed_dim)
+        x = embed_reshaped.view(batch_size * 8, 9, self.grid_dim ** 2, -1)
 
-        # Extract relations: (batch_size*8, 3, patch_size**2, embed_dim)
+        # Extract relations: (batch_size*8, 3, grid_dim**2, embed_dim)
         row_relations, col_relations = self.extract_relations(x)
 
         # Extract shared rules between first two rows and columns
         r_12 = self.extract_shared_rule(row_relations[:, 0], row_relations[:, 1])
         c_12 = self.extract_shared_rule(col_relations[:, 0], col_relations[:, 1])
 
-        # Combine row and column shared rules: (batch_size*8, patch_size**2, 2*embed_dim)
+        # Combine row and column shared rules: (batch_size*8, grid_dim**2, 2*embed_dim)
         rc_12 = torch.cat([r_12, c_12], dim=-1)
 
         # Average across patches: (batch_size*8, 2*embed_dim)
