@@ -49,7 +49,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     transformer_model = SAViRt(embed_dim=512,
                                bb_depth=1,
-                               bb_num_heads=5,
+                               bb_num_heads=4,
                                per_mlp_drop=0).to(device)
 
     if MLP_DW:
