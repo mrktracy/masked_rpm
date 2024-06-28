@@ -93,9 +93,9 @@ class SAViRt(nn.Module):
 
         # Define Φ_MLP for relation extraction
         self.phi_mlp = nn.Sequential(
-            nn.Linear(self.embed_dim, self.embed_dim),
+            nn.Linear(3 * self.embed_dim, 3 * self.embed_dim),
             nn.ReLU(),
-            nn.Linear(self.embed_dim, self.embed_dim)
+            nn.Linear(3 * self.embed_dim, self.embed_dim)
         )
 
         # Define Ψ_MLP for shared rule extraction
