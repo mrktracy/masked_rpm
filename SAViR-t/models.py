@@ -291,7 +291,7 @@ class BackbonePerception(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
-            Block(self.out_channels*2, self.out_channels*2, self.num_heads, self.mlp_ratio, \
+            Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio, \
                   q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=mlp_drop, attn_drop=0.1, \
                   drop_path=0.5*((i+1)/self.depth)) for i in range(self.depth)])
 
@@ -312,8 +312,6 @@ class BackbonePerception(nn.Module):
 
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
-
-        x = x.reshape(batch_dim, self.grid_dim**2, self.out_channels)
 
         return x
 
