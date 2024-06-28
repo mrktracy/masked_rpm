@@ -170,26 +170,29 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
 
+            task_share = task_err / (task_err + rec_err)
+            rec_share = 1 - task_share
+
             if MLP_DW:
                 if AUTO_REG:
-                    err_history = torch.cat([err_history[4:], task_err.unsqueeze(0), rec_err.unsqueeze(0), \
+                    err_history = torch.cat([err_history[4:], torch.stack([task_share, rec_share], dim=-1),
                                              weights], dim=-1).detach()
 
                 else:
-                    err_history = torch.cat([err_history[2:], task_err.unsqueeze(0), \
-                                             rec_err.unsqueeze(0)], dim=-1).detach()
+                    err_history = torch.cat([err_history[2:], torch.stack([task_share, rec_share], dim=-1)],
+                                            dim=-1).detach()
 
             else:
                 if AUTO_REG:
                     # Concatenate the current task error and reconstruction error to the history
                     err_history = torch.cat(
-                        [err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
+                        [err_history, torch.cat([torch.stack([task_share, rec_share], dim=-1).unsqueeze(0),
                                                  weights.unsqueeze(0)], dim=-1)], dim=0).detach()
 
                 else:
                     # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, \
-                                             torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
+                    err_history = torch.cat([err_history,
+                                             torch.stack([task_share, rec_share], dim=-1).unsqueeze(0)], dim=0).detach()
 
                 # Remove the oldest entry if the history length exceeds the desired length
                 if err_history.size(1) > HISTORY_SIZE:
