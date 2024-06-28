@@ -15,4 +15,4 @@
 
 module load miniconda
 conda activate rpm
-python main_dynamic.py
+python main.py
