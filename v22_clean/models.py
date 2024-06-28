@@ -504,13 +504,13 @@ class BackbonePerception(nn.Module):
 class BackbonePerceptionOld(nn.Module):
     def __init__(self,
                  embed_dim,
-                 out_channels=256,
+                 out_channels=512,
                  num_heads=32,
                  mlp_ratio=4,
                  norm_layer=nn.LayerNorm,
                  depth=4,
                  mlp_drop=0.3,
-                 grid_size=10):
+                 grid_dim=5):
         super(BackbonePerceptionOld, self).__init__()
 
         self.embed_dim = embed_dim
@@ -518,7 +518,7 @@ class BackbonePerceptionOld(nn.Module):
         self.depth = depth
         self.num_heads = num_heads
         self.mlp_ratio = mlp_ratio
-        self.grid_size = grid_size
+        self.grid_dim = grid_dim
 
         self.encoder = nn.Sequential(  # from N, 1, 160, 160
             ResidualBlock(1, 16),  # N, 16, 160, 160
@@ -526,19 +526,20 @@ class BackbonePerceptionOld(nn.Module):
             ResidualBlock(32, 64, 2),  # N, 64, 40, 40
             ResidualBlock(64, 128, 2),  # N, 128, 20, 20
             ResidualBlock(128, 256, 2),  # N, 256, 10, 10
+            ResidualBlock(256, 512, 2)  # N, 512, 5, 5
         )
 
         # initialize and retrieve positional embeddings
-        self.pos_embed = nn.Parameter(torch.zeros([self.grid_size ** 2, self.out_channels]), requires_grad=False)
-        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.out_channels, grid_size=self.grid_size, cls_token=False)
+        self.pos_embed = nn.Parameter(torch.zeros([self.grid_dim ** 2, self.out_channels]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.out_channels, grid_size=self.grid_dim, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
-            Block(self.out_channels*2, self.out_channels*2, self.num_heads, self.mlp_ratio,
-                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
+            Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
                   drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
 
-        self.mlp = nn.Linear(self.out_channels * 2 * self.grid_size**2, self.embed_dim)
+        self.mlp = nn.Linear(self.out_channels * 2 * self.grid_dim**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
 
     def forward(self, x):
@@ -547,18 +548,18 @@ class BackbonePerceptionOld(nn.Module):
 
         x = self.encoder(x)
 
-        x = x.reshape(batch_dim, self.grid_size ** 2, self.out_channels)
+        x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
 
-        # expand positional embeddings to fit batch (B, self.grid_size**2, embed_dim)
-        pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_dim, self.grid_size ** 2, self.out_channels)
+        # expand positional embeddings to fit batch (B, self.grid_dim**2, embed_dim)
+        pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_dim, self.grid_dim ** 2, self.out_channels)
 
         # concatenate positional embeddings
-        x = torch.cat([x, pos_embed_final], dim=-1)
+        x = torch.sum([x, pos_embed_final], dim=-1)
 
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        x = x.reshape(batch_dim, self.out_channels * 2 * self.grid_size**2)
+        x = x.reshape(batch_dim, self.out_channels * 2 * self.grid_dim**2)
 
         x = self.dropout(self.mlp(x))
 

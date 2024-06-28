@@ -12,7 +12,7 @@ from models import SAViRt, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "SAViRt_v0-itr0_full"
+version = "SAViRt_v0-itr1_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -97,7 +97,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ''' Define Hyperparameters '''
     EPOCHS = 20
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.00005
+    LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 60

@@ -86,26 +86,31 @@ class SAViRt(nn.Module):
         self.bb_num_heads = bb_num_heads
         self.grid_dim = grid_dim
 
-        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads,
+        self.perception = BackbonePerception(embed_dim=self.embed_dim, grid_dim=self.grid_dim, depth=self.bb_depth, num_heads=bb_num_heads,
                                              mlp_drop=per_mlp_drop)
 
         self.model_dim = 2 * self.embed_dim
 
         # Define Φ_MLP for relation extraction
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * self.embed_dim, self.embed_dim),
+            nn.Linear(self.embed_dim, self.embed_dim),
             nn.ReLU(),
             nn.Linear(self.embed_dim, self.embed_dim)
         )
 
         # Define Ψ_MLP for shared rule extraction
         self.psi_mlp = nn.Sequential(
-            nn.Linear(2 * self.embed_dim, self.embed_dim),
+            nn.Linear(2 * self.embed_dim, 2 * self.embed_dim),
             nn.ReLU(),
-            nn.Linear(self.embed_dim, self.embed_dim)
+            nn.Linear(2 * self.embed_dim, 2 * self.embed_dim),
+            nn.ReLU(),
+            nn.Linear(2 * self.embed_dim, 2 * self.embed_dim),
+            nn.ReLU(),
+            nn.Linear(2 * self.embed_dim, self.embed_dim),
+            nn.Dropout(p=0.5)
         )
 
-        self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
+        self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
 
     def extract_relations(self, x):
         """
@@ -235,7 +240,7 @@ class ResidualBlock(nn.Module):
         return out
 
 class ResNetDecoder(nn.Module):
-    def __init__(self, embed_dim=256, mlp_drop=0.5):
+    def __init__(self, embed_dim=256):
         super(ResNetDecoder, self).__init__()
 
         self.embed_dim = embed_dim
@@ -260,12 +265,14 @@ class ResNetDecoder(nn.Module):
         return self.decoder(x)
 
 class BackbonePerception(nn.Module):
-    def __init__(self, embed_dim, num_heads=32, mlp_ratio=4, norm_layer=nn.LayerNorm, depth=4, mlp_drop=0.3):
+    def __init__(self, out_channels, grid_dim, num_heads=32, mlp_ratio=4, norm_layer=nn.LayerNorm,
+                 depth=4, mlp_drop=0.3):
         super(BackbonePerception, self).__init__()
 
-        self.embed_dim = embed_dim
+        self.out_channels = out_channels
 
         self.depth = depth
+        self.grid_dim = grid_dim
         self.num_heads = num_heads
         self.mlp_ratio = mlp_ratio
 
@@ -278,9 +285,14 @@ class BackbonePerception(nn.Module):
             ResidualBlock(256, 512, 2)  # N, 512, 5, 5
         )
 
+        # initialize and retrieve positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([self.grid_dim ** 2, self.out_channels]), requires_grad=False)
+        pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=self.out_channels, grid_size=self.grid_dim, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
+
         self.blocks = nn.ModuleList([
-            Block(512, 512, self.num_heads, self.mlp_ratio, \
-                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1, \
+            Block(self.out_channels*2, self.out_channels*2, self.num_heads, self.mlp_ratio, \
+                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=mlp_drop, attn_drop=0.1, \
                   drop_path=0.5*((i+1)/self.depth)) for i in range(self.depth)])
 
 
@@ -290,15 +302,22 @@ class BackbonePerception(nn.Module):
 
         x = self.encoder(x)
 
-        x = x.reshape(batch_dim, 512, 5*5)
-        x = x.transpose(1,2)
+        x = x.reshape(batch_dim, self.grid_dim**2, self.out_channels)
+
+        # expand positional embeddings to fit batch (B, self.grid_dim**2, embed_dim)
+        pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_dim, self.grid_dim ** 2, self.out_channels)
+
+        # concatenate positional embeddings
+        x = torch.sum([x, pos_embed_final], dim=-1)
 
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        x = x.reshape(batch_dim, 5*5, 512)
+        x = x.reshape(batch_dim, self.grid_dim**2, self.out_channels)
 
         return x
+
+
 
 """ Modification of "Vision Transformer (ViT) in PyTorch"
 https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py
