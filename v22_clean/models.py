@@ -559,7 +559,7 @@ class BackbonePerceptionOld(nn.Module):
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        x = x.reshape(batch_dim, self.out_channels * 2 * self.grid_dim**2)
+        x = x.reshape(batch_dim, self.out_channels * self.grid_dim**2)
 
         x = self.dropout(self.mlp(x))
 
