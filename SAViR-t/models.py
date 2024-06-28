@@ -86,7 +86,7 @@ class SAViRt(nn.Module):
         self.bb_num_heads = bb_num_heads
         self.grid_dim = grid_dim
 
-        self.perception = BackbonePerception(embed_dim=self.embed_dim, grid_dim=self.grid_dim, depth=self.bb_depth, num_heads=bb_num_heads,
+        self.perception = BackbonePerception(out_channels=self.embed_dim, grid_dim=self.grid_dim, depth=self.bb_depth, num_heads=bb_num_heads,
                                              mlp_drop=per_mlp_drop)
 
         self.model_dim = 2 * self.embed_dim
