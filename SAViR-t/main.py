@@ -47,7 +47,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
-    transformer_model = SAViRt(bb_out_channels=512,
+    transformer_model = SAViRt(embed_dim=512,
                                grid_dim=5,
                                bb_depth=1,
                                bb_num_heads=4,
