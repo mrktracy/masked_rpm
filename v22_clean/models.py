@@ -553,8 +553,8 @@ class BackbonePerceptionOld(nn.Module):
         # expand positional embeddings to fit batch (B, self.grid_dim**2, embed_dim)
         pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_dim, self.grid_dim ** 2, self.out_channels)
 
-        # concatenate positional embeddings
-        x = torch.sum([x, pos_embed_final], dim=-1)
+        # add positional embeddings
+        x = x + pos_embed_final
 
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
