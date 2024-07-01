@@ -12,7 +12,7 @@ from models import SAViRt, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "SAViRt_v0-itr1_full"
+version = "SAViRt_v0-itr2_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -202,7 +202,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             weights = dynamic_weights(err_history.unsqueeze(0))  # unsqueeze to create "batch" dimension expected
 
-            loss = weights[0] * task_err + weights[1] * rec_err + BETA * torch.var(weights)
+            # loss = weights[0] * task_err + weights[1] * rec_err + BETA * torch.var(weights)
+            loss = task_err # simply use task error; no dynamic loss balancing
 
             tot_loss += loss.item()  # update running averages
             count += 1
