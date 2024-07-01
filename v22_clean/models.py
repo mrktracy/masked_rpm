@@ -554,7 +554,7 @@ class BackbonePerceptionOld(nn.Module):
         pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_dim, self.grid_dim ** 2, self.out_channels)
 
         # add positional embeddings
-        x = x + pos_embed_final
+        # x = x + pos_embed_final
 
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
