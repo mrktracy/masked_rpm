@@ -51,7 +51,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                grid_dim=5,
                                bb_depth=1,
                                bb_num_heads=4,
-                               per_mlp_drop=0).to(device)
+                               per_mlp_drop=0,
+                               use_bb_dec=False).to(device)
 
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
