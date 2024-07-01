@@ -97,7 +97,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ''' Define Hyperparameters '''
     EPOCHS = 20
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 60
@@ -202,8 +202,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             weights = dynamic_weights(err_history.unsqueeze(0))  # unsqueeze to create "batch" dimension expected
 
-            # loss = weights[0] * task_err + weights[1] * rec_err + BETA * torch.var(weights)
-            loss = task_err # simply use task error; no dynamic loss balancing
+            loss = weights[0] * task_err + weights[1] * rec_err + BETA * torch.var(weights)
+            # loss = task_err # simply use task error; no dynamic loss balancing
 
             tot_loss += loss.item()  # update running averages
             count += 1
