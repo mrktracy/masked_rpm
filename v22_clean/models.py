@@ -505,12 +505,12 @@ class BackbonePerceptionOld(nn.Module):
     def __init__(self,
                  embed_dim,
                  out_channels=512,
+                 grid_dim=5,
                  num_heads=32,
                  mlp_ratio=4,
                  norm_layer=nn.LayerNorm,
                  depth=4,
-                 mlp_drop=0.3,
-                 grid_dim=5):
+                 mlp_drop=0.3):
         super(BackbonePerceptionOld, self).__init__()
 
         self.embed_dim = embed_dim
