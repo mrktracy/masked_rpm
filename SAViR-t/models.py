@@ -110,7 +110,7 @@ class SAViRt(nn.Module):
             nn.Dropout(p=0.5)
         )
 
-        self.decoder = ResNetDecoder(embed_dim=self.embed_dim)
+        self.decoder = BackboneDecoder(embed_dim=self.embed_dim, grid_dim=self.grid_dim)
 
     def extract_relations(self, x):
         """
@@ -239,30 +239,6 @@ class ResidualBlock(nn.Module):
         out = self.relu(out)
         return out
 
-class ResNetDecoder(nn.Module):
-    def __init__(self, embed_dim=256):
-        super(ResNetDecoder, self).__init__()
-
-        self.embed_dim = embed_dim
-
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 256, 10, 10
-            nn.ReLU(),
-            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 128, 20, 20
-            nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 64, 40, 40
-            nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 32, 80, 80
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 16, 160, 160
-            nn.ReLU(),
-            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding=1), # N, 1, 160, 160
-            nn.Sigmoid()  # to ensure the output is in [0, 1] as image pixel intensities
-        )
-
-    def forward(self, x):
-        x = x.view(x.size(0), 512, 5, 5)
-        return self.decoder(x)
 
 class BackbonePerception(nn.Module):
     def __init__(self, out_channels, grid_dim, num_heads=32, mlp_ratio=4, norm_layer=nn.LayerNorm,
@@ -316,6 +292,85 @@ class BackbonePerception(nn.Module):
         return x
 
 
+class BackboneDecoder(nn.Module):
+    def __init__(self,
+                 embed_dim=512,
+                 grid_dim=5,
+                 num_heads=4,
+                 mlp_ratio=4,
+                 norm_layer=nn.LayerNorm,
+                 depth=1,
+                 mlp_drop=0.5):
+
+        super(BackboneDecoder, self).__init__()
+
+        self.embed_dim = embed_dim
+        self.grid_dim = grid_dim
+        self.depth = depth
+        self.num_heads = num_heads
+        self.mlp_ratio = mlp_ratio
+
+        self.blocks = nn.ModuleList([
+            Block(embed_dim, embed_dim, self.num_heads, self.mlp_ratio,
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
+                  drop_path=0.5 * ((i + 1) / self.depth)) for i in range(self.depth)])
+
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 256, 10, 10
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 128, 20, 20
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 64, 40, 40
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 32, 80, 80
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 16, 160, 160
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding=1),  # N, 1, 160, 160
+            nn.Sigmoid()  # to ensure the output is in [0, 1] as image pixel intensities
+        )
+
+    def forward(self, x):
+
+        batch_dim = x.size(0)
+
+        x = x.reshape(batch_dim, self.grid_dim**2, self.embed_dim)
+
+        # pass through transformer
+        for block in self.blocks:
+            x = block(x_q=x, x_k=x, x_v=x)
+
+        # transpose and reshape
+        x = x.reshape(batch_dim, self.embed_dim, self.grid_dim, self.grid_dim)
+
+        # apply deconvolution
+        x = self.decoder(x)
+
+        return x
+
+
+class ResNetDecoder(nn.Module):
+    def __init__(self):
+        super(ResNetDecoder, self).__init__()
+
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 256, 10, 10
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 128, 20, 20
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 64, 40, 40
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 32, 80, 80
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1), # N, 16, 160, 160
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding=1), # N, 1, 160, 160
+            nn.Sigmoid()  # to ensure the output is in [0, 1] as image pixel intensities
+        )
+
+    def forward(self, x):
+        x = x.view(x.size(0), 512, 5, 5)
+        return self.decoder(x)
 
 """ Modification of "Vision Transformer (ViT) in PyTorch"
 https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py
