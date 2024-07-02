@@ -8,11 +8,11 @@ import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
+from models_A40_test import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr33_full"
+version = "v22-itr32_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -20,7 +20,8 @@ results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
 
-logging.info("Begin log.\n")
+output = "Begin log.\n"
+logging.info(output)
 
 seed = 42
 random.seed(seed)
@@ -89,7 +90,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         dynamic_weights = nn.DataParallel(dynamic_weights)
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
-    # logging.info("Models declared and initialized.\n")
+    logging.info("Models declared and initialized.\n")
 
     ''' Load saved model '''
     # state_dict_tr = torch.load('../../modelsaves/v22-itr0_full/tf_v22-itr0_full_ep10.pth')
@@ -114,7 +115,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Define Hyperparameters '''
     EPOCHS = 20
-    BATCH_SIZE = 32
+    BATCH_SIZE = 6
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
@@ -129,7 +130,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    # logging.info("Data loaded.\n")
+    logging.info("Data loaded.\n")
 
     # ''' Evaluate model on different types of problems '''
     # record = evaluation_function(transformer_model, val_dataloader, device, max_batches=None)
@@ -166,7 +167,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     weights = torch.zeros(2).to(device)
 
-    # logging.info("Begin training loop.\n")
+    logging.info("Begin training loop.\n")
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -174,7 +175,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         tot_loss = 0
         times = 0
 
-        # logging.info("Initialized loop variables.\n")
+        logging.info("Initialized loop variables.\n")
 
         for idx, (sentences, target_nums, _, _) in enumerate(train_dataloader):
 
@@ -189,14 +190,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             sentences = sentences.to(device) # passed to model to get output and recreation of inputs
             target_nums = target_nums.to(device)  # used to select from among candidates
 
-            # logging.info("Running forward pass of model...\n")
+            logging.info("Running forward pass of model...\n")
 
             dist, recreation, embeddings = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
 
-            # logging.info("Updating error history...\n")
+            logging.info("Updating error history...\n")
 
             # if MLP_DW:
             #     if AUTO_REG:
@@ -247,13 +248,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"err_history: {err_history.shape}")
 
-            # logging.info("Retrieving loss weights...\n")
+            logging.info("Retrieving loss weights...\n")
 
             weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
 
             # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
-            # logging.info("Calculating loss...\n")
+            logging.info("Calculating loss...\n")
 
             loss = weights[0]*task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1) + \
                 BETA*torch.var(weights)
@@ -261,11 +262,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             tot_loss += loss.item() # update running averages
             count += 1
 
-            # logging.info("Forward pass complete.\n")
+            logging.info("Forward pass complete.\n")
 
             loss.backward()
 
-            # logging.info("Backward pass complete.\n")
+            logging.info("Backward pass complete.\n")
 
             optimizer_1.step()
             optimizer_2.step()

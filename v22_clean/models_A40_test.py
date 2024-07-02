@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint
-# from torch.jit import Final
+from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
-# import logging
+import logging
 
 class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,
@@ -166,11 +166,11 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         sen_reshaped = sentences.view(-1, 1, 160, 160)  # x is (B, 8, 9, 1, 160, 160)
 
-        # logging.info("Begin perception...\n")
+        logging.info("Begin perception...\n")
 
         embed_reshaped = self.perception.forward(sen_reshaped)  # x_reshaped is (B*9*8, embed_dim)
 
-        # logging.info("Perception complete.\n")
+        logging.info("Perception complete.\n")
 
         # reshape for concatenating positional embeddings
         x_1 = embed_reshaped.view(batch_size, 8, 9, -1)  # x is (B, 8, 9, self.embed_dim*2)
@@ -182,15 +182,15 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         # concatenate positional embeddings
         # x_1 = torch.cat([x_1, pos_embed_final], dim=3)
 
-        # logging.info("Positional encodings (not) added.\n")
+        logging.info("Positional encodings (not) added.\n")
 
         x_1_reshaped = x_1.view(batch_size * 8, 9, self.model_dim)
 
-        # logging.info("Beginning ternary operation...\n")
+        logging.info("Beginning ternary operation...\n")
 
         x_ternary = self.ternary_hadamard(x_1_reshaped) if self.use_hadamard else self.ternary_operation(x_1_reshaped)
 
-        # logging.info("Ternary operation complete.\n")
+        logging.info("Ternary operation complete.\n")
 
         x_2 = x_ternary.view(batch_size, 8, 6, -1)
 
@@ -198,7 +198,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         x_1 = self.tcn_1.forward(x_1)
         x_2 = self.tcn_2.forward(x_2)
 
-        # logging.info("TCN complete.\n")
+        logging.info("TCN complete.\n")
 
         # reshape x for batch processing
         x_1 = x_1.view(batch_size*8, 9, -1)
@@ -209,7 +209,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         y_pos = pos_embed_final.reshape(batch_size*8, 9, self.embed_dim)
 
-        # logging.info("Initializing symbols...\n")
+        logging.info("Initializing symbols...\n")
 
         # repeat symbols along batch dimension
         symbols_1 = self.symbols_1.unsqueeze(0)
@@ -217,7 +217,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         symbols_2 = self.symbols_2.unsqueeze(0)
         symbols_2 = symbols_2.repeat(batch_size * 8, 1, 1)
 
-        # logging.info("Begin abstractor one...\n")
+        logging.info("Begin abstractor one...\n")
 
         # multi-headed self-attention blocks of abstractor
         for idx, blk in enumerate(self.blocks_abs_1):
@@ -228,9 +228,9 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         x_1 = self.norm_x_1(x_1)
 
-        # logging.info("End abstractor one.\n")
+        logging.info("End abstractor one.\n")
 
-        # logging.info("Begin abstractor two...\n")
+        logging.info("Begin abstractor two...\n")
 
         # multi-headed self-attention blocks of abstractor
         for idx, blk in enumerate(self.blocks_abs_2):
@@ -241,9 +241,9 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         x_2 = self.norm_x_2(x_2)
 
-        # logging.info("End abstractor two.\n")
+        logging.info("End abstractor two.\n")
 
-        # logging.info("Begin transformer...\n")
+        logging.info("Begin transformer...\n")
 
         # multi-headed self-attention blocks of transformer
         for idx, blk in enumerate(self.blocks_trans):
@@ -251,7 +251,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         y = self.norm_y(y)
 
-        # logging.info("End transformer.\n")
+        logging.info("End transformer.\n")
 
         x_1 = x_1.view([batch_size, 8, 9, -1])
 
@@ -260,7 +260,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         y = y.view(batch_size, 8, 9, -1)
         y = self.tcn_1.inverse(y)
 
-        # logging.info("Inverse TCN complete. Entering guesser head...\n")
+        logging.info("Inverse TCN complete. Entering guesser head...\n")
 
         z = torch.cat([x_1, y], dim=-1)
 
@@ -271,10 +271,10 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         dist = dist_reshaped.view(batch_size, 8)
 
-        # logging.info("Producing image recreation.\n")
+        logging.info("Producing image recreation.\n")
         recreation = self.decoder.forward(embed_reshaped).view(batch_size, 8, 9, 1, 160, 160)
 
-        # logging.info("Forward pass complete.\n")
+        logging.info("Forward pass complete.\n")
 
         return dist, recreation, embeddings
 
@@ -581,11 +581,11 @@ class BackbonePerceptionOld(nn.Module):
 
         batch_dim = x.size(0)
 
-        # logging.info("Begin encoder call...\n")
+        logging.info("Begin encoder call...\n")
 
         x = self.encoder(x)
 
-        # logging.info("End encoder call.\n")
+        logging.info("End encoder call.\n")
 
         x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
 
@@ -595,22 +595,22 @@ class BackbonePerceptionOld(nn.Module):
         # add positional embeddings
         # x = x + pos_embed_final
 
-        # logging.info("Positional encodings (not) added.\n")
+        logging.info("Positional encodings (not) added.\n")
 
-        # logging.info("Begin transformer...\n")
+        logging.info("Begin transformer...\n")
 
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        # logging.info("End transformer...\n")
+        logging.info("End transformer...\n")
 
         x = x.reshape(batch_dim, self.out_channels * self.grid_dim**2)
 
-        # logging.info("Begin MLP...\n")
+        logging.info("Begin MLP...\n")
 
         x = self.dropout(self.mlp(x))
 
-        # logging.info("End MLP...\n")
+        logging.info("End MLP...\n")
 
         return x
 
