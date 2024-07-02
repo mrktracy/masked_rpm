@@ -12,13 +12,16 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr30_full"
+version = "v22-itr31_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
 logging.basicConfig(filename=logfile,level=logging.INFO, filemode='w')
+
+output = "Begin log.\n"
+logging.info(output)
 
 seed = 42
 random.seed(seed)
@@ -60,7 +63,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             decoder_num=2,
                                             bb_depth=1,
                                             bb_num_heads=4,
-                                            use_hadamard=False,
+                                            use_hadamard=True,
                                             mlp_drop=0.5,
                                             proj_drop=0.5,
                                             attn_drop=0.5,
@@ -183,7 +186,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
 
-            # logging.info(f"task_err: {task_err.shape}, rec_err: {rec_err.shape}")
+            logging.info(f"task_err: {task_err}, rec_err: {rec_err}")
 
             # if MLP_DW:
             #     if AUTO_REG:
@@ -231,7 +234,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 # Remove the oldest entry if the history length exceeds the desired length
                 if err_history.size(1) > HISTORY_SIZE:
                     err_history = err_history[:, -HISTORY_SIZE:, :]
-
 
             # logging.info(f"err_history: {err_history.shape}")
 

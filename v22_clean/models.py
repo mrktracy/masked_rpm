@@ -363,6 +363,18 @@ class TemporalContextNorm(nn.Module):
 
         return x
 
+    def inverse(self, x_norm):
+
+        # Invert normalization
+        if self.affine:
+            x = (x_norm - self.beta) / self.gamma
+        else:
+            x = x_norm
+
+        x = x * (self.var + self.eps).sqrt() + self.mean
+
+        return x
+
 
 # ResNet encoder
 class ResidualBlock(nn.Module):
