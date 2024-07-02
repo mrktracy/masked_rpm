@@ -7,68 +7,6 @@ from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 
 
-class DynamicWeightingRNN(nn.Module):
-    def __init__(self,
-                 input_dim=2,
-                 hidden_dim=64,
-                 num_layers=2,
-                 dropout=0.1,
-                 output_dim=2):
-        super(DynamicWeightingRNN, self).__init__()
-
-        self.hidden_dim = hidden_dim
-        self.num_layers = num_layers
-
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=dropout)
-        self.fc = nn.Linear(hidden_dim, output_dim)
-
-    def forward(self, x):
-
-        # Initialize hidden state and cell state
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(x.device)
-
-        # Forward propagate LSTM
-        out, _ = self.lstm(x, (h0, c0))
-
-        # Take the output from the last time step
-        out = out[:, -1, :]
-
-        # Pass through the final fully connected layer
-        out = self.fc(out)
-
-        # Apply softmax to get the weights
-        out = F.softmax(out, dim=-1)
-
-        return out.squeeze(0)
-
-
-class DynamicWeighting(nn.Module):
-    def __init__(self,
-                 embed_dim=20,
-                 mlp_ratio=2,
-                 mlp_drop=0.1,
-                 output_dim=2):
-        super(DynamicWeighting, self).__init__()
-
-        self.lin1 = nn.Linear(embed_dim, embed_dim*mlp_ratio)
-        self.drop1 = nn.Dropout(p=mlp_drop)
-        self.relu = nn.ReLU()
-        self.lin2 = nn.Linear(embed_dim*mlp_ratio, embed_dim*mlp_ratio)
-        self.drop2 = nn.Dropout(p=mlp_drop)
-        self.lin3 = nn.Linear(embed_dim*mlp_ratio, embed_dim)
-        self.drop3 = nn.Dropout(p=mlp_drop)
-        self.lin4 = nn.Linear(embed_dim, output_dim)
-
-    def forward(self, x):
-        x = self.relu(self.drop1(self.lin1(x)))
-        x = self.relu(self.drop2(self.lin2(x)))
-        x = self.relu(self.drop3(self.lin3(x)))
-        x = F.softmax(self.lin4(x), dim=-1)
-
-        return x.squeeze(0)
-
-
 class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,
                  embed_dim=256,
@@ -116,7 +54,8 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         else:
             self.perception = ResNetEncoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
 
-        self.model_dim = 2*self.embed_dim
+        # self.model_dim = 2*self.embed_dim
+        self.model_dim = self.embed_dim
 
         self.tcn_1 = TemporalContextNorm(num_features=self.model_dim)
         self.tcn_2 = TemporalContextNorm(num_features=self.model_dim)
@@ -236,7 +175,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1)
 
         # concatenate positional embeddings
-        x_1 = torch.cat([x_1, pos_embed_final], dim=3)
+        # x_1 = torch.cat([x_1, pos_embed_final], dim=3)
 
         x_1_reshaped = x_1.view(batch_size * 8, 9, self.model_dim)
 
@@ -316,6 +255,69 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         return images
 
+
+class DynamicWeightingRNN(nn.Module):
+    def __init__(self,
+                 input_dim=2,
+                 hidden_dim=64,
+                 num_layers=2,
+                 dropout=0.1,
+                 output_dim=2):
+        super(DynamicWeightingRNN, self).__init__()
+
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=dropout)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+
+        # Initialize hidden state and cell state
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(x.device)
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(x.device)
+
+        # Forward propagate LSTM
+        out, _ = self.lstm(x, (h0, c0))
+
+        # Take the output from the last time step
+        out = out[:, -1, :]
+
+        # Pass through the final fully connected layer
+        out = self.fc(out)
+
+        # Apply softmax to get the weights
+        out = F.softmax(out, dim=-1)
+
+        return out.squeeze(0)
+
+
+class DynamicWeighting(nn.Module):
+    def __init__(self,
+                 embed_dim=20,
+                 mlp_ratio=2,
+                 mlp_drop=0.1,
+                 output_dim=2):
+        super(DynamicWeighting, self).__init__()
+
+        self.lin1 = nn.Linear(embed_dim, embed_dim*mlp_ratio)
+        self.drop1 = nn.Dropout(p=mlp_drop)
+        self.relu = nn.ReLU()
+        self.lin2 = nn.Linear(embed_dim*mlp_ratio, embed_dim*mlp_ratio)
+        self.drop2 = nn.Dropout(p=mlp_drop)
+        self.lin3 = nn.Linear(embed_dim*mlp_ratio, embed_dim)
+        self.drop3 = nn.Dropout(p=mlp_drop)
+        self.lin4 = nn.Linear(embed_dim, output_dim)
+
+    def forward(self, x):
+        x = self.relu(self.drop1(self.lin1(x)))
+        x = self.relu(self.drop2(self.lin2(x)))
+        x = self.relu(self.drop3(self.lin3(x)))
+        x = F.softmax(self.lin4(x), dim=-1)
+
+        return x.squeeze(0)
+
+
 class TemporalContextNorm(nn.Module):
     def __init__(self, num_features=768, eps=1e-5, affine=True):
         super(TemporalContextNorm, self).__init__()
@@ -350,18 +352,6 @@ class TemporalContextNorm(nn.Module):
             x_norm = x_norm * self.gamma + self.beta
 
         return x_norm
-
-    def inverse(self, x_norm):
-
-        # Invert normalization
-        if self.affine:
-            x = (x_norm - self.beta) / self.gamma
-        else:
-            x = x_norm
-
-        x = x * (self.var + self.eps).sqrt() + self.mean
-
-        return x
 
     def inverse(self, x_norm):
 

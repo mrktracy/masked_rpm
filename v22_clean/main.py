@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr31_full"
+version = "v22-itr32_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -63,7 +63,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             decoder_num=2,
                                             bb_depth=1,
                                             bb_num_heads=4,
-                                            use_hadamard=True,
+                                            use_hadamard=False,
                                             mlp_drop=0.5,
                                             proj_drop=0.5,
                                             attn_drop=0.5,
@@ -89,6 +89,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         transformer_model = nn.DataParallel(transformer_model)
         dynamic_weights = nn.DataParallel(dynamic_weights)
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
+
+    logging.info("Models declared and initialized.\n")
 
     ''' Load saved model '''
     # state_dict_tr = torch.load('../../modelsaves/v22-itr0_full/tf_v22-itr0_full_ep10.pth')
@@ -128,6 +130,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
+    logging.info("Data loaded.\n")
+
     # ''' Evaluate model on different types of problems '''
     # record = evaluation_function(transformer_model, val_dataloader, device, max_batches=None)
     # record.to_csv(os.path.join(RESULTS_FOLDER, f"record_{VERSION}.csv"))
@@ -163,6 +167,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     weights = torch.zeros(2).to(device)
 
+    logging.info("Begin training loop.\n")
+
     # Training loop
     for epoch in range(EPOCHS):
         count = 0
@@ -186,7 +192,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
 
-            logging.info(f"task_err: {task_err}, rec_err: {rec_err}")
+            logging.info(f"task_err: {task_err.size()}, rec_err: {rec_err.size()}")
 
             # if MLP_DW:
             #     if AUTO_REG:
@@ -247,7 +253,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             tot_loss += loss.item() # update running averages
             count += 1
 
+            logging.info("Forward pass complete.\n")
+
             loss.backward()
+
+            logging.info("Backward pass complete.\n")
 
             optimizer_1.step()
             optimizer_2.step()
