@@ -581,22 +581,34 @@ class BackbonePerceptionOld(nn.Module):
 
         batch_dim = x.size(0)
 
+        logging.info("Begin encoder call...")
+
         x = self.encoder(x)
+
+        logging.info("End encoder call.")
 
         x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
 
         # expand positional embeddings to fit batch (B, self.grid_dim**2, embed_dim)
-        pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_dim, self.grid_dim ** 2, self.out_channels)
+        # pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_dim, self.grid_dim ** 2, self.out_channels)
 
         # add positional embeddings
         # x = x + pos_embed_final
 
+        logging.info("Begin transformer...")
+
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
+        logging.info("End transformer...")
+
         x = x.reshape(batch_dim, self.out_channels * self.grid_dim**2)
 
+        logging.info("Begin MLP...")
+
         x = self.dropout(self.mlp(x))
+
+        logging.info("End MLP...")
 
         return x
 
