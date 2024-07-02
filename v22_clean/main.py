@@ -174,6 +174,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         count = 0
         tot_loss = 0
         times = 0
+
+        logging.info("Initialized loop variables.\n")
+
         for idx, (sentences, target_nums, _, _) in enumerate(train_dataloader):
 
             if idx % BATCHES_PER_PRINT == 0:
@@ -187,12 +190,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             sentences = sentences.to(device) # passed to model to get output and recreation of inputs
             target_nums = target_nums.to(device)  # used to select from among candidates
 
+            logging.info("Running forward pass of model...\n")
+
             dist, recreation, embeddings = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
 
-            logging.info(f"task_err: {task_err.size()}, rec_err: {rec_err.size()}")
+            logging.info("Updating error history...\n")
 
             # if MLP_DW:
             #     if AUTO_REG:
@@ -243,9 +248,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info(f"err_history: {err_history.shape}")
 
+            logging.info("Retrieving loss weights...\n")
+
             weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
 
             # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
+
+            logging.info("Calculating loss...\n")
 
             loss = weights[0]*task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1) + \
                 BETA*torch.var(weights)
