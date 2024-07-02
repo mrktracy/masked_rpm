@@ -115,7 +115,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Define Hyperparameters '''
     EPOCHS = 20
-    BATCH_SIZE = 32
+    BATCH_SIZE = 1
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
