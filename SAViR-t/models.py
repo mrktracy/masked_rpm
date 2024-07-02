@@ -94,20 +94,20 @@ class SAViRt(nn.Module):
 
         # Define Φ_MLP for relation extraction
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * self.embed_dim, 3 * self.embed_dim),
+            nn.Linear(3 * self.embed_dim, 6 * self.embed_dim),
             nn.ReLU(),
-            nn.Linear(3 * self.embed_dim, self.embed_dim)
+            nn.Linear(6 * self.embed_dim, self.embed_dim)
         )
 
         # Define Ψ_MLP for shared rule extraction
         self.psi_mlp = nn.Sequential(
-            nn.Linear(2 * self.embed_dim, 2 * self.embed_dim),
+            nn.Linear(2 * self.embed_dim, 4 * self.embed_dim),
             nn.ReLU(),
-            nn.Linear(2 * self.embed_dim, 2 * self.embed_dim),
+            nn.Linear(4 * self.embed_dim, 4 * self.embed_dim),
             nn.ReLU(),
-            nn.Linear(2 * self.embed_dim, 2 * self.embed_dim),
+            nn.Linear(4 * self.embed_dim, 4 * self.embed_dim),
             nn.ReLU(),
-            nn.Linear(2 * self.embed_dim, self.embed_dim),
+            nn.Linear(4 * self.embed_dim, self.embed_dim),
             nn.Dropout(p=0.5)
         )
 

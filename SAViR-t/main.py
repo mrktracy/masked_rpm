@@ -12,7 +12,7 @@ from models import SAViRt, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "SAViRt_v0-itr2_full"
+version = "SAViRt_v0-itr3_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -49,7 +49,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     transformer_model = SAViRt(embed_dim=512,
                                grid_dim=5,
-                               bb_depth=1,
+                               bb_depth=2,
                                bb_num_heads=4,
                                per_mlp_drop=0,
                                use_bb_dec=False).to(device)
@@ -98,7 +98,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ''' Define Hyperparameters '''
     EPOCHS = 20
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 60
