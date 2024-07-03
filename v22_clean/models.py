@@ -120,9 +120,9 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         # Define Φ_MLP for relation extraction
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * self.embed_dim, 6 * self.embed_dim),
+            nn.Linear(3 * self.model_dim, 6 * self.model_dim),
             nn.ReLU(),
-            nn.Linear(6 * self.embed_dim, self.embed_dim),
+            nn.Linear(6 * self.model_dim, self.model_dim),
             nn.Dropout(p=ternary_drop)
         )
 
