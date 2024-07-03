@@ -24,11 +24,12 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
                  decoder_num=1,
                  bb_depth=1,
                  bb_num_heads=2,
-                 use_hadamard=False,
+                 ternary_num=1,
                  mlp_drop=0.5,
                  proj_drop=0.5,
                  attn_drop=0.5,
                  per_mlp_drop=0.3,
+                 ternary_drop=0.3,
                  restrict_qk=False):
 
         super(TransformerModelv22, self).__init__()
@@ -40,7 +41,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         self.decoder_num = decoder_num
         self.bb_depth = bb_depth
         self.bb_num_heads = bb_num_heads
-        self.use_hadamard = use_hadamard
+        self.ternary_num = ternary_num
         self.restrict_qk = restrict_qk
 
         if self.use_backbone_enc:
@@ -54,8 +55,8 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         else:
             self.perception = ResNetEncoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
 
-        # self.model_dim = 2*self.embed_dim
-        self.model_dim = self.embed_dim
+        self.model_dim = 2*self.embed_dim
+        # self.model_dim = self.embed_dim
 
         self.tcn_1 = TemporalContextNorm(num_features=self.model_dim)
         self.tcn_2 = TemporalContextNorm(num_features=self.model_dim)
@@ -117,7 +118,16 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         self.symbols_1 = nn.Parameter(normal_initializer(torch.empty(9, self.model_dim * self.symbol_factor)))
         self.symbols_2 = nn.Parameter(normal_initializer(torch.empty(6, self.model_dim * self.symbol_factor)))
 
-    def ternary_operation(self, x):
+        # Define Φ_MLP for relation extraction
+        self.phi_mlp = nn.Sequential(
+            nn.Linear(3 * self.embed_dim, 6 * self.embed_dim),
+            nn.ReLU(),
+            nn.Linear(6 * self.embed_dim, self.embed_dim),
+            nn.Dropout(p=ternary_drop)
+        )
+
+    @staticmethod
+    def ternary_operation(x):
         """
         Perform the ternary operation C(x1, x2, x3) for rows and columns across the sequence.
         Input x is of shape (batch_size, 9, embed_dim)
@@ -142,7 +152,8 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         return result
 
-    def ternary_hadamard(self, x):
+    @staticmethod
+    def ternary_hadamard(x):
         """
         Perform the Hadamard product operation for rows and columns in the sequence.
         Input x is of shape (batch_size, 9, embed_dim).
@@ -158,6 +169,36 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         # element-wise multiplication
         result = x1 * x2 * x3
+
+        return result
+
+    def ternary_mlp(self, x):
+        """
+        Perform the ternary operation Φ_MLP(x1, x2, x3) for rows and columns across the sequence.
+        Input x is of shape (batch_size, 9, embed_dim)
+        """
+
+        batch_size = x.size(0)
+
+        slice_idx = torch.tensor([0, 3, 6, 0, 1, 2])
+        increment = torch.tensor([1, 1, 1, 3, 3, 3])
+
+        # Extract x1, x2, x3 for all sliding windows
+        x1 = x[:, slice_idx, :]  # Shape: (batch_size, 6, embed_dim, 1)
+        x2 = x[:, slice_idx + increment, :]  # Shape: (batch_size, 6, 1, embed_dim)
+        x3 = x[:, slice_idx + 2 * increment, :]  # Shape: (batch_size, 6, embed_dim, 1)
+
+        x1 = x1.reshape(batch_size * 6, -1)
+        x2 = x2.reshape(batch_size * 6, -1)
+        x2 = x2.reshape(batch_size * 6, -1)
+
+        x = torch.cat([x1, x2, x3], dim = -1)
+
+        # Compute the outer product
+        rules = self.phi_MLP(x)  # Shape: (batch_size * 6, embed_dim)
+
+        # Matrix-vector multiplication on the last two dimensions
+        result = rules.reshape(batch_size, 6, -1)
 
         return result
 
@@ -180,15 +221,20 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1)
 
         # concatenate positional embeddings
-        # x_1 = torch.cat([x_1, pos_embed_final], dim=3)
+        x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
 
-        # logging.info("Positional encodings (not) added.\n")
+        # logging.info("Positional encodings added.\n")
 
         x_1_reshaped = x_1.view(batch_size * 8, 9, self.model_dim)
 
         # logging.info("Beginning ternary operation...\n")
 
-        x_ternary = self.ternary_hadamard(x_1_reshaped) if self.use_hadamard else self.ternary_operation(x_1_reshaped)
+        if self.ternary_num == 1:
+            x_ternary = self.ternary_operation(x_1_reshaped)
+        elif self.ternary_num == 2:
+            x_ternary = self.ternary_hadamard(x_1_reshaped)
+        else:
+            x_ternary = self.ternary_mlp(x_1_reshaped)
 
         # logging.info("Ternary operation complete.\n")
 

@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr33_full"
+version = "v22-itr34_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -49,6 +49,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     num_gpus = torch.cuda.device_count()
     # print(num_gpus)
 
+
     transformer_model = TransformerModelv22(embed_dim=512,
                                             symbol_factor=1,
                                             trans_depth=2,
@@ -59,16 +60,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
-                                            decoder_num=2,
+                                            decoder_num=2,  # 1 - MLP, 2 - Deconvolution, 3 - Backbone
                                             bb_depth=1,
                                             bb_num_heads=4,
-                                            use_hadamard=False,
+                                            ternary_num=1, # 1 - C, 2 - Hadamard, 3 - MLP
                                             mlp_drop=0.5,
                                             proj_drop=0.5,
                                             attn_drop=0.5,
                                             per_mlp_drop=0,
+                                            ternary_drop=0,
                                             restrict_qk=False).to(device)
-
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                             mlp_ratio=2,
