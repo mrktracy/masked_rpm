@@ -12,7 +12,7 @@ from models import SAViRt, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "SAViRt_v0-itr3_full"
+version = "SAViRt_v0-itr4_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -33,9 +33,9 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
-    MLP_DW = True
-    HISTORY_SIZE = 12
-    AUTO_REG = False
+    MLP_DW = False
+    HISTORY_SIZE = 100
+    AUTO_REG = True
 
     if AUTO_REG:
         max_history_length = HISTORY_SIZE*4
@@ -52,7 +52,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                bb_depth=2,
                                bb_num_heads=4,
                                per_mlp_drop=0,
-                               use_bb_dec=False).to(device)
+                               use_bb_dec=True).to(device)
 
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
