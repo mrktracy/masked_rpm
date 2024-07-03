@@ -195,7 +195,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         x = torch.cat([x1, x2, x3], dim=-1)
 
         # Apply the MLP
-        rules = self.phi_MLP(x)  # Shape: (batch_size * 6, embed_dim)
+        rules = self.phi_mlp(x)  # Shape: (batch_size * 6, embed_dim)
 
         # Matrix-vector multiplication on the last two dimensions
         result = rules.reshape(batch_size, 6, -1)
