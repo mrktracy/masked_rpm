@@ -190,7 +190,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         x1 = x1.reshape(batch_size * 6, -1)
         x2 = x2.reshape(batch_size * 6, -1)
-        x2 = x2.reshape(batch_size * 6, -1)
+        x3 = x3.reshape(batch_size * 6, -1)
 
         x = torch.cat([x1, x2, x3], dim=-1)
 
