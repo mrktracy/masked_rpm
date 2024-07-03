@@ -63,7 +63,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             decoder_num=2,  # 1 - MLP, 2 - Deconvolution, 3 - Backbone
                                             bb_depth=1,
                                             bb_num_heads=4,
-                                            ternary_num=1, # 1 - C, 2 - Hadamard, 3 - MLP
+                                            ternary_num=3, # 1 - C, 2 - Hadamard, 3 - MLP
                                             mlp_drop=0.5,
                                             proj_drop=0.5,
                                             attn_drop=0.5,

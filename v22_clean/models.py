@@ -184,17 +184,17 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         increment = torch.tensor([1, 1, 1, 3, 3, 3])
 
         # Extract x1, x2, x3 for all sliding windows
-        x1 = x[:, slice_idx, :]  # Shape: (batch_size, 6, embed_dim, 1)
-        x2 = x[:, slice_idx + increment, :]  # Shape: (batch_size, 6, 1, embed_dim)
-        x3 = x[:, slice_idx + 2 * increment, :]  # Shape: (batch_size, 6, embed_dim, 1)
+        x1 = x[:, slice_idx, :]  # Shape: (batch_size, 6, embed_dim)
+        x2 = x[:, slice_idx + increment, :]  # Shape: (batch_size, 6, embed_dim)
+        x3 = x[:, slice_idx + 2 * increment, :]  # Shape: (batch_size, 6, embed_dim)
 
         x1 = x1.reshape(batch_size * 6, -1)
         x2 = x2.reshape(batch_size * 6, -1)
         x2 = x2.reshape(batch_size * 6, -1)
 
-        x = torch.cat([x1, x2, x3], dim = -1)
+        x = torch.cat([x1, x2, x3], dim=-1)
 
-        # Compute the outer product
+        # Apply the MLP
         rules = self.phi_MLP(x)  # Shape: (batch_size * 6, embed_dim)
 
         # Matrix-vector multiplication on the last two dimensions
