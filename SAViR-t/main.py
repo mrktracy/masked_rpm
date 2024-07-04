@@ -12,7 +12,7 @@ from models import SAViRt, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "SAViRt_v0-itr4_full"
+version = "SAViRt_v0-itr5_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -34,7 +34,7 @@ def initialize_weights_he(m):
 def main_BERT(VERSION, RESULTS_FOLDER):
 
     MLP_DW = False
-    HISTORY_SIZE = 100
+    HISTORY_SIZE = 12
     AUTO_REG = True
 
     if AUTO_REG:
@@ -49,10 +49,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     transformer_model = SAViRt(embed_dim=512,
                                grid_dim=5,
-                               bb_depth=2,
+                               bb_depth=1,
                                bb_num_heads=4,
                                per_mlp_drop=0,
-                               use_bb_dec=True).to(device)
+                               use_bb_dec=False).to(device)
 
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
@@ -98,14 +98,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ''' Define Hyperparameters '''
     EPOCHS = 20
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.0005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 5
     BATCHES_PER_PRINT = 60
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = ""  # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    BETA = 2
+    BETA = 1
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
