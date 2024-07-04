@@ -374,6 +374,7 @@ class ResNetDecoder(nn.Module):
         x = x.view(x.size(0), 512, 5, 5)
         return self.decoder(x)
 
+
 """ Modification of "Vision Transformer (ViT) in PyTorch"
 https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py
 A PyTorch implement of Vision Transformers as described in:
