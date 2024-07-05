@@ -30,6 +30,7 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
                  attn_drop=0.5,
                  per_mlp_drop=0.3,
                  ternary_drop=0.3,
+                 ternary_mlp_ratio=1,
                  restrict_qk=False):
 
         super(TransformerModelv22, self).__init__()
@@ -120,9 +121,9 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
 
         # Define Φ_MLP for relation extraction
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * self.model_dim, 3 * self.model_dim),
+            nn.Linear(3 * self.model_dim, ternary_mlp_ratio * self.model_dim),
             nn.ReLU(),
-            nn.Linear(3 * self.model_dim, self.model_dim),
+            nn.Linear(ternary_mlp_ratio * self.model_dim, self.model_dim),
             nn.Dropout(p=ternary_drop)
         )
 
