@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr36_full"
+version = "v22-itr37_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -64,12 +64,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             bb_depth=1,
                                             bb_num_heads=4,
                                             ternary_num=3, # 1 - C, 2 - Hadamard, 3 - MLP
-                                            mlp_drop=0.5,
-                                            proj_drop=0.5,
-                                            attn_drop=0.5,
-                                            per_mlp_drop=0,
-                                            ternary_drop=0.5,
-                                            ternary_mlp_ratio=1,
+                                            mlp_drop=0.3,
+                                            proj_drop=0.3,
+                                            attn_drop=0.3,
+                                            drop_path_max=0.3,
+                                            per_mlp_drop=0.3,
+                                            ternary_drop=0.3,
+                                            ternary_mlp_ratio=3,
                                             restrict_qk=False).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
