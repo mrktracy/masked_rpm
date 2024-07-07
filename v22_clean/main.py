@@ -75,7 +75,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
-                                           mlp_drop=0.1,
+                                           mlp_drop=0,
                                            output_dim=2).to(device)
     else:
         if AUTO_REG:
