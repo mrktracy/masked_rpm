@@ -120,8 +120,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 5
-    BATCHES_PER_PRINT = 60
+    LOGS_PER_EPOCH = 12
+    BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
