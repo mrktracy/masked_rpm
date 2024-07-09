@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr40_full"
+version = "v22-itr41_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -52,16 +52,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     transformer_model = TransformerModelv22(embed_dim=512,
                                             symbol_factor=1,
-                                            trans_depth=2,
-                                            abs_1_depth=2,
-                                            abs_2_depth=2,
+                                            trans_depth=3,
+                                            abs_1_depth=3,
+                                            abs_2_depth=3,
                                             trans_num_heads=4,
                                             abs_1_num_heads=4,
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
                                             decoder_num=2,  # 1 - MLP, 2 - Deconvolution, 3 - Backbone
-                                            bb_depth=1,
+                                            bb_depth=2,
                                             bb_num_heads=4,
                                             ternary_num=3, # 1 - C, 2 - Hadamard, 3 - MLP
                                             mlp_drop=0.5,
@@ -69,7 +69,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             attn_drop=0.5,
                                             drop_path_max=0.5,
                                             per_mlp_drop=0,
-                                            ternary_drop=0.5,
+                                            ternary_drop=0.3,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False).to(device)
     if MLP_DW:
