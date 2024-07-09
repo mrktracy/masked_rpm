@@ -69,7 +69,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             attn_drop=0.5,
                                             drop_path_max=0.5,
                                             per_mlp_drop=0,
-                                            ternary_drop=0.3,
+                                            ternary_drop=0.5,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False).to(device)
     if MLP_DW:
