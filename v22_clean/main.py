@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr42_full"
+version = "v22-itr43_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -52,16 +52,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     transformer_model = TransformerModelv22(embed_dim=512,
                                             symbol_factor=1,
-                                            trans_depth=2,
-                                            abs_1_depth=2,
-                                            abs_2_depth=2,
+                                            trans_depth=3,
+                                            abs_1_depth=3,
+                                            abs_2_depth=3,
                                             trans_num_heads=4,
                                             abs_1_num_heads=4,
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
                                             decoder_num=2,  # 1 - MLP, 2 - Deconvolution, 3 - Backbone
-                                            bb_depth=1,
+                                            bb_depth=2,
                                             bb_num_heads=4,
                                             ternary_num=3, # 1 - C, 2 - Hadamard, 3 - MLP
                                             mlp_drop=0.5,
@@ -69,13 +69,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             attn_drop=0.5,
                                             drop_path_max=0.5,
                                             per_mlp_drop=0,
-                                            ternary_drop=0,
+                                            ternary_drop=0.3,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
-                                           mlp_drop=0,
+                                           mlp_drop=0.1,
                                            output_dim=2).to(device)
     else:
         if AUTO_REG:
@@ -155,8 +155,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                    lr=LEARNING_RATE,
                                    weight_decay=1e-4)
 
-    scheduler_1 = ExponentialLR(optimizer_1, gamma=0.99)
-    scheduler_2 = ExponentialLR(optimizer_2, gamma=0.99)
+    scheduler_1 = ExponentialLR(optimizer_1, gamma=0.95)
+    scheduler_2 = ExponentialLR(optimizer_2, gamma=0.95)
 
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
