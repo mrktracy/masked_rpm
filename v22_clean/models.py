@@ -587,8 +587,8 @@ class BackbonePerception(nn.Module):
 class BackbonePerceptionOld(nn.Module):
     def __init__(self,
                  embed_dim,
-                 out_channels=512,
-                 grid_dim=5,
+                 out_channels=256,
+                 grid_dim=10,
                  num_heads=32,
                  mlp_ratio=4,
                  norm_layer=nn.LayerNorm,
@@ -608,8 +608,7 @@ class BackbonePerceptionOld(nn.Module):
             ResidualBlock(16, 32, 2),  # N, 32, 80, 80
             ResidualBlock(32, 64, 2),  # N, 64, 40, 40
             ResidualBlock(64, 128, 2),  # N, 128, 20, 20
-            ResidualBlock(128, 256, 2),  # N, 256, 10, 10
-            ResidualBlock(256, 512, 2)  # N, 512, 5, 5
+            ResidualBlock(128, 256, 2)  # N, 256, 10, 10
         )
 
         # initialize and retrieve positional embeddings
