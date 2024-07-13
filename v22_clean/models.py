@@ -587,8 +587,8 @@ class BackbonePerception(nn.Module):
 class BackbonePerceptionOld(nn.Module):
     def __init__(self,
                  embed_dim,
-                 out_channels=256,
-                 grid_dim=10,
+                 out_channels=512,
+                 grid_dim=5,
                  num_heads=32,
                  mlp_ratio=4,
                  norm_layer=nn.LayerNorm,
@@ -608,7 +608,8 @@ class BackbonePerceptionOld(nn.Module):
             ResidualBlock(16, 32, 2),  # N, 32, 80, 80
             ResidualBlock(32, 64, 2),  # N, 64, 40, 40
             ResidualBlock(64, 128, 2),  # N, 128, 20, 20
-            ResidualBlock(128, 256, 2)  # N, 256, 10, 10
+            ResidualBlock(128, 256, 2),  # N, 256, 10, 10
+            ResidualBlock(256, 512, 2)  # N, 512, 5, 5
         )
 
         # initialize and retrieve positional embeddings
@@ -617,9 +618,13 @@ class BackbonePerceptionOld(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
+            # Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
+            #       q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
+            #       drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
+
             Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
-                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
-                  drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0, attn_drop=0,
+                  drop_path=0, restrict_qk=False) for i in range(self.depth)])
 
         self.mlp = nn.Linear(self.out_channels * self.grid_dim**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
