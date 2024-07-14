@@ -618,13 +618,13 @@ class BackbonePerceptionOld(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
         self.blocks = nn.ModuleList([
-            # Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
-            #       q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
-            #       drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
-
             Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
-                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0, attn_drop=0,
-                  drop_path=0, restrict_qk=False) for i in range(self.depth)])
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
+                  drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
+
+            # Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
+            #       q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0, attn_drop=0,
+            #       drop_path=0, restrict_qk=False) for i in range(self.depth)])
 
         self.mlp = nn.Linear(self.out_channels * self.grid_dim**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
@@ -725,7 +725,7 @@ class MLPDecoder(nn.Module):
 
         self.decoder = nn.Sequential(
             nn.Linear(embed_dim, 80 * 80),
-            nn.Dropout(p=mlp_drop//2),
+            # nn.Dropout(p=mlp_drop//2),
             nn.ReLU(),
             nn.Linear(80 * 80, 160 * 160),
             nn.Dropout(p=mlp_drop),
