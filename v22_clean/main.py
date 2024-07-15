@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr47_full"
+version = "v22-itr48_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -60,7 +60,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             abs_2_num_heads=4,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
-                                            decoder_num=1,  # 1 - MLP, 2 - Deconvolution, 3 - Backbone
+                                            decoder_num=2,  # 1 - MLP, 2 - Deconvolution, 3 - Backbone
                                             bb_depth=1,
                                             bb_num_heads=4,
                                             ternary_num=3, # 1 - C, 2 - Hadamard, 3 - MLP
@@ -126,7 +126,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 2
-    L1 = 0
+    L1 = 1e-6
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
