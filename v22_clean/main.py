@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr48_full"
+version = "v22-itr49_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -51,7 +51,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
 
     transformer_model = TransformerModelv22(embed_dim=512,
-                                            symbol_factor=1,
+                                            symbol_factor=2,
                                             trans_depth=2,
                                             abs_1_depth=2,
                                             abs_2_depth=2,
@@ -126,7 +126,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 2
-    L1 = 1e-6
+    L1 = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
