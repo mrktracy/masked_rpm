@@ -71,14 +71,20 @@ class TransformerModelv22(nn.Module): # takes in images, embeds, performs self-a
         self.blocks_abs_1 = nn.ModuleList([
             Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_1_num_heads,
                   mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
+                  attn_drop=attn_drop, drop_path=drop_path_max / abs_1_depth),
+            Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_1_num_heads,
+                  mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
                   attn_drop=attn_drop, drop_path=drop_path_max*((i+1)/abs_1_depth))
-            for i in range(abs_1_depth)])
+            for i in range(1,abs_1_depth)])
 
         self.blocks_abs_2 = nn.ModuleList([
+            Block(self.model_dim, self.model_dim * self.symbol_factor, abs_2_num_heads,
+                  mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
+                  attn_drop=attn_drop, drop_path=drop_path_max / abs_2_depth),
             Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_2_num_heads,
                   mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
                   attn_drop=attn_drop, drop_path=drop_path_max * ((i + 1) / abs_2_depth))
-            for i in range(abs_2_depth)])
+                                          for i in range(1, abs_2_depth)])
 
         if self.restrict_qk:
             self.blocks_trans = nn.ModuleList([
