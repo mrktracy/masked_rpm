@@ -625,8 +625,8 @@ class BackbonePerceptionOld(nn.Module):
 
         self.blocks = nn.ModuleList([
             Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
-                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.5, attn_drop=0.5,
-                  drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.3, attn_drop=0.3,
+                  drop_path=0.3*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
 
             # Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
             #       q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0, attn_drop=0,
