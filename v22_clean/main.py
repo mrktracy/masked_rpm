@@ -12,7 +12,7 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr52_full"
+version = "v22-itr53_pgm"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -105,9 +105,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     #     original_model = transformer_model
 
     ''' Use for PGM or I-RAVEN dataset '''
-    # root_dir = '../../pgm_data/neutral/'
+    root_dir = '../../pgm_data/neutral/'
     # root_dir = '../../i_raven_data_cnst/'
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
