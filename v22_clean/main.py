@@ -95,16 +95,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     # logging.info("Models declared and initialized.\n")
 
-    ''' Load saved model '''
-    state_dict_tr = torch.load('../../modelsaves/v22-itr0_full/tf_v22-itr0_full_ep10.pth')
-    transformer_model.load_state_dict(state_dict_tr)
-    # transformer_model.eval()
-
-    if isinstance(transformer_model, nn.DataParallel):
-        original_model = transformer_model.module
-    else:
-        original_model = transformer_model
-
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
     root_dir = '../../pgm_data/extrapolation/'
@@ -170,6 +160,21 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             device)
 
     weights = torch.zeros(2).to(device)
+
+    ''' Load saved models '''
+    state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
+
+    transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
+
+    dynamic_weights.load_state_dict(state_dict['dynamic_weights_state_dict'])
+
+    optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
+    optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
+
+    scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
+    scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
+
+    # transformer_model.eval()
 
     # logging.info("Begin training loop.\n")
 
