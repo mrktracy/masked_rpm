@@ -15,7 +15,7 @@ import logging
 
 version = "v22-itr54_pgm_extr"
 
-logfile = f"../../tr_results/{version}/runlog_{version}.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -96,14 +96,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # logging.info("Models declared and initialized.\n")
 
     ''' Load saved model '''
-    # state_dict_tr = torch.load('../../modelsaves/v22-itr0_full/tf_v22-itr0_full_ep10.pth')
-    # transformer_model.load_state_dict(state_dict_tr)
+    state_dict_tr = torch.load('../../modelsaves/v22-itr0_full/tf_v22-itr0_full_ep10.pth')
+    transformer_model.load_state_dict(state_dict_tr)
     # transformer_model.eval()
 
-    # if isinstance(transformer_model, nn.DataParallel):
-    #     original_model = transformer_model.module
-    # else:
-    #     original_model = transformer_model
+    if isinstance(transformer_model, nn.DataParallel):
+        original_model = transformer_model.module
+    else:
+        original_model = transformer_model
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
@@ -124,7 +124,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 5
+    EPOCHS_PER_SAVE = 1
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 2
