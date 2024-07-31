@@ -109,6 +109,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Define Hyperparameters '''
     EPOCHS = 40
+    FIRST_EPOCH = 16
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
@@ -179,7 +180,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # logging.info("Begin training loop.\n")
 
     # Training loop
-    for epoch in range(EPOCHS):
+    for epoch in range(FIRST_EPOCH, EPOCHS):
         count = 0
         tot_loss = 0
         times = 0
