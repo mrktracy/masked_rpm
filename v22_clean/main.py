@@ -15,7 +15,7 @@ import logging
 
 version = "v22-itr54_pgm_extr"
 
-logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}_2.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -85,8 +85,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             dynamic_weights = DynamicWeightingRNN(input_dim=2).to(device)
 
     # initialize weights
-    transformer_model.apply(initialize_weights_he)
-    dynamic_weights.apply(initialize_weights_he)
+    # transformer_model.apply(initialize_weights_he)
+    # dynamic_weights.apply(initialize_weights_he)
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
@@ -105,7 +105,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Transformer model v9 '''
     train_dataset = rpm_dataset(train_files, device=device)
-    val_dataset = rpm_dataset(val_files, device=device)
+    val_dataset = rpm_dataset(test_files, device=device) # CHANGE THIS BACK
 
     ''' Define Hyperparameters '''
     EPOCHS = 40
@@ -175,143 +175,147 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
     scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
 
-    # transformer_model.eval()
+    transformer_model.eval()
+
+    val_loss = evaluation_function(transformer_model, val_dataloader, device)
+    output = f"val: {val_loss:.2f}\n"
+    logging.info(output)
 
     # logging.info("Begin training loop.\n")
 
-    # Training loop
-    for epoch in range(FIRST_EPOCH, EPOCHS):
-        count = 0
-        tot_loss = 0
-        times = 0
-
-        # logging.info("Initialized loop variables.\n")
-
-        for idx, (sentences, target_nums, _, _) in enumerate(train_dataloader):
-
-            if idx % BATCHES_PER_PRINT == 0:
-                start_time = time.time()
-
-            batch_size = sentences.size(0)
-
-            optimizer_1.zero_grad()
-            optimizer_2.zero_grad()
-
-            sentences = sentences.to(device) # passed to model to get output and recreation of inputs
-            target_nums = target_nums.to(device)  # used to select from among candidates
-
-            # logging.info("Running forward pass of model...\n")
-
-            dist, recreation, embeddings = transformer_model(sentences)
-
-            task_err = criterion_1(dist, target_nums)
-            rec_err = criterion_2(sentences, recreation)
-
-            # logging.info("Updating error history...\n")
-
-            # if MLP_DW:
-            #     if AUTO_REG:
-            #         err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1),
-            #                                  weights], dim=-1).detach()
-            #
-            #     else:
-            #         err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1)],
-            #                                 dim=-1).detach()
-            #
-            # else:
-            #     if AUTO_REG:
-            #         # Concatenate the current task error and reconstruction error to the history
-            #         err_history = torch.cat([err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
-            #                                  weights.unsqueeze(0)], dim=-1)], dim=0).detach()
-            #
-            #     else:
-            #         # Concatenate the current task error and reconstruction error to the history
-            #         err_history = torch.cat([err_history, \
-            #                                  torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
-
-            task_share = task_err / (task_err + rec_err)
-            rec_share = 1 - task_share
-
-            if MLP_DW:
-                if AUTO_REG:
-                    err_history = torch.cat([err_history[4:], torch.stack([task_share, rec_share], dim=-1),
-                                             weights], dim=-1).detach()
-
-                else:
-                    err_history = torch.cat([err_history[2:], torch.stack([task_share, rec_share], dim=-1)],
-                                            dim=-1).detach()
-
-            else:
-                if AUTO_REG:
-                    # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, torch.cat([torch.stack([task_share, rec_share], dim=-1).unsqueeze(0), \
-                                             weights.unsqueeze(0)], dim=-1)], dim=0).detach()
-
-                else:
-                    # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, \
-                                             torch.stack([task_share, rec_share], dim=-1).unsqueeze(0)], dim=0).detach()
-
-                # Remove the oldest entry if the history length exceeds the desired length
-                if err_history.size(1) > HISTORY_SIZE:
-                    err_history = err_history[:, -HISTORY_SIZE:, :]
-
-            # logging.info(f"err_history: {err_history.shape}")
-
-            # logging.info("Retrieving loss weights...\n")
-
-            weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
-
-            # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
-
-            # logging.info("Calculating loss...\n")
-
-            loss = weights[0]*task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1) + \
-                BETA*torch.var(weights)
-
-            tot_loss += loss.item() # update running averages
-            count += 1
-
-            # logging.info("Forward pass complete.\n")
-
-            loss.backward()
-
-            # logging.info("Backward pass complete.\n")
-
-            optimizer_1.step()
-            optimizer_2.step()
-
-            if (idx+1) % BATCHES_PER_PRINT == 0:
-                end_time = time.time()
-                batch_time = end_time - start_time
-                output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}"
-                logging.info(output)
-                logging.info(f"Weights: {weights}")
-
-            if (idx+1) % batches_per_log == 0:
-                val_loss = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                logging.info(output)
-                # with open(logfile, 'a') as file:
-                #     file.write(output)
-
-                tot_loss = 0
-                count = 0
-
-        if (epoch+1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
-            os.makedirs(os.path.dirname(save_file), exist_ok=True)
-            torch.save({
-                'transformer_model_state_dict': transformer_model.state_dict(),
-                'dynamic_weights_state_dict': dynamic_weights.state_dict(),
-                'optimizer_1_state_dict': optimizer_1.state_dict(),
-                'optimizer_2_state_dict': optimizer_2.state_dict(),
-                'scheduler_1_state_dict': scheduler_1.state_dict(),
-                'scheduler_2_state_dict': scheduler_2.state_dict()
-            }, save_file)
-
-        scheduler_1.step()
-        scheduler_2.step()
+    # # Training loop
+    # for epoch in range(FIRST_EPOCH, EPOCHS):
+    #     count = 0
+    #     tot_loss = 0
+    #     times = 0
+    #
+    #     # logging.info("Initialized loop variables.\n")
+    #
+    #     for idx, (sentences, target_nums, _, _) in enumerate(train_dataloader):
+    #
+    #         if idx % BATCHES_PER_PRINT == 0:
+    #             start_time = time.time()
+    #
+    #         batch_size = sentences.size(0)
+    #
+    #         optimizer_1.zero_grad()
+    #         optimizer_2.zero_grad()
+    #
+    #         sentences = sentences.to(device) # passed to model to get output and recreation of inputs
+    #         target_nums = target_nums.to(device)  # used to select from among candidates
+    #
+    #         # logging.info("Running forward pass of model...\n")
+    #
+    #         dist, recreation, embeddings = transformer_model(sentences)
+    #
+    #         task_err = criterion_1(dist, target_nums)
+    #         rec_err = criterion_2(sentences, recreation)
+    #
+    #         # logging.info("Updating error history...\n")
+    #
+    #         # if MLP_DW:
+    #         #     if AUTO_REG:
+    #         #         err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1),
+    #         #                                  weights], dim=-1).detach()
+    #         #
+    #         #     else:
+    #         #         err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1)],
+    #         #                                 dim=-1).detach()
+    #         #
+    #         # else:
+    #         #     if AUTO_REG:
+    #         #         # Concatenate the current task error and reconstruction error to the history
+    #         #         err_history = torch.cat([err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
+    #         #                                  weights.unsqueeze(0)], dim=-1)], dim=0).detach()
+    #         #
+    #         #     else:
+    #         #         # Concatenate the current task error and reconstruction error to the history
+    #         #         err_history = torch.cat([err_history, \
+    #         #                                  torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
+    #
+    #         task_share = task_err / (task_err + rec_err)
+    #         rec_share = 1 - task_share
+    #
+    #         if MLP_DW:
+    #             if AUTO_REG:
+    #                 err_history = torch.cat([err_history[4:], torch.stack([task_share, rec_share], dim=-1),
+    #                                          weights], dim=-1).detach()
+    #
+    #             else:
+    #                 err_history = torch.cat([err_history[2:], torch.stack([task_share, rec_share], dim=-1)],
+    #                                         dim=-1).detach()
+    #
+    #         else:
+    #             if AUTO_REG:
+    #                 # Concatenate the current task error and reconstruction error to the history
+    #                 err_history = torch.cat([err_history, torch.cat([torch.stack([task_share, rec_share], dim=-1).unsqueeze(0), \
+    #                                          weights.unsqueeze(0)], dim=-1)], dim=0).detach()
+    #
+    #             else:
+    #                 # Concatenate the current task error and reconstruction error to the history
+    #                 err_history = torch.cat([err_history, \
+    #                                          torch.stack([task_share, rec_share], dim=-1).unsqueeze(0)], dim=0).detach()
+    #
+    #             # Remove the oldest entry if the history length exceeds the desired length
+    #             if err_history.size(1) > HISTORY_SIZE:
+    #                 err_history = err_history[:, -HISTORY_SIZE:, :]
+    #
+    #         # logging.info(f"err_history: {err_history.shape}")
+    #
+    #         # logging.info("Retrieving loss weights...\n")
+    #
+    #         weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
+    #
+    #         # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
+    #
+    #         # logging.info("Calculating loss...\n")
+    #
+    #         loss = weights[0]*task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1) + \
+    #             BETA*torch.var(weights)
+    #
+    #         tot_loss += loss.item() # update running averages
+    #         count += 1
+    #
+    #         # logging.info("Forward pass complete.\n")
+    #
+    #         loss.backward()
+    #
+    #         # logging.info("Backward pass complete.\n")
+    #
+    #         optimizer_1.step()
+    #         optimizer_2.step()
+    #
+    #         if (idx+1) % BATCHES_PER_PRINT == 0:
+    #             end_time = time.time()
+    #             batch_time = end_time - start_time
+    #             output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}"
+    #             logging.info(output)
+    #             logging.info(f"Weights: {weights}")
+    #
+    #         if (idx+1) % batches_per_log == 0:
+    #             val_loss = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
+    #             output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+    #             logging.info(output)
+    #             # with open(logfile, 'a') as file:
+    #             #     file.write(output)
+    #
+    #             tot_loss = 0
+    #             count = 0
+    #
+    #     if (epoch+1) % EPOCHS_PER_SAVE == 0:
+    #         save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
+    #         os.makedirs(os.path.dirname(save_file), exist_ok=True)
+    #         torch.save({
+    #             'transformer_model_state_dict': transformer_model.state_dict(),
+    #             'dynamic_weights_state_dict': dynamic_weights.state_dict(),
+    #             'optimizer_1_state_dict': optimizer_1.state_dict(),
+    #             'optimizer_2_state_dict': optimizer_2.state_dict(),
+    #             'scheduler_1_state_dict': scheduler_1.state_dict(),
+    #             'scheduler_2_state_dict': scheduler_2.state_dict()
+    #         }, save_file)
+    #
+    #     scheduler_1.step()
+    #     scheduler_2.step()
 
 if __name__ == "__main__":
     main_BERT(version, results_folder)
