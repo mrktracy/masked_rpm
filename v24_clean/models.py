@@ -33,7 +33,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  ternary_drop=0.3,
                  ternary_mlp_ratio=1,
                  restrict_qk=False,
-                 feedback_dim = 32):
+                 feedback_dim=96):
 
         super(TransformerModelv24, self).__init__()
 
@@ -139,7 +139,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         self.combiner = nn.Linear(embed_dim + feedback_dim, embed_dim)
 
-        self.reas_autoencoder = AutoencoderBottleneck(input_dim=self.model_dim, bottleneck_dim=self.feedback_dim)
+        self.reas_autoencoder = AutoencoderBottleneck(input_dim=self.model_dim*3, bottleneck_dim=self.feedback_dim)
 
     def reset_feedback(self):
         self.feedback = None
