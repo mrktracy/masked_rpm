@@ -98,15 +98,15 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
-    root_dir = '../../pgm_data/extrapolation/'
+    # root_dir = '../../pgm_data/extrapolation/'
     # root_dir = '../../i_raven_data_cnst/'
-    # root_dir = '../../i_raven_data_full/'
+    root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
     ''' Transformer model v9 '''
     train_dataset = rpm_dataset(train_files, device=device)
-    val_dataset = rpm_dataset(test_files, device=device) # CHANGE THIS BACK
+    val_dataset = rpm_dataset(val_files, device=device)
 
     ''' Define Hyperparameters '''
     EPOCHS = 20
