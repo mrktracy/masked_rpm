@@ -9,13 +9,13 @@ import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
-from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
+from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr54_pgm_extr"
+version = "v24-itr0_full"
 
-logfile = f"../../tr_results/{version}/runlog_{version}_3.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -51,7 +51,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # print(num_gpus)
 
 
-    transformer_model = TransformerModelv22(embed_dim=512,
+    transformer_model = TransformerModelv24(embed_dim=512,
                                             symbol_factor=1,
                                             trans_depth=2,
                                             abs_1_depth=2,
@@ -72,7 +72,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             per_mlp_drop=0,
                                             ternary_drop=0.3,
                                             ternary_mlp_ratio=3,
-                                            restrict_qk=False).to(device)
+                                            restrict_qk=False,
+                                            feedback_dim=32).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
@@ -108,14 +109,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     val_dataset = rpm_dataset(test_files, device=device) # CHANGE THIS BACK
 
     ''' Define Hyperparameters '''
-    EPOCHS = 16
-    FIRST_EPOCH = 15
+    EPOCHS = 20
+    FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 1
+    EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 2
@@ -164,17 +165,17 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     weights = torch.zeros(2).to(device)
 
     ''' Load saved models '''
-    state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
+    # state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
 
-    transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
-
-    dynamic_weights.load_state_dict(state_dict['dynamic_weights_state_dict'])
-
-    optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
-    optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
-
-    scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
-    scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
+    # transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
+    #
+    # dynamic_weights.load_state_dict(state_dict['dynamic_weights_state_dict'])
+    #
+    # optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
+    # optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
+    #
+    # scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
+    # scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
 
     # # To evaluate model, uncomment this part
     # transformer_model.eval()
@@ -208,10 +209,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Running forward pass of model...\n")
 
-            dist, recreation, embeddings = transformer_model(sentences)
+            dist, recreation, embeddings, reas_raw, reas_decoded = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
+            meta_err = criterion_3(reas_raw, reas_decoded)
 
             # logging.info("Updating error history...\n")
 
@@ -273,7 +275,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             # logging.info("Calculating loss...\n")
 
             loss = weights[0]*task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1) + \
-                BETA*torch.var(weights)
+                BETA*torch.var(weights) + meta_err
 
             tot_loss += loss.item() # update running averages
             count += 1
