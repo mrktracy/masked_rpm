@@ -13,9 +13,9 @@ from models import TransformerModelv22, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v22-itr54_pgm_extr"
+version = "v22-itr55_full"
 
-logfile = f"../../tr_results/{version}/runlog_{version}_3.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -97,9 +97,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
-    root_dir = '../../pgm_data/extrapolation/'
+    # root_dir = '../../pgm_data/extrapolation/'
     # root_dir = '../../i_raven_data_cnst/'
-    # root_dir = '../../i_raven_data_full/'
+    root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
@@ -108,8 +108,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     val_dataset = rpm_dataset(test_files, device=device) # CHANGE THIS BACK
 
     ''' Define Hyperparameters '''
-    EPOCHS = 16
-    FIRST_EPOCH = 15
+    EPOCHS = 20
+    FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
@@ -153,7 +153,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
-    criterion_3 = nn.MSELoss()
 
     if MLP_DW:
         err_history = torch.zeros(max_history_length).to(device)
