@@ -33,7 +33,12 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  ternary_drop=0.3,
                  ternary_mlp_ratio=1,
                  restrict_qk=False,
-                 feedback_dim=96):
+                 feedback_dim=96,
+                 meta_depth = 2,
+                 meta_num_heads=4,
+                 meta_attn_drop=0,
+                 meta_proj_drop=0,
+                 meta_drop_path_max=0):
 
         super(TransformerModelv24, self).__init__()
 
@@ -143,6 +148,16 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             nn.Linear(embed_dim, embed_dim))
 
         self.reas_autoencoder = AutoencoderBottleneck(input_dim=self.model_dim*3, bottleneck_dim=self.feedback_dim)
+
+        self.blocks_meta = nn.ModuleList([
+            Block(self.feedback_dim, self.feedback_dim, meta_num_heads, mlp_ratio,
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=meta_proj_drop,
+                  attn_drop=meta_attn_drop, drop_path=meta_drop_path_max * ((i + 1) / meta_depth),
+                  restrict_qk=False)
+            for i in range(meta_depth)])
+
+        self.cls_token = nn.Parameter(torch.ones(self.feedback_dim))
+
 
     def reset_feedback(self):
         self.feedback = None
@@ -340,7 +355,13 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         reas_encoded, reas_decoded = self.reas_autoencoder(z_reshaped)
 
-        self.feedback = torch.mean(reas_encoded, dim=0, keepdim=False)
+        cls_tokens = self.cls_token.unsqueeze(0)
+        reas_encoded = torch.cat((cls_tokens, reas_encoded), dim=0)
+
+        for blk in self.blocks_meta:
+            reas_encoded = blk(reas_encoded)
+
+        self.feedback = reas_encoded[0, :].squeeze()
 
         z_reshaped = self.mlp1(z_reshaped)
         z_reshaped = self.dropout(z_reshaped)
