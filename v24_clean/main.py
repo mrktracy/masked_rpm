@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr2_full"
+version = "v24-itr3_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -36,9 +36,9 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
-    MLP_DW = True
+    MLP_DW = False
     HISTORY_SIZE = 12
-    AUTO_REG = False
+    AUTO_REG = True
 
     if AUTO_REG:
         max_history_length = HISTORY_SIZE*6
