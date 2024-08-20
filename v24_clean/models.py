@@ -356,7 +356,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_encoded, reas_decoded = self.reas_autoencoder(z_reshaped)
 
         cls_tokens = self.cls_token.unsqueeze(0)
-        reas_encoded = torch.cat((cls_tokens, reas_encoded), dim=0)
+
+        reas_encoded = torch.cat((cls_tokens, reas_encoded), dim=0).unsqueeze(0)
 
         for blk in self.blocks_meta:
             reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
