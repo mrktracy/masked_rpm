@@ -137,7 +137,10 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             nn.Dropout(p=ternary_drop)
         )
 
-        self.combiner = nn.Linear(embed_dim + feedback_dim, embed_dim)
+        self.combiner = nn.Sequential(
+            nn.Linear(embed_dim + feedback_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim))
 
         self.reas_autoencoder = AutoencoderBottleneck(input_dim=self.model_dim*3, bottleneck_dim=self.feedback_dim)
 
