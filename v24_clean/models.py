@@ -34,7 +34,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  ternary_mlp_ratio=1,
                  restrict_qk=False,
                  feedback_dim=96,
-                 meta_depth = 2,
+                 meta_depth = 1,
                  meta_num_heads=4,
                  meta_attn_drop=0,
                  meta_proj_drop=0,
