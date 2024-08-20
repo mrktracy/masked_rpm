@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr0_full"
+version = "v24-itr1_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -41,9 +41,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     AUTO_REG = False
 
     if AUTO_REG:
-        max_history_length = HISTORY_SIZE*4
+        max_history_length = HISTORY_SIZE*6
     else:
-        max_history_length = HISTORY_SIZE*2
+        max_history_length = HISTORY_SIZE*3
 
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -78,12 +78,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
                                            mlp_drop=0.1,
-                                           output_dim=2).to(device)
+                                           output_dim=3).to(device)
     else:
         if AUTO_REG:
-            dynamic_weights = DynamicWeightingRNN(input_dim=4).to(device)
+            dynamic_weights = DynamicWeightingRNN(input_dim=6).to(device)
         else:
-            dynamic_weights = DynamicWeightingRNN(input_dim=2).to(device)
+            dynamic_weights = DynamicWeightingRNN(input_dim=3).to(device)
 
     # initialize weights
     # transformer_model.apply(initialize_weights_he)
@@ -159,10 +159,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     if MLP_DW:
         err_history = torch.zeros(max_history_length).to(device)
     else:
-        err_history = torch.zeros(HISTORY_SIZE, 4).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE, 2).to(
+        err_history = torch.zeros(HISTORY_SIZE, 6).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE, 3).to(
             device)
 
-    weights = torch.zeros(2).to(device)
+    weights = torch.zeros(3).to(device)
 
     ''' Load saved models '''
     # state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
@@ -237,28 +237,29 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             #         err_history = torch.cat([err_history, \
             #                                  torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
 
-            task_share = task_err / (task_err + rec_err)
-            rec_share = 1 - task_share
+            task_share = task_err / (task_err + rec_err + meta_err)
+            rec_share = rec_err / (task_err + rec_err + meta_err)
+            meta_share = 1 - task_share - rec_share
 
             if MLP_DW:
                 if AUTO_REG:
-                    err_history = torch.cat([err_history[4:], torch.stack([task_share, rec_share], dim=-1),
+                    err_history = torch.cat([err_history[6:], torch.stack([task_share, rec_share, meta_share], dim=-1),
                                              weights], dim=-1).detach()
 
                 else:
-                    err_history = torch.cat([err_history[2:], torch.stack([task_share, rec_share], dim=-1)],
+                    err_history = torch.cat([err_history[3:], torch.stack([task_share, rec_share, meta_share], dim=-1)],
                                             dim=-1).detach()
 
             else:
                 if AUTO_REG:
                     # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, torch.cat([torch.stack([task_share, rec_share], dim=-1).unsqueeze(0), \
+                    err_history = torch.cat([err_history, torch.cat([torch.stack([task_share, rec_share, meta_share], dim=-1).unsqueeze(0), \
                                              weights.unsqueeze(0)], dim=-1)], dim=0).detach()
 
                 else:
                     # Concatenate the current task error and reconstruction error to the history
                     err_history = torch.cat([err_history, \
-                                             torch.stack([task_share, rec_share], dim=-1).unsqueeze(0)], dim=0).detach()
+                                             torch.stack([task_share, rec_share, meta_share], dim=-1).unsqueeze(0)], dim=0).detach()
 
                 # Remove the oldest entry if the history length exceeds the desired length
                 if err_history.size(1) > HISTORY_SIZE:
@@ -274,8 +275,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Calculating loss...\n")
 
-            loss = weights[0]*task_err + weights[1]*rec_err + L1*torch.norm(embeddings, p=1) + \
-                BETA*torch.var(weights) + meta_err
+            loss = (weights[0]*task_err + weights[1]*rec_err + weights[2]*meta_err +
+                    L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
 
             tot_loss += loss.item() # update running averages
             count += 1
