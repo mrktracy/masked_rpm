@@ -118,7 +118,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    BETA = 1
+    BETA = 2
     L1 = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
