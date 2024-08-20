@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr3_full"
+version = "v24-itr5_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -120,6 +120,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 3
+    BETA_GROWTH_RATE = 0.2
     L1 = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -191,6 +192,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         count = 0
         tot_loss = 0
         times = 0
+
+        if epoch > 0:
+            BETA = BETA * (1+BETA_GROWTH_RATE)
 
         # logging.info("Initialized loop variables.\n")
 
