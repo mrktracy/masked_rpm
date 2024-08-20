@@ -73,7 +73,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             ternary_drop=0.3,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False,
-                                            feedback_dim=32).to(device)
+                                            feedback_dim=128).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
@@ -119,7 +119,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    BETA = 2
+    BETA = 3
     L1 = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
