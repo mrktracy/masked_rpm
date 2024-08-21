@@ -413,7 +413,7 @@ class DynamicWeightingRNN(nn.Module):
                  hidden_dim=64,
                  num_layers=2,
                  dropout=0.1,
-                 output_dim=2):
+                 output_dim=3):
         super(DynamicWeightingRNN, self).__init__()
 
         self.hidden_dim = hidden_dim

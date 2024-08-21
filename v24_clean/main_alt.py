@@ -81,9 +81,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                            output_dim=3).to(device)
     else:
         if AUTO_REG:
-            dynamic_weights = DynamicWeightingRNN(input_dim=6).to(device)
+            dynamic_weights = DynamicWeightingRNN(input_dim=6, output_dim=3).to(device)
         else:
-            dynamic_weights = DynamicWeightingRNN(input_dim=3).to(device)
+            dynamic_weights = DynamicWeightingRNN(input_dim=3, output_dim=3).to(device)
 
     # initialize weights
     # transformer_model.apply(initialize_weights_he)
