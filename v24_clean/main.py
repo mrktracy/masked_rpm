@@ -73,10 +73,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             ternary_drop=0.3,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False,
-                                            feedback_dim=1024,
-                                            meta_1_attn_drop=0.3,
-                                            meta_1_proj_drop=0.3,
-                                            meta_1_drop_path_max=0.5).to(device)
+                                            feedback_dim=1024).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
@@ -115,7 +112,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS = 20
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.00005
+    LEARNING_RATE = 0.001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
