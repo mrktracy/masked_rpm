@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr11_full"
+version = "v24-itr12_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -276,8 +276,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Calculating loss...\n")
 
-            loss = (weights[0]*task_err + weights[1]*rec_err + weights[2]*meta_err +
-                    L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
+            # loss = (weights[0]*task_err + weights[1]*rec_err + weights[2]*meta_err +
+            #         L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
+
+            loss = (task_err + rec_err + meta_err + L1 * torch.norm(embeddings, p=1))
 
             tot_loss += loss.item() # update running averages
             count += 1
