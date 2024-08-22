@@ -9,7 +9,7 @@ from timm.layers import Mlp, DropPath, use_fused_attn
 
 class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,
-                 embed_dim=256,
+                 embed_dim=512,
                  symbol_factor=1,
                  grid_size=3,
                  trans_num_heads=4,
@@ -33,12 +33,19 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  ternary_drop=0.3,
                  ternary_mlp_ratio=1,
                  restrict_qk=False,
-                 feedback_dim=96,
-                 meta_depth = 1,
-                 meta_num_heads=2,
-                 meta_attn_drop=0,
-                 meta_proj_drop=0,
-                 meta_drop_path_max=0):
+                 feedback_dim=128,
+                 meta_1_depth = 1,
+                 meta_1_num_heads=2,
+                 meta_1_attn_drop=0,
+                 meta_1_proj_drop=0,
+                 meta_1_drop_path_max=0,
+                 meta_2_depth=1,
+                 meta_2_num_heads=2,
+                 meta_2_attn_drop=0,
+                 meta_2_proj_drop=0,
+                 meta_2_drop_path_max=0,
+                 num_candidates=8
+                 ):
 
         super(TransformerModelv24, self).__init__()
 
@@ -53,6 +60,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.restrict_qk = restrict_qk
         self.feedback_dim = feedback_dim
         self.feedback = None
+        self.num_candidates = num_candidates
 
         if self.use_backbone_enc:
             if restrict_qk:
@@ -147,14 +155,23 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             nn.ReLU(),
             nn.Linear(embed_dim, embed_dim))
 
-        self.reas_autoencoder = AutoencoderBottleneck(input_dim=self.model_dim*3, bottleneck_dim=self.feedback_dim)
+        self.reas_autoencoder = AutoencoderBottleneckAlt(input_dim=self.model_dim*3,
+                                                         bottleneck_dim=self.feedback_dim,
+                                                         depth=meta_1_depth,
+                                                         num_heads=meta_1_num_heads,
+                                                         mlp_ratio=mlp_ratio,
+                                                         norm_layer=nn.LayerNorm,
+                                                         proj_drop=meta_1_proj_drop,
+                                                         attn_drop=meta_1_attn_drop,
+                                                         drop_path_max=meta_1_drop_path_max,
+                                                         seq_length=num_candidates)
 
         self.blocks_meta = nn.ModuleList([
-            Block(self.feedback_dim, self.feedback_dim, meta_num_heads, mlp_ratio,
-                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=meta_proj_drop,
-                  attn_drop=meta_attn_drop, drop_path=meta_drop_path_max * ((i + 1) / meta_depth),
+            Block(self.feedback_dim, self.feedback_dim, meta_2_num_heads, mlp_ratio,
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=meta_2_proj_drop,
+                  attn_drop=meta_2_attn_drop, drop_path=meta_2_drop_path_max * ((i + 1) / meta_2_depth),
                   restrict_qk=False)
-            for i in range(meta_depth)])
+            for i in range(meta_2_depth)])
 
         self.cls_token = nn.Parameter(torch.ones(self.feedback_dim))
 
@@ -248,24 +265,24 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         embed_reshaped = self.perception.forward(sen_reshaped)  # x_reshaped is (B*9*8, embed_dim)
 
         if self.feedback is not None:
-            self.feedback.expand(batch_size * 9 * 8, -1)
+            self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
             embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
 
         # logging.info("Perception complete.\n")
 
         # reshape for concatenating positional embeddings
-        x_1 = embed_reshaped.view(batch_size, 8, 9, -1)  # x is (B, 8, 9, self.embed_dim*2)
+        x_1 = embed_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)  # x is (B, 8, 9, self.embed_dim*2)
         embeddings = x_1.clone()
 
         # expand positional embeddings to fit batch (B, 8, 9, embed_dim)
-        pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_size, 8, -1, -1)
+        pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_size, self.num_candidates, -1, -1)
 
         # concatenate positional embeddings
         x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
 
         # logging.info("Positional encodings added.\n")
 
-        x_1_reshaped = x_1.view(batch_size * 8, 9, self.model_dim)
+        x_1_reshaped = x_1.view(batch_size * self.num_candidates, self.grid_size**2, self.model_dim)
 
         # logging.info("Beginning ternary operation...\n")
 
@@ -278,7 +295,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # logging.info("Ternary operation complete.\n")
 
-        x_2 = x_ternary.view(batch_size, 8, 6, -1)
+        x_2 = x_ternary.view(batch_size, self.num_candidates, self.grid_size*2, -1)
 
         # apply temporal context normalization
         x_1 = self.tcn_1.forward(x_1)
@@ -287,21 +304,21 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # logging.info("TCN complete.\n")
 
         # reshape x for batch processing
-        x_1 = x_1.view(batch_size*8, 9, -1)
-        x_2 = x_2.view(batch_size*8, 6, -1)
+        x_1 = x_1.view(batch_size*self.num_candidates, self.grid_size**2, -1)
+        x_2 = x_2.view(batch_size*self.num_candidates, self.grid_size*2, -1)
 
         # clone x for passing to transformer blocks
         y = x_1.clone()
 
-        y_pos = pos_embed_final.reshape(batch_size*8, 9, self.embed_dim)
+        y_pos = pos_embed_final.reshape(batch_size*self.num_candidates, self.grid_size**2, self.embed_dim)
 
         # logging.info("Initializing symbols...\n")
 
         # repeat symbols along batch dimension
         symbols_1 = self.symbols_1.unsqueeze(0)
-        symbols_1 = symbols_1.repeat(batch_size * 8, 1, 1)
+        symbols_1 = symbols_1.repeat(batch_size * self.num_candidates, 1, 1)
         symbols_2 = self.symbols_2.unsqueeze(0)
-        symbols_2 = symbols_2.repeat(batch_size * 8, 1, 1)
+        symbols_2 = symbols_2.repeat(batch_size * self.num_candidates, 1, 1)
 
         # logging.info("Begin abstractor one...\n")
 
@@ -339,25 +356,28 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # logging.info("End transformer.\n")
 
-        x_1 = x_1.view([batch_size, 8, 9, -1])
+        x_1 = x_1.view([batch_size, self.num_candidates, self.grid_size**2, -1])
 
-        x_2 = x_2.view([batch_size, 8, 6, -1])
+        x_2 = x_2.view([batch_size, self.num_candidates, self.grid_size*2, -1])
 
-        y = y.view(batch_size, 8, 9, -1)
+        y = y.view(batch_size, self.num_candidates, self.grid_size**2, -1)
         y = self.tcn_1.inverse(y)
 
         # logging.info("Inverse TCN complete. Entering guesser head...\n")
 
         z = torch.cat([x_1, y], dim=-1)
 
-        z_reshaped = torch.cat([z.mean(dim=-2), x_2.mean(dim=-2)], dim=-1).view(batch_size * 8, -1)
+        z_reshaped = torch.cat([z.mean(dim=-2), x_2.mean(dim=-2)], dim=-1).view(
+            batch_size * self.num_candidates, -1)
         reas_raw = z_reshaped.clone()
 
-        reas_encoded, reas_decoded = self.reas_autoencoder.forward(z_reshaped)
+        reas_encoded, reas_decoded = self.reas_autoencoder.forward(
+            reas_raw.view(batch_size,self.num_candidates,-1))
 
         cls_tokens = self.cls_token.unsqueeze(0)
 
         reas_encoded = torch.cat((cls_tokens, reas_encoded), dim=0).unsqueeze(0) # create batch dimension
+        reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
         for blk in self.blocks_meta:
             reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
@@ -368,10 +388,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         z_reshaped = self.dropout(z_reshaped)
         dist_reshaped = self.mlp2(self.relu(z_reshaped))  # dist_reshaped is (B*8, 1)
 
-        dist = dist_reshaped.view(batch_size, 8)
+        dist = dist_reshaped.view(batch_size, self.num_candidates)
 
         # logging.info("Producing image recreation.\n")
-        recreation = self.decoder.forward(embed_reshaped).view(batch_size, 8, 9, 1, 160, 160)
+        recreation = self.decoder.forward(embed_reshaped).view(batch_size, self.num_candidates,
+                                                               self.grid_size**2, 1, 160, 160)
 
         # logging.info("Forward pass complete.\n")
 
@@ -406,6 +427,80 @@ class AutoencoderBottleneck(nn.Module):
         encoded = self.encoder(x)
         decoded = self.decoder(encoded)
         return encoded, decoded
+
+
+class AutoencoderBottleneckAlt(nn.Module):
+    def __init__(self,
+                 input_dim=1024,
+                 bottleneck_dim=128,
+                 depth=2,
+                 num_heads=4,
+                 mlp_ratio=4,
+                 norm_layer=nn.LayerNorm,
+                 proj_drop=0.3,
+                 attn_drop=0.3,
+                 drop_path_max=0.5,
+                 seq_length=8
+                 ):
+        super(AutoencoderBottleneckAlt, self).__init__()
+        self.input_dim = input_dim
+        self.seq_length = seq_length
+
+        self.encoder = nn.Sequential(
+            TransformerEncoder(depth, input_dim, num_heads, mlp_ratio, norm_layer, proj_drop, attn_drop, drop_path_max),
+            nn.Flatten(),
+            nn.Linear(input_dim * seq_length, input_dim),
+            norm_layer(input_dim),
+            nn.ReLU(),
+            nn.Linear(input_dim, bottleneck_dim),
+            norm_layer(bottleneck_dim)
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(bottleneck_dim, input_dim),
+            norm_layer(input_dim),
+            nn.ReLU(),
+            nn.Linear(input_dim, input_dim * seq_length),
+            norm_layer(input_dim * seq_length),
+            nn.Unflatten(1, (seq_length, input_dim)),
+            TransformerDecoder(depth, input_dim, num_heads, mlp_ratio, norm_layer, proj_drop, attn_drop, drop_path_max)
+        )
+
+    def forward(self, x):
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        return encoded, decoded
+
+
+class TransformerEncoder(nn.Module):
+    def __init__(self, depth, dim, num_heads, mlp_ratio, norm_layer, proj_drop, attn_drop, drop_path_max):
+        super().__init__()
+        self.layers = nn.ModuleList([Block(dim, dim, num_heads, mlp_ratio,
+                                           q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
+                                           proj_drop=proj_drop,
+                                           attn_drop=attn_drop, drop_path=drop_path_max * ((i + 1) / depth),
+                                           restrict_qk=False) for i in range(depth)])
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+
+class TransformerDecoder(nn.Module):
+    def __init__(self, depth, dim, num_heads, mlp_ratio, norm_layer, proj_drop, attn_drop, drop_path_max):
+        super().__init__()
+        self.layers = nn.ModuleList([Block(dim, dim, num_heads, mlp_ratio,
+                                           q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
+                                           proj_drop=proj_drop,
+                                           attn_drop=attn_drop, drop_path=drop_path_max * ((i + 1) / depth),
+                                           restrict_qk=False) for i in range(depth)])
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
 
 class DynamicWeightingRNN(nn.Module):
     def __init__(self,
