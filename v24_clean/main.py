@@ -73,7 +73,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             ternary_drop=0.3,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False,
-                                            feedback_dim=128).to(device)
+                                            feedback_dim=1024).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
