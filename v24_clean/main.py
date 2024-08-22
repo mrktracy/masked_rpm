@@ -7,13 +7,13 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr13_full"
+version = "v24-itr14_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -73,7 +73,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             ternary_drop=0.3,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False,
-                                            feedback_dim=1024).to(device)
+                                            feedback_dim=1024,
+                                            meta_1_attn_drop=0.3,
+                                            meta_1_proj_drop=0.3,
+                                            meta_1_drop_path_max=0.5).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
