@@ -7,13 +7,13 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+# from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr12_full"
+version = "v24-itr13_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
