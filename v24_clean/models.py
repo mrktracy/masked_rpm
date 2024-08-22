@@ -475,30 +475,30 @@ class AutoencoderBottleneckAlt(nn.Module):
 class TransformerEncoder(nn.Module):
     def __init__(self, depth, dim, num_heads, mlp_ratio, norm_layer, proj_drop, attn_drop, drop_path_max):
         super().__init__()
-        self.layers = nn.ModuleList([Block(dim, dim, num_heads, mlp_ratio,
+        self.blocks = nn.ModuleList([Block(dim, dim, num_heads, mlp_ratio,
                                            q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
                                            proj_drop=proj_drop,
                                            attn_drop=attn_drop, drop_path=drop_path_max * ((i + 1) / depth),
                                            restrict_qk=False) for i in range(depth)])
 
     def forward(self, x):
-        for layer in self.layers:
-            x = layer(x)
+        for blk in self.blocks:
+            x = blk(x, x, x)
         return x
 
 
 class TransformerDecoder(nn.Module):
     def __init__(self, depth, dim, num_heads, mlp_ratio, norm_layer, proj_drop, attn_drop, drop_path_max):
         super().__init__()
-        self.layers = nn.ModuleList([Block(dim, dim, num_heads, mlp_ratio,
+        self.blocks = nn.ModuleList([Block(dim, dim, num_heads, mlp_ratio,
                                            q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
                                            proj_drop=proj_drop,
                                            attn_drop=attn_drop, drop_path=drop_path_max * ((i + 1) / depth),
                                            restrict_qk=False) for i in range(depth)])
 
     def forward(self, x):
-        for layer in self.layers:
-            x = layer(x)
+        for blk in self.blocks:
+            x = blk(x, x, x)
         return x
 
 
