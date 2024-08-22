@@ -173,8 +173,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                   restrict_qk=False)
             for i in range(meta_2_depth)])
 
-        self.cls_token = nn.Parameter(torch.ones(self.feedback_dim))
-
+        # self.cls_token = nn.Parameter(torch.ones(self.feedback_dim))
+        self.cls_token = torch.ones(self.feedback_dim)
 
     def reset_feedback(self):
         self.feedback = None
