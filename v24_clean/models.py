@@ -282,7 +282,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         if self.feedback is not None:
             self.feedback_old = self.feedback
             self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
-            embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+            embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
 
         # reshape for concatenating positional embeddings
         x_1 = embed_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)  # x is (B, 8, 9, self.embed_dim*2)

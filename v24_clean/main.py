@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr19_full"
+version = "v24-itr20_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -229,26 +229,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Updating error history...\n")
 
-            # if MLP_DW:
-            #     if AUTO_REG:
-            #         err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1),
-            #                                  weights], dim=-1).detach()
-            #
-            #     else:
-            #         err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1)],
-            #                                 dim=-1).detach()
-            #
-            # else:
-            #     if AUTO_REG:
-            #         # Concatenate the current task error and reconstruction error to the history
-            #         err_history = torch.cat([err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
-            #                                  weights.unsqueeze(0)], dim=-1)], dim=0).detach()
-            #
-            #     else:
-            #         # Concatenate the current task error and reconstruction error to the history
-            #         err_history = torch.cat([err_history, \
-            #                                  torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
-
             task_share = task_err / (task_err + rec_err + meta_err)
             rec_share = rec_err / (task_err + rec_err + meta_err)
             meta_share = 1 - task_share - rec_share
@@ -281,7 +261,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Retrieving loss weights...\n")
 
-            weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
+            # weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
 
             # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
@@ -290,7 +270,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             # loss = (weights[0]*task_err + weights[1]*rec_err + weights[2]*meta_err +
             #         L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
 
-            loss = (task_err + rec_err + meta_err + fb_err + L1 * torch.norm(embeddings, p=1))
+            # loss = (task_err + rec_err + meta_err + fb_err + L1 * torch.norm(embeddings, p=1))
+            loss = (task_err + rec_err + meta_err + L1 * torch.norm(embeddings, p=1))
 
             tot_loss += loss.item() # update running averages
             count += 1
