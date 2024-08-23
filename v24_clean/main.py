@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr18_full"
+version = "v24-itr19_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -75,9 +75,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             restrict_qk=False,
                                             feedback_dim=1024,
                                             meta_1_depth=1,
-                                            meta_1_num_heads=8,
+                                            meta_1_num_heads=2,
                                             meta_2_depth=1,
-                                            meta_2_num_heads=32
+                                            meta_2_num_heads=2
                                             ).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
@@ -161,6 +161,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
     criterion_3 = nn.MSELoss()
+    criterion_4 = nn.MSELoss()
 
     if MLP_DW:
         err_history = torch.zeros(max_history_length).to(device)
@@ -215,11 +216,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Running forward pass of model...\n")
 
-            dist, recreation, embeddings, reas_raw, reas_decoded = transformer_model(sentences)
+            dist, recreation, embeddings, reas_raw, reas_decoded, fb_old, fb = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
             meta_err = criterion_3(reas_raw, reas_decoded)
+
+            if fb_old is not None and fb is not None:
+                fb_err = criterion_4(fb_old, fb)
+            else:
+                fb_err = 0
 
             # logging.info("Updating error history...\n")
 
@@ -284,7 +290,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             # loss = (weights[0]*task_err + weights[1]*rec_err + weights[2]*meta_err +
             #         L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
 
-            loss = (task_err + rec_err + meta_err + L1 * torch.norm(embeddings, p=1))
+            loss = (task_err + rec_err + meta_err + fb_err + L1 * torch.norm(embeddings, p=1))
 
             tot_loss += loss.item() # update running averages
             count += 1
