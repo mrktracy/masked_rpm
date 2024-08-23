@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr17_full"
+version = "v24-itr18_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -75,9 +75,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             restrict_qk=False,
                                             feedback_dim=1024,
                                             meta_1_depth=1,
-                                            meta_1_num_heads=2,
+                                            meta_1_num_heads=8,
                                             meta_2_depth=1,
-                                            meta_2_num_heads=2
+                                            meta_2_num_heads=32
                                             ).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
