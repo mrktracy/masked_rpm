@@ -65,11 +65,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         if self.use_backbone_enc:
             if restrict_qk:
                 self.perception = BackbonePerceptionAlt(embed_dim=self.embed_dim, depth=self.bb_depth,
-                                                     num_heads=bb_num_heads,
-                                                     mlp_drop=per_mlp_drop)
+                                                        num_heads=bb_num_heads,
+                                                        mlp_drop=per_mlp_drop)
             else:
                 self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth,
-                                                        num_heads=bb_num_heads, mlp_drop=per_mlp_drop)
+                                                     num_heads=bb_num_heads, mlp_drop=per_mlp_drop)
         else:
             self.perception = ResNetEncoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
 
@@ -86,8 +86,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         self.blocks_abs_1 = nn.ModuleList(
             [Block(self.model_dim, self.model_dim * self.symbol_factor, abs_1_num_heads,
-                  mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
-                  attn_drop=attn_drop, drop_path=drop_path_max / abs_1_depth)] +
+                   mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
+                   attn_drop=attn_drop, drop_path=drop_path_max / abs_1_depth)] +
             [Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_1_num_heads,
                    mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
                    attn_drop=attn_drop, drop_path=drop_path_max*((i+1)/abs_1_depth))
@@ -95,8 +95,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         self.blocks_abs_2 = nn.ModuleList(
             [Block(self.model_dim, self.model_dim * self.symbol_factor, abs_2_num_heads,
-                  mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
-                  attn_drop=attn_drop, drop_path=drop_path_max / abs_2_depth)] +
+                   mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
+                   attn_drop=attn_drop, drop_path=drop_path_max / abs_2_depth)] +
             [Block(self.model_dim * self.symbol_factor, self.model_dim * self.symbol_factor, abs_2_num_heads,
                    mlp_ratio, q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=proj_drop,
                    attn_drop=attn_drop, drop_path=drop_path_max * ((i + 1) / abs_2_depth))
@@ -135,7 +135,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
         else:
             self.decoder = BackboneDecoder(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads,
-                                       mlp_drop=per_mlp_drop)
+                                           mlp_drop=per_mlp_drop)
 
         # define symbols
         normal_initializer = torch.nn.init.normal_
@@ -153,7 +153,9 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.combiner = nn.Sequential(
             nn.Linear(embed_dim + feedback_dim, embed_dim),
             nn.ReLU(),
-            nn.Linear(embed_dim, embed_dim))
+            nn.Linear(embed_dim, embed_dim),
+            L2Norm(dim=-1)  # Apply L2 normalization along the last dimension
+        )
 
         self.reas_autoencoder = AutoencoderBottleneckAlt(input_dim=self.model_dim*3,
                                                          bottleneck_dim=self.feedback_dim,
@@ -173,8 +175,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                   restrict_qk=False)
             for i in range(meta_2_depth)])
 
-        self.cls_token = nn.Parameter(torch.ones(self.feedback_dim))
+        self.cls_token = nn.Parameter(torch.ones(self.feedback_dim)/self.feedback_dim)
         # self.register_buffer('cls_token', torch.ones(self.feedback_dim))
+
+        self.perception_norm = L2Norm(dim=-1)
+        self.feedback_norm = L2Norm(dim=-1)
 
     def reset_feedback(self):
         self.feedback = None
@@ -263,6 +268,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # logging.info("Begin perception...\n")
 
         embed_reshaped = self.perception.forward(sen_reshaped)  # x_reshaped is (B*9*8, embed_dim)
+        embed_reshaped = self.perception_norm.forward(embed_reshaped)
 
         if self.feedback is not None:
             self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
@@ -327,7 +333,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             if idx == 0:
                 x_1 = blk(x_q=x_1, x_k=x_1, x_v=symbols_1)
             else:
-               x_1 = blk(x_q=x_1, x_k=x_1, x_v=x_1)
+                x_1 = blk(x_q=x_1, x_k=x_1, x_v=x_1)
 
         x_1 = self.norm_x_1(x_1)
 
@@ -382,7 +388,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         for blk in self.blocks_meta:
             reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
 
-        self.feedback = reas_encoded[0, :].squeeze()
+        self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
 
         z_reshaped = self.mlp1(z_reshaped)
         z_reshaped = self.dropout(z_reshaped)
@@ -408,6 +414,14 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         return images
 
+class L2Norm(nn.Module):
+    def __init__(self, dim=None, eps=1e-12):
+        super(L2Norm, self).__init__()
+        self.dim = dim
+        self.eps = eps
+
+    def forward(self, x):
+        return x / torch.norm(x, p=2, dim=self.dim, keepdim=True).clamp(min=self.eps)
 
 class AutoencoderBottleneck(nn.Module):
     def __init__(self, input_dim=512, bottleneck_dim=32):
