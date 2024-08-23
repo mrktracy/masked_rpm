@@ -150,12 +150,19 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             nn.Dropout(p=ternary_drop)
         )
 
+        # if combining prior to positional encodings, use this
         self.combiner = nn.Sequential(
-            nn.Linear(self.model_dim + feedback_dim, self.model_dim),
+            nn.Linear(self.embed_dim + feedback_dim, self.embed_dim),
             nn.ReLU(),
-            nn.Linear(self.model_dim, self.model_dim)#,
-            # L2Norm(dim=-1)  # Apply L2 normalization along the last dimension
+            nn.Linear(self.embed_dim, self.embed_dim)
         )
+
+        # if combining after positional encodings, use this
+        # self.combiner = nn.Sequential(
+        #     nn.Linear(self.model_dim + feedback_dim, self.model_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(self.model_dim, self.model_dim)
+        # )
 
         self.reas_autoencoder = AutoencoderBottleneckAlt(input_dim=self.model_dim*3,
                                                          bottleneck_dim=self.feedback_dim,
@@ -270,6 +277,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         embed_reshaped = self.perception.forward(sen_reshaped)  # x_reshaped is (B*9*8, embed_dim)
         # embed_reshaped = self.perception_norm.forward(embed_reshaped)
 
+        # if combining prior to positional encodings, use this
+        if self.feedback is not None:
+            self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
+            embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+
         # reshape for concatenating positional embeddings
         x_1 = embed_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)  # x is (B, 8, 9, self.embed_dim*2)
         embeddings = x_1.clone()
@@ -281,11 +293,12 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # concatenate positional embeddings
         x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
 
-        if self.feedback is not None:
-            x_1_reshaped = x_1.view(batch_size * self.num_candidates * self.grid_size ** 2, -1)
-            self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
-            x_1_reshaped = self.combiner(torch.cat([x_1_reshaped, self.feedback], dim=-1))
-            x_1 = x_1_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)
+        # if combining after positional encodings, use this
+        # if self.feedback is not None:
+        #     x_1_reshaped = x_1.view(batch_size * self.num_candidates * self.grid_size ** 2, -1)
+        #     self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
+        #     x_1_reshaped = self.combiner(torch.cat([x_1_reshaped, self.feedback], dim=-1))
+        #     x_1 = x_1_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)
 
         # logging.info("Positional encodings added.\n")
 
