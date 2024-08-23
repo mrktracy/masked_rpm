@@ -151,10 +151,10 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         )
 
         self.combiner = nn.Sequential(
-            nn.Linear(embed_dim + feedback_dim, embed_dim),
+            nn.Linear(self.model_dim + feedback_dim, self.model_dim),
             nn.ReLU(),
-            nn.Linear(embed_dim, embed_dim),
-            L2Norm(dim=-1)  # Apply L2 normalization along the last dimension
+            nn.Linear(self.model_dim, self.model_dim)#,
+            # L2Norm(dim=-1)  # Apply L2 normalization along the last dimension
         )
 
         self.reas_autoencoder = AutoencoderBottleneckAlt(input_dim=self.model_dim*3,
@@ -178,8 +178,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.cls_token = nn.Parameter(torch.ones(self.feedback_dim)/self.feedback_dim)
         # self.register_buffer('cls_token', torch.ones(self.feedback_dim))
 
-        self.perception_norm = L2Norm(dim=-1)
-        self.feedback_norm = L2Norm(dim=-1)
+        # self.perception_norm = L2Norm(dim=-1)
+        # self.feedback_norm = L2Norm(dim=-1)
 
     def reset_feedback(self):
         self.feedback = None
@@ -268,27 +268,28 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # logging.info("Begin perception...\n")
 
         embed_reshaped = self.perception.forward(sen_reshaped)  # x_reshaped is (B*9*8, embed_dim)
-        embed_reshaped = self.perception_norm.forward(embed_reshaped)
-
-        if self.feedback is not None:
-            self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
-            embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
-
-        # logging.info("Perception complete.\n")
+        # embed_reshaped = self.perception_norm.forward(embed_reshaped)
 
         # reshape for concatenating positional embeddings
         x_1 = embed_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)  # x is (B, 8, 9, self.embed_dim*2)
         embeddings = x_1.clone()
 
         # expand positional embeddings to fit batch (B, 8, 9, embed_dim)
-        pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_size, self.num_candidates, -1, -1)
+        pos_embed_final = self.pos_embed.unsqueeze(0).expand(batch_size, self.num_candidates,
+                                                             self.grid_size**2, -1)
 
         # concatenate positional embeddings
         x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
 
+        if self.feedback is not None:
+            x_1_reshaped = x_1.view(batch_size * self.num_candidates * self.grid_size ** 2, -1)
+            self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
+            x_1_reshaped = self.combiner(torch.cat([x_1_reshaped, self.feedback], dim=-1))
+            x_1 = x_1_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)
+
         # logging.info("Positional encodings added.\n")
 
-        x_1_reshaped = x_1.view(batch_size * self.num_candidates, self.grid_size**2, self.model_dim)
+        x_1_reshaped = x_1.view(batch_size * self.num_candidates, self.grid_size**2, -1)
 
         # logging.info("Beginning ternary operation...\n")
 
@@ -388,7 +389,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         for blk in self.blocks_meta:
             reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
 
-        self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
+        # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
+        self.feedback = reas_encoded[0, :].squeeze()
 
         z_reshaped = self.mlp1(z_reshaped)
         z_reshaped = self.dropout(z_reshaped)
