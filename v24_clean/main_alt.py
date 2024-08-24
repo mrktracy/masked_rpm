@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr9_full"
+version = "v24-itr23_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -73,12 +73,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             ternary_drop=0.3,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False,
-                                            feedback_dim=128,
-                                            meta_depth=2,
-                                            meta_num_heads=4,
-                                            meta_attn_drop=0.3,
-                                            meta_proj_drop=0.3,
-                                            meta_drop_path_max=0.3
+                                            feedback_dim=1024,
+                                            meta_1_depth=1,
+                                            meta_1_num_heads=2,
+                                            meta_2_depth=1,
+                                            meta_2_num_heads=2,
+                                            score_rep=32
                                             ).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
@@ -87,9 +87,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                            output_dim=3).to(device)
     else:
         if AUTO_REG:
-            dynamic_weights = DynamicWeightingRNN(input_dim=6, output_dim=3).to(device)
+            dynamic_weights = DynamicWeightingRNN(input_dim=6).to(device)
         else:
-            dynamic_weights = DynamicWeightingRNN(input_dim=3, output_dim=3).to(device)
+            dynamic_weights = DynamicWeightingRNN(input_dim=3).to(device)
 
     # initialize weights
     # transformer_model.apply(initialize_weights_he)
@@ -115,18 +115,18 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     val_dataset = rpm_dataset(val_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 50
+    EPOCHS = 20
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 10
+    EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 3
-    BETA_GROWTH_RATE = 0.01
+    BETA_GROWTH_RATE = 0.05
     L1 = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
@@ -162,6 +162,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
     criterion_3 = nn.MSELoss()
+    criterion_4 = nn.MSELoss()
 
     if MLP_DW:
         err_history = torch.zeros(max_history_length).to(device)
@@ -216,33 +217,18 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Running forward pass of model...\n")
 
-            dist, recreation, embeddings, reas_raw, reas_decoded = transformer_model(sentences)
+            dist, recreation, embeddings, reas_raw, reas_decoded, fb_old, fb = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
             meta_err = criterion_3(reas_raw, reas_decoded)
 
-            # logging.info("Updating error history...\n")
+            if fb_old is not None and fb is not None:
+                fb_err = criterion_4(fb_old, fb)
+            else:
+                fb_err = 0
 
-            # if MLP_DW:
-            #     if AUTO_REG:
-            #         err_history = torch.cat([err_history[4:], torch.stack([task_err, rec_err], dim=-1),
-            #                                  weights], dim=-1).detach()
-            #
-            #     else:
-            #         err_history = torch.cat([err_history[2:], torch.stack([task_err, rec_err], dim=-1)],
-            #                                 dim=-1).detach()
-            #
-            # else:
-            #     if AUTO_REG:
-            #         # Concatenate the current task error and reconstruction error to the history
-            #         err_history = torch.cat([err_history, torch.cat([torch.stack([task_err, rec_err], dim=-1).unsqueeze(0), \
-            #                                  weights.unsqueeze(0)], dim=-1)], dim=0).detach()
-            #
-            #     else:
-            #         # Concatenate the current task error and reconstruction error to the history
-            #         err_history = torch.cat([err_history, \
-            #                                  torch.stack([task_err, rec_err], dim=-1).unsqueeze(0)], dim=0).detach()
+            # logging.info("Updating error history...\n")
 
             task_share = task_err / (task_err + rec_err + meta_err)
             rec_share = rec_err / (task_err + rec_err + meta_err)
@@ -276,14 +262,17 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Retrieving loss weights...\n")
 
-            weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
+            # weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
 
             # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
 
             # logging.info("Calculating loss...\n")
 
-            loss = (weights[0]*task_err + weights[1]*rec_err + weights[2]*meta_err +
-                    L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
+            # loss = (weights[0]*task_err + weights[1]*rec_err + weights[2]*meta_err +
+            #         L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
+
+            # loss = (task_err + rec_err + meta_err + fb_err + L1 * torch.norm(embeddings, p=1))
+            loss = (task_err + rec_err + meta_err + L1 * torch.norm(embeddings, p=1))
 
             tot_loss += loss.item() # update running averages
             count += 1
@@ -313,7 +302,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
                 tot_loss = 0
                 count = 0
-                BETA = BETA * (1+BETA_GROWTH_RATE)
+                BETA = BETA*(1+BETA_GROWTH_RATE)
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
