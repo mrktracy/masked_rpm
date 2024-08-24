@@ -414,7 +414,6 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # call meta-reasoning module part 1
         reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw_w_score)
-        reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1) # for output
 
         # add classification token for further processing across batch dimension
         cls_tokens = self.cls_token.unsqueeze(0)
