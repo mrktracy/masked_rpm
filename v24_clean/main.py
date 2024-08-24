@@ -78,7 +78,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             meta_1_num_heads=2,
                                             meta_2_depth=1,
                                             meta_2_num_heads=2,
-                                            score_rep=1
+                                            score_rep=2
                                             ).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
