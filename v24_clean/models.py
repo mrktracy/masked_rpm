@@ -44,7 +44,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  meta_2_attn_drop=0,
                  meta_2_proj_drop=0,
                  meta_2_drop_path_max=0,
-                 num_candidates=8
+                 num_candidates=8,
+                 score_rep=8
                  ):
 
         super(TransformerModelv24, self).__init__()
@@ -62,6 +63,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.feedback = None
         self.feedback_old = None
         self.num_candidates = num_candidates
+        self.score_rep = score_rep
 
         if self.use_backbone_enc:
             if restrict_qk:
@@ -165,7 +167,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         #     nn.Linear(self.model_dim, self.model_dim)
         # )
 
-        self.reas_autoencoder = AutoencoderBottleneckAlt(input_dim=self.model_dim*3,
+        self.reas_autoencoder = AutoencoderBottleneckAlt(input_dim=self.model_dim*3 + self.score_rep,
                                                          bottleneck_dim=self.feedback_dim,
                                                          depth=meta_1_depth,
                                                          num_heads=meta_1_num_heads,
@@ -282,7 +284,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         if self.feedback is not None:
             self.feedback_old = self.feedback
             self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
-            embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+            # for skip connection use this
+            # embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+            # for no skip connection use this
+            embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+
 
         # reshape for concatenating positional embeddings
         x_1 = embed_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)  # x is (B, 8, 9, self.embed_dim*2)
@@ -392,15 +398,27 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         z_reshaped = torch.cat([z.mean(dim=-2), x_2.mean(dim=-2)], dim=-1).view(
             batch_size * self.num_candidates, -1)
-        reas_raw = z_reshaped.clone()
+        reas_raw = z_reshaped.clone() # (batch_size * num_candidates, -1)
 
-        reas_encoded, reas_decoded = self.reas_autoencoder.forward(
-            reas_raw.view(batch_size,self.num_candidates,-1))
+        z_reshaped = self.mlp1(z_reshaped)
+        z_reshaped = self.dropout(z_reshaped)
+        dist_reshaped = self.mlp2(self.relu(z_reshaped))  # dist_reshaped is (B*8, 1)
+        dist = dist_reshaped.view(batch_size, self.num_candidates) # for output
 
+        # for concatenation with reasoning bottleneck vector
+        dist_repeated = dist_reshaped.repeat(1, self.score_rep)
+
+        # create vector for meta-reasoning module to reason over
+        reas_raw_w_score = torch.cat([reas_raw.view(batch_size, self.num_candidates, -1),
+                                      dist_repeated.view(batch_size, self.num_candidates, -1)], dim=2)
+
+        # call meta-reasoning module part 1
+        reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw_w_score)
+        reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1) # for output
+
+        # add classification token for further processing across batch dimension
         cls_tokens = self.cls_token.unsqueeze(0)
-
-        reas_encoded = torch.cat((cls_tokens, reas_encoded), dim=0).unsqueeze(0) # create batch dimension
-        reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
+        reas_encoded = torch.cat((cls_tokens, reas_encoded), dim=0).unsqueeze(0)
 
         for blk in self.blocks_meta:
             reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
@@ -408,19 +426,13 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
         self.feedback = reas_encoded[0, :].squeeze()
 
-        z_reshaped = self.mlp1(z_reshaped)
-        z_reshaped = self.dropout(z_reshaped)
-        dist_reshaped = self.mlp2(self.relu(z_reshaped))  # dist_reshaped is (B*8, 1)
-
-        dist = dist_reshaped.view(batch_size, self.num_candidates)
-
         # logging.info("Producing image recreation.\n")
         recreation = self.decoder.forward(embed_reshaped).view(batch_size, self.num_candidates,
                                                                self.grid_size**2, 1, 160, 160)
 
         # logging.info("Forward pass complete.\n")
 
-        return dist, recreation, embeddings, reas_raw, reas_decoded, self.feedback_old, self.feedback
+        return dist, recreation, embeddings, reas_raw_w_score, reas_decoded, self.feedback_old, self.feedback
 
     def encode(self, images):
         embeddings = self.perception.forward(images)  # takes input (B, 1, 160, 160), gives output (B, embed_dim)
