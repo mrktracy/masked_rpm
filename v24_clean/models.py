@@ -124,13 +124,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm_y = norm_layer(self.model_dim)
 
-        self.mlp1 = nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim)
-
-        self.relu = nn.ReLU()
-
-        self.mlp2 = nn.Linear(self.embed_dim, 1)
-
-        self.dropout = nn.Dropout(p=mlp_drop)
+        self.guesser_head = nn.ModuleList([
+            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
+            nn.Dropout(p=mlp_drop),
+            nn.ReLU(),
+            nn.Linear(self.embed_dim, 1)])
 
         if self.decoder_num == 1:
             self.decoder = MLPDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
@@ -400,9 +398,16 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             batch_size * self.num_candidates, -1)
         reas_raw = z_reshaped.clone() # (batch_size * num_candidates, -1)
 
-        z_reshaped = self.mlp1(z_reshaped)
-        z_reshaped = self.dropout(z_reshaped)
-        dist_reshaped = self.mlp2(self.relu(z_reshaped))  # dist_reshaped is (B*8, 1)
+        reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw.view(batch_size, self.num_candidates, -1))
+        reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
+
+        reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(batch_size, self.num_candidates, -1)
+
+        reas_meta_reas = torch.cat([z_reshaped,
+                                    reas_encoded_expanded.view(batch_size*self.num_candidates, -1)])
+
+        dist_reshaped = self.guesser_head(reas_meta_reas)
+
         dist = dist_reshaped.view(batch_size, self.num_candidates) # for output
 
         ### To use matrix score in meta-reasoning, invert these comments and change return statement
@@ -416,9 +421,6 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # call meta-reasoning module part 1
         # reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw_w_score)
-
-        reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw.view(batch_size, self.num_candidates, -1))
-        reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
         ###
 

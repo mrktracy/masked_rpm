@@ -7,13 +7,13 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr27_full"
+version = "v24-itr28_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -78,13 +78,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             meta_1_num_heads=2,
                                             meta_2_depth=1,
                                             meta_2_num_heads=2,
-                                            score_rep=0,
-                                            meta_1_proj_drop=0.1,
-                                            meta_1_attn_drop=0.1,
-                                            meta_1_drop_path_max=0.3,
-                                            meta_2_proj_drop=0.1,
-                                            meta_2_attn_drop=0.1,
-                                            meta_2_drop_path_max=0.3
+                                            score_rep=0
                                             ).to(device)
     if MLP_DW:
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
@@ -126,7 +120,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 30
+    LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
