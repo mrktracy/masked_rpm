@@ -269,6 +269,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         return result
 
     def forward(self, sentences):
+
         batch_size = sentences.size(0)  # Get the batch size from the first dimension of x
 
         sen_reshaped = sentences.view(-1, 1, 160, 160)  # x is (B, 8, 9, 1, 160, 160)
@@ -404,7 +405,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(batch_size, self.num_candidates, -1)
 
         reas_meta_reas = torch.cat([z_reshaped,
-                                    reas_encoded_expanded.view(batch_size*self.num_candidates, -1)])
+                                    reas_encoded_expanded.view(batch_size*self.num_candidates, -1)], dim=-1)
 
         dist_reshaped = self.guesser_head(reas_meta_reas)
 
