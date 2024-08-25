@@ -405,15 +405,22 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         dist_reshaped = self.mlp2(self.relu(z_reshaped))  # dist_reshaped is (B*8, 1)
         dist = dist_reshaped.view(batch_size, self.num_candidates) # for output
 
+        ### To use matrix score in meta-reasoning, invert these comments and change return statement
+
         # for concatenation with reasoning bottleneck vector
-        dist_repeated = dist_reshaped.repeat(1, self.score_rep)
+        # dist_repeated = dist_reshaped.repeat(1, self.score_rep)
 
         # create vector for meta-reasoning module to reason over
-        reas_raw_w_score = torch.cat([reas_raw.view(batch_size, self.num_candidates, -1),
-                                      dist_repeated.view(batch_size, self.num_candidates, -1)], dim=2)
+        # reas_raw_w_score = torch.cat([reas_raw.view(batch_size, self.num_candidates, -1),
+        #                               dist_repeated.view(batch_size, self.num_candidates, -1)], dim=-1)
 
         # call meta-reasoning module part 1
-        reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw_w_score)
+        # reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw_w_score)
+
+        reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw.view(batch_size, self.num_candidates, -1))
+        reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
+
+        ###
 
         # add classification token for further processing across batch dimension
         cls_tokens = self.cls_token.unsqueeze(0)
@@ -431,7 +438,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # logging.info("Forward pass complete.\n")
 
-        return dist, recreation, embeddings, reas_raw_w_score, reas_decoded, self.feedback_old, self.feedback
+        # return dist, recreation, embeddings, reas_raw_w_score, reas_decoded, self.feedback_old, self.feedback
+        return dist, recreation, embeddings, reas_raw, reas_decoded, self.feedback_old, self.feedback
 
     def encode(self, images):
         embeddings = self.perception.forward(images)  # takes input (B, 1, 160, 160), gives output (B, embed_dim)
