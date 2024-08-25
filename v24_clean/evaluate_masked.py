@@ -33,6 +33,9 @@ def evaluate_model_dist(model, dataloader, device, max_batches=None, reset_feedb
             if max_batches is not None and idx + 1 == max_batches:
                 break
 
+    if reset_feedback and hasattr(model, 'reset_feedback'):
+        model.reset_feedback()
+
     return 100*(num_correct / num_samples)
 
 def evaluate_model_by_type(model, dataloader, device, max_batches=None, reset_feedback=True):
