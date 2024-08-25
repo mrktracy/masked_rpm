@@ -68,4 +68,7 @@ def evaluate_model_by_type(model, dataloader, device, max_batches=None, reset_fe
             if max_batches is not None and idx + 1 == max_batches:
                 break
 
+    if reset_feedback and hasattr(model, 'reset_feedback'):
+        model.reset_feedback()
+
     return record
