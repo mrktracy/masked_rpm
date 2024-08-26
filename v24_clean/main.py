@@ -13,7 +13,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr29_full"
+version = "v24-itr30_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -127,7 +127,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 3
     BETA_GROWTH_RATE = 0.05
-    L1 = 0
+    L1_perception = 0.01
+    L1_reas = 0.01
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -217,7 +218,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Running forward pass of model...\n")
 
-            dist, recreation, embeddings, reas_raw, reas_decoded, fb_old, fb = transformer_model(sentences)
+            dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, fb_old, fb = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
@@ -272,7 +273,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             #         L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
 
             # loss = (task_err + rec_err + meta_err + fb_err + L1 * torch.norm(embeddings, p=1))
-            loss = (task_err + rec_err + meta_err + L1 * torch.norm(embeddings, p=1))
+            loss = (task_err + rec_err + meta_err + L1_perception * torch.norm(embeddings, p=1) +
+                    L1_reas * torch.norm(reas_meta_reas, p=1))
 
             tot_loss += loss.item() # update running averages
             count += 1

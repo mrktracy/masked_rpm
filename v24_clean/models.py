@@ -123,21 +123,21 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.norm_x_2 = norm_layer(self.model_dim * self.symbol_factor)
 
         self.norm_y = norm_layer(self.model_dim)
-        #
-        # self.guesser_head = nn.Sequential(
-        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
-        #     nn.Dropout(p=mlp_drop),
-        #     nn.ReLU(),
-        #     nn.Linear(self.embed_dim, 1))
 
         self.guesser_head = nn.Sequential(
-            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.model_dim),
-            nn.Dropout(p=mlp_drop),
-            nn.ReLU(),
-            nn.Linear(self.model_dim, self.embed_dim),
+            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
             nn.Dropout(p=mlp_drop),
             nn.ReLU(),
             nn.Linear(self.embed_dim, 1))
+
+        # self.guesser_head = nn.Sequential(
+        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.model_dim),
+        #     nn.Dropout(p=mlp_drop),
+        #     nn.ReLU(),
+        #     nn.Linear(self.model_dim, self.embed_dim),
+        #     nn.Dropout(p=mlp_drop),
+        #     nn.ReLU(),
+        #     nn.Linear(self.embed_dim, 1))
 
         if self.decoder_num == 1:
             self.decoder = MLPDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
@@ -457,7 +457,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # logging.info("Forward pass complete.\n")
 
         # return dist, recreation, embeddings, reas_raw_w_score, reas_decoded, self.feedback_old, self.feedback
-        return dist, recreation, embeddings, reas_raw, reas_decoded, self.feedback_old, self.feedback
+        return dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, self.feedback_old, self.feedback
 
     def encode(self, images):
         embeddings = self.perception.forward(images)  # takes input (B, 1, 160, 160), gives output (B, embed_dim)
