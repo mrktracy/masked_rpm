@@ -405,7 +405,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         logging.info(f"batch_size: {batch_size}")
         logging.info(f"reas_encoded size: {reas_encoded.size()}")
 
-        reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(batch_size, self.num_candidates, -1)
+        reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1)
 
         logging.info(f"reas_encoded_expanded size: {reas_encoded_expanded.size()}")
         logging.info(f"z_reshaped size: {z_reshaped.size()}")
