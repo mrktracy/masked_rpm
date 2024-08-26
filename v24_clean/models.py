@@ -124,11 +124,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         self.norm_y = norm_layer(self.model_dim)
 
-        self.guesser_head = nn.ModuleList([
+        self.guesser_head = nn.Sequential(
             nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
             nn.Dropout(p=mlp_drop),
             nn.ReLU(),
-            nn.Linear(self.embed_dim, 1)])
+            nn.Linear(self.embed_dim, 1))
 
         if self.decoder_num == 1:
             self.decoder = MLPDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
