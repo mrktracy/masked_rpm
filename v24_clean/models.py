@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 # from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
-# import logging
+import logging
 
 class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-attention, and decodes to image
     def __init__(self,
@@ -402,7 +402,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw.view(batch_size, self.num_candidates, -1))
         reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
+        logging.info(f"reas_encoded size: {reas_encoded.size()}")
+
         reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(batch_size, self.num_candidates, -1)
+
+        logging.info(f"reas_encoded_expanded size: {reas_encoded_expanded.size()}")
 
         reas_meta_reas = torch.cat([z_reshaped,
                                     reas_encoded_expanded.view(batch_size*self.num_candidates, -1)], dim=-1)
