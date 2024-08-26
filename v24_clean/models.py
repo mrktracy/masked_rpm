@@ -123,9 +123,18 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.norm_x_2 = norm_layer(self.model_dim * self.symbol_factor)
 
         self.norm_y = norm_layer(self.model_dim)
+        #
+        # self.guesser_head = nn.Sequential(
+        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
+        #     nn.Dropout(p=mlp_drop),
+        #     nn.ReLU(),
+        #     nn.Linear(self.embed_dim, 1))
 
         self.guesser_head = nn.Sequential(
-            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
+            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.model_dim),
+            nn.Dropout(p=mlp_drop),
+            nn.ReLU(),
+            nn.Linear(self.model_dim, self.embed_dim),
             nn.Dropout(p=mlp_drop),
             nn.ReLU(),
             nn.Linear(self.embed_dim, 1))
