@@ -127,8 +127,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 3
     BETA_GROWTH_RATE = 0.05
-    L1_perception = 0.01
-    L1_reas = 0.01
+    L1_perception = 1e-4
+    L1_reas = 1e-4
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
