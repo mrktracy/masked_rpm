@@ -131,17 +131,17 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         #     nn.ReLU(),
         #     nn.Linear(self.embed_dim, 1))
 
-        # # if not incorporating meta-reasoning vector into guesser head, use this
-        # self.guesser_head = nn.Sequential(
-        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim),
-        #     nn.Dropout(p=mlp_drop),
-        #     nn.ReLU(),
-        #     nn.Linear(self.embed_dim, 1))
-
-        # if not incorporating meta-reasoning vector into guesser head and using linear layer, use this
+        # if not incorporating meta-reasoning vector into guesser head, use this
         self.guesser_head = nn.Sequential(
-            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, 1)
-        )
+            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim),
+            nn.Dropout(p=mlp_drop),
+            nn.ReLU(),
+            nn.Linear(self.embed_dim, 1))
+
+        # # if not incorporating meta-reasoning vector into guesser head and using linear layer, use this
+        # self.guesser_head = nn.Sequential(
+        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, 1)
+        # )
 
         if self.decoder_num == 1:
             self.decoder = MLPDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
