@@ -323,8 +323,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             x_1_reshaped = self.combiner(torch.cat([x_1_reshaped, self.feedback], dim=-1))
             x_1 = x_1_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)
 
-        # add back positional embeddings
-        x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
+            # add back positional embeddings
+            x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
 
         # logging.info("Positional encodings added.\n")
 
