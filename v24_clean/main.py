@@ -218,16 +218,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Running forward pass of model...\n")
 
-            dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, fb_old, fb = transformer_model(sentences)
+            dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
             meta_err = criterion_3(reas_raw, reas_decoded)
-
-            if fb_old is not None and fb is not None:
-                fb_err = criterion_4(fb_old, fb)
-            else:
-                fb_err = 0
 
             # logging.info("Updating error history...\n")
 

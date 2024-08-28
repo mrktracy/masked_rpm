@@ -125,18 +125,18 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.norm_y = norm_layer(self.model_dim)
 
         # if incorporating meta-reasoning vector into guesser head, use this
-        # self.guesser_head = nn.Sequential(
-        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
-        #     nn.Dropout(p=mlp_drop),
-        #     nn.ReLU(),
-        #     nn.Linear(self.embed_dim, 1))
-
-        # if not incorporating meta-reasoning vector into guesser head, use this
         self.guesser_head = nn.Sequential(
-            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim),
+            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
             nn.Dropout(p=mlp_drop),
             nn.ReLU(),
             nn.Linear(self.embed_dim, 1))
+
+        # if not incorporating meta-reasoning vector into guesser head, use this
+        # self.guesser_head = nn.Sequential(
+        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim),
+        #     nn.Dropout(p=mlp_drop),
+        #     nn.ReLU(),
+        #     nn.Linear(self.embed_dim, 1))
 
         # # if not incorporating meta-reasoning vector into guesser head and using linear layer, use this
         # self.guesser_head = nn.Sequential(
@@ -300,14 +300,28 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         embed_cached = embed_reshaped.clone()
         # embed_reshaped = self.perception_norm.forward(embed_reshaped)
 
-        # if combining prior to positional encodings, use this
+        # attempt at new approach
+        # add classification token for further processing across batch dimension
         if self.feedback is not None:
-            self.feedback_old = self.feedback
+            cls_tokens = self.cls_token.unsqueeze(0)
+            reas_encoded = torch.cat((cls_tokens, self.feedback), dim=0).unsqueeze(0)
+
+            for blk in self.blocks_meta:
+                reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
+
+            # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
+            self.feedback = reas_encoded[0, 0, :].squeeze()
             self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
-            # # for skip connection use this
-            # embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
-            # for no skip connection use this
             embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+
+        # # if combining prior to positional encodings, use this
+        # if self.feedback is not None:
+        #     self.feedback_old = self.feedback
+        #     self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
+        #     # # for skip connection use this
+        #     # embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+        #     # for no skip connection use this
+        #     embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
 
 
         # reshape for concatenating positional embeddings
@@ -426,48 +440,22 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw.view(batch_size, self.num_candidates, -1))
         reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
-        # logging.info(f"batch_size: {batch_size}")
-        # logging.info(f"reas_encoded size: {reas_encoded.size()}")
+        self.feedback = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
 
         reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1).contiguous()
 
-        # logging.info(f"reas_encoded_expanded size: {reas_encoded_expanded.size()}")
-        # logging.info(f"z_reshaped size: {z_reshaped.size()}")
-
         # if incorporating meta-reasoning vector into guesser head, use this
-        # reas_meta_reas = torch.cat([z_reshaped,
-        #                             reas_encoded_expanded.view(batch_size*self.num_candidates, -1)], dim=-1)
+        reas_meta_reas = torch.cat([z_reshaped,
+                                    reas_encoded_expanded.view(batch_size*self.num_candidates, -1)], dim=-1)
 
-        # if not incorporating meta-reasoning vector into guesser head, use this
-        reas_meta_reas = z_reshaped
+        # # if not incorporating meta-reasoning vector into guesser head, use this
+        # reas_meta_reas = z_reshaped
 
         dist_reshaped = self.guesser_head(reas_meta_reas)
 
         dist = dist_reshaped.view(batch_size, self.num_candidates) # for output
 
-        ### To use matrix score in meta-reasoning, invert these comments and change return statement
 
-        # for concatenation with reasoning bottleneck vector
-        # dist_repeated = dist_reshaped.repeat(1, self.score_rep)
-
-        # create vector for meta-reasoning module to reason over
-        # reas_raw_w_score = torch.cat([reas_raw.view(batch_size, self.num_candidates, -1),
-        #                               dist_repeated.view(batch_size, self.num_candidates, -1)], dim=-1)
-
-        # call meta-reasoning module part 1
-        # reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw_w_score)
-
-        ###
-
-        # add classification token for further processing across batch dimension
-        cls_tokens = self.cls_token.unsqueeze(0)
-        reas_encoded = torch.cat((cls_tokens, reas_encoded), dim=0).unsqueeze(0)
-
-        for blk in self.blocks_meta:
-            reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
-
-        # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
-        self.feedback = reas_encoded[0, 0, :].squeeze().detach()
         # logging.info(f"self.feedback dimension: {self.feedback.size()}")
 
         # logging.info("Producing image recreation.\n")
@@ -476,8 +464,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # logging.info("Forward pass complete.\n")
 
-        # return dist, recreation, embeddings, reas_raw_w_score, reas_decoded, self.feedback_old, self.feedback
-        return dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, self.feedback_old, self.feedback
+        return dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas
 
     def encode(self, images):
         embeddings = self.perception.forward(images)  # takes input (B, 1, 160, 160), gives output (B, embed_dim)

@@ -21,7 +21,7 @@ def evaluate_model_dist(model, dataloader, device, max_batches=None, reset_feedb
             target_nums = target_nums.to(device)
 
             # forward pass
-            dists, _, _, _, _, _, _, _ = model(sentences)
+            dists, _, _, _, _, _ = model(sentences)
 
             dists_softmax = F.softmax(dists, dim = 1)
 
@@ -56,7 +56,7 @@ def evaluate_model_by_type(model, dataloader, device, max_batches=None, reset_fe
             target_nums = target_nums.to(device)
 
             # forward pass
-            dists, _, _, _, _, _, _, _ = model(sentences)
+            dists, _, _, _, _, _ = model(sentences)
 
             dists_softmax = F.softmax(dists, dim = 1)
 
