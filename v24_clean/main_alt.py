@@ -9,11 +9,11 @@ import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
-from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
+from models_alt import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr24_full"
+version = "v24-itr37_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -84,12 +84,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
                                            mlp_ratio=2,
                                            mlp_drop=0.1,
-                                           output_dim=3).to(device)
+                                           output_dim=2).to(device)
     else:
         if AUTO_REG:
-            dynamic_weights = DynamicWeightingRNN(input_dim=6).to(device)
+            dynamic_weights = DynamicWeightingRNN(input_dim=4).to(device)
         else:
-            dynamic_weights = DynamicWeightingRNN(input_dim=3).to(device)
+            dynamic_weights = DynamicWeightingRNN(input_dim=2).to(device)
 
     # initialize weights
     # transformer_model.apply(initialize_weights_he)
@@ -125,9 +125,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    BETA = 3
-    BETA_GROWTH_RATE = 0.05
-    L1 = 0
+    BETA = 2
+    BETA_GROWTH_RATE = 0
+    L1_perception = 0
+    L1_reas = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -167,10 +168,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     if MLP_DW:
         err_history = torch.zeros(max_history_length).to(device)
     else:
-        err_history = torch.zeros(HISTORY_SIZE, 6).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE, 3).to(
+        err_history = torch.zeros(HISTORY_SIZE, 4).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE, 2).to(
             device)
 
-    weights = torch.zeros(3).to(device)
+    weights = torch.zeros(2).to(device)
 
     ''' Load saved models '''
     # state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
@@ -217,42 +218,40 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Running forward pass of model...\n")
 
-            dist, recreation, embeddings, reas_raw, reas_decoded, fb_old, fb = transformer_model(sentences)
+            dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
             meta_err = criterion_3(reas_raw, reas_decoded)
 
-            if fb_old is not None and fb is not None:
-                fb_err = criterion_4(fb_old, fb)
-            else:
-                fb_err = 0
-
             # logging.info("Updating error history...\n")
 
-            task_share = task_err / (task_err + rec_err + meta_err)
-            rec_share = rec_err / (task_err + rec_err + meta_err)
-            meta_share = 1 - task_share - rec_share
+            # task_share = task_err / (task_err + rec_err + meta_err)
+            # rec_share = rec_err / (task_err + rec_err + meta_err)
+            # meta_share = 1 - task_share - rec_share
+
+            rec_share = rec_err / (rec_err + meta_err)
+            meta_share = 1 - rec_share
 
             if MLP_DW:
                 if AUTO_REG:
-                    err_history = torch.cat([err_history[6:], torch.stack([task_share, rec_share, meta_share], dim=-1),
+                    err_history = torch.cat([err_history[4:], torch.stack([rec_share, meta_share], dim=-1),
                                              weights], dim=-1).detach()
 
                 else:
-                    err_history = torch.cat([err_history[3:], torch.stack([task_share, rec_share, meta_share], dim=-1)],
+                    err_history = torch.cat([err_history[2:], torch.stack([rec_share, meta_share], dim=-1)],
                                             dim=-1).detach()
 
             else:
                 if AUTO_REG:
                     # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, torch.cat([torch.stack([task_share, rec_share, meta_share], dim=-1).unsqueeze(0), \
+                    err_history = torch.cat([err_history, torch.cat([torch.stack([rec_share, meta_share], dim=-1).unsqueeze(0), \
                                              weights.unsqueeze(0)], dim=-1)], dim=0).detach()
 
                 else:
                     # Concatenate the current task error and reconstruction error to the history
                     err_history = torch.cat([err_history, \
-                                             torch.stack([task_share, rec_share, meta_share], dim=-1).unsqueeze(0)], dim=0).detach()
+                                             torch.stack([rec_share, meta_share], dim=-1).unsqueeze(0)], dim=0).detach()
 
                 # Remove the oldest entry if the history length exceeds the desired length
                 if err_history.size(1) > HISTORY_SIZE:
@@ -268,11 +267,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Calculating loss...\n")
 
-            # loss = (weights[0]*task_err + weights[1]*rec_err + weights[2]*meta_err +
-            #         L1*torch.norm(embeddings, p=1) + BETA*torch.var(weights))
+            # loss = (task_err + weights[0]*rec_err + weights[1]*meta_err + L1_perception * torch.norm(embeddings, p=1) +
+            #         L1_reas * torch.norm(reas_meta_reas, p=1) + BETA*torch.var(weights))
 
             # loss = (task_err + rec_err + meta_err + fb_err + L1 * torch.norm(embeddings, p=1))
-            loss = (task_err + rec_err + meta_err + L1 * torch.norm(embeddings, p=1))
+
+            loss = (task_err + rec_err + meta_err + L1_perception * torch.norm(embeddings, p=1) +
+                    L1_reas * torch.norm(reas_meta_reas, p=1))
 
             tot_loss += loss.item() # update running averages
             count += 1
