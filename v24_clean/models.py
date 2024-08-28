@@ -297,11 +297,12 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # logging.info("Begin perception...\n")
 
         embed_reshaped = self.perception.forward(sen_reshaped)  # x_reshaped is (B*9*8, embed_dim)
+        embed_cached = embed_reshaped.clone()
         # embed_reshaped = self.perception_norm.forward(embed_reshaped)
 
         # if combining prior to positional encodings, use this
         if self.feedback is not None:
-            self.feedback_old = self.feedback.detach()
+            self.feedback_old = self.feedback
             self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
             # # for skip connection use this
             # embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
@@ -470,7 +471,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # logging.info(f"self.feedback dimension: {self.feedback.size()}")
 
         # logging.info("Producing image recreation.\n")
-        recreation = self.decoder.forward(embed_reshaped).view(batch_size, self.num_candidates,
+        recreation = self.decoder.forward(embed_cached).view(batch_size, self.num_candidates,
                                                                self.grid_size**2, 1, 160, 160)
 
         # logging.info("Forward pass complete.\n")
