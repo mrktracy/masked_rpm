@@ -301,8 +301,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # if combining prior to positional encodings, use this
         if self.feedback is not None:
-            self.feedback_old = self.feedback.clone()
-            self.feedback = self.feedback.clone().unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
+            self.feedback_old = self.feedback.detach()
+            self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
             # # for skip connection use this
             # embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
             # for no skip connection use this
@@ -466,7 +466,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
 
         # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
-        self.feedback = reas_encoded[0, 0, :].squeeze().clone().requires_grad_()
+        self.feedback = reas_encoded[0, 0, :].squeeze().detach()
         # logging.info(f"self.feedback dimension: {self.feedback.size()}")
 
         # logging.info("Producing image recreation.\n")
