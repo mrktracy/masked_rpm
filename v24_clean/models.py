@@ -131,12 +131,17 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         #     nn.ReLU(),
         #     nn.Linear(self.embed_dim, 1))
 
-        # if not incorporating meta-reasoning vector into guesser head, use this
+        # # if not incorporating meta-reasoning vector into guesser head, use this
+        # self.guesser_head = nn.Sequential(
+        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim),
+        #     nn.Dropout(p=mlp_drop),
+        #     nn.ReLU(),
+        #     nn.Linear(self.embed_dim, 1))
+
+        # if not incorporating meta-reasoning vector into guesser head and using linear layer, use this
         self.guesser_head = nn.Sequential(
-            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, self.embed_dim),
-            nn.Dropout(p=mlp_drop),
-            nn.ReLU(),
-            nn.Linear(self.embed_dim, 1))
+            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, 1)
+        )
 
         if self.decoder_num == 1:
             self.decoder = MLPDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
@@ -295,13 +300,13 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # embed_reshaped = self.perception_norm.forward(embed_reshaped)
 
         # if combining prior to positional encodings, use this
-        # if self.feedback is not None:
-        #     self.feedback_old = self.feedback
-        #     self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
-        #     # for skip connection use this
-        #     # embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
-        #     # for no skip connection use this
-        #     embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+        if self.feedback is not None:
+            self.feedback_old = self.feedback
+            self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
+            # for skip connection use this
+            # embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+            # for no skip connection use this
+            embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
 
 
         # reshape for concatenating positional embeddings
@@ -316,15 +321,15 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
 
         # if combining after positional encodings, use this
-        if self.feedback is not None:
-            self.feedback_old = self.feedback
-            x_1_reshaped = x_1.view(batch_size * self.num_candidates * self.grid_size ** 2, -1)
-            self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
-            x_1_reshaped = self.combiner(torch.cat([x_1_reshaped, self.feedback], dim=-1))
-            x_1 = x_1_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)
-
-            # add back positional embeddings
-            x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
+        # if self.feedback is not None:
+        #     self.feedback_old = self.feedback
+        #     x_1_reshaped = x_1.view(batch_size * self.num_candidates * self.grid_size ** 2, -1)
+        #     self.feedback = self.feedback.expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
+        #     x_1_reshaped = self.combiner(torch.cat([x_1_reshaped, self.feedback], dim=-1))
+        #     x_1 = x_1_reshaped.view(batch_size, self.num_candidates, self.grid_size**2, -1)
+        #
+        #     # add back positional embeddings
+        #     x_1 = torch.cat([x_1, pos_embed_final], dim=-1)
 
         # logging.info("Positional encodings added.\n")
 
