@@ -312,7 +312,12 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
             self.feedback = reas_encoded[0, 0, :].squeeze()
             self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
-            embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+
+            # # for no skip connection, use this
+            # embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+
+            # for skip connection, use this
+            embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
 
         # # if combining prior to positional encodings, use this
         # if self.feedback is not None:
