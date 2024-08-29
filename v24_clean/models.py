@@ -325,6 +325,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
             # for skip connection, use this
             embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+
         else:
             loss_weights = torch.ones(3, device=self.device)/3 # set loss terms equal each time feedback is reset
 
@@ -468,7 +469,6 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         dist_reshaped = self.guesser_head(reas_meta_reas)
 
         dist = dist_reshaped.view(batch_size, self.num_candidates) # for output
-
 
         # logging.info(f"self.feedback dimension: {self.feedback.size()}")
 

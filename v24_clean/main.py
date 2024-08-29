@@ -155,9 +155,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                  lr=LEARNING_RATE,
                                  weight_decay=1e-4)
 
-    optimizer_2 = torch.optim.Adam(list(dynamic_weights.parameters()),
-                                   lr=LEARNING_RATE,
-                                   weight_decay=1e-4)
+    # optimizer_2 = torch.optim.Adam(list(dynamic_weights.parameters()),
+    #                                lr=LEARNING_RATE,
+    #                                weight_decay=1e-4)
+
+    optimizer_2 = torch.optim.Adam(list(transformer_model.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
+                                                weight_decay=1e-4)
 
     scheduler_1 = ExponentialLR(optimizer_1, gamma=0.95)
     scheduler_2 = ExponentialLR(optimizer_2, gamma=0.95)
@@ -165,15 +168,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
     criterion_3 = nn.MSELoss()
-    criterion_4 = nn.MSELoss()
 
-    if MLP_DW:
-        err_history = torch.zeros(max_history_length).to(device)
-    else:
-        err_history = torch.zeros(HISTORY_SIZE, 4).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE, 2).to(
-            device)
-
-    weights = torch.zeros(2).to(device)
+    # if MLP_DW:
+    #     err_history = torch.zeros(max_history_length).to(device)
+    # else:
+    #     err_history = torch.zeros(HISTORY_SIZE, 4).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE, 2).to(
+    #         device)
+    #
+    # weights = torch.zeros(2).to(device)
 
     ''' Load saved models '''
     # state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
