@@ -82,16 +82,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             num_loss_terms=3,
                                             device=device
                                             ).to(device)
-    if MLP_DW:
-        dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
-                                           mlp_ratio=2,
-                                           mlp_drop=0.1,
-                                           output_dim=2).to(device)
-    else:
-        if AUTO_REG:
-            dynamic_weights = DynamicWeightingRNN(input_dim=4).to(device)
-        else:
-            dynamic_weights = DynamicWeightingRNN(input_dim=2).to(device)
+    # if MLP_DW:
+    #     dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
+    #                                        mlp_ratio=2,
+    #                                        mlp_drop=0.1,
+    #                                        output_dim=2).to(device)
+    # else:
+    #     if AUTO_REG:
+    #         dynamic_weights = DynamicWeightingRNN(input_dim=4).to(device)
+    #     else:
+    #         dynamic_weights = DynamicWeightingRNN(input_dim=2).to(device)
 
     # initialize weights
     # transformer_model.apply(initialize_weights_he)
@@ -99,7 +99,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
-        dynamic_weights = nn.DataParallel(dynamic_weights)
+        # dynamic_weights = nn.DataParallel(dynamic_weights)
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     # logging.info("Models declared and initialized.\n")
@@ -158,9 +158,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # optimizer_2 = torch.optim.Adam(list(dynamic_weights.parameters()),
     #                                lr=LEARNING_RATE,
     #                                weight_decay=1e-4)
-
-    optimizer_2 = torch.optim.Adam(list(transformer_model.module.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
+    if num_gpus > 1:
+        optimizer_2 = torch.optim.Adam(list(transformer_model.module.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
                                                 weight_decay=1e-4)
+    else:
+        optimizer_2 = torch.optim.Adam(list(transformer_model.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
+                                   weight_decay=1e-4)
 
     scheduler_1 = ExponentialLR(optimizer_1, gamma=0.95)
     scheduler_2 = ExponentialLR(optimizer_2, gamma=0.95)
