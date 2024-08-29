@@ -513,7 +513,7 @@ class LossWeightingMLP(nn.Module):
     def forward(self, feedback_vector):
         # Produce weights for each loss term
         raw_output = self.mlp(feedback_vector)
-        print("Raw Output Before Softmax:", raw_output)
+        logging.info(f"Raw Output Before Softmax: {raw_output}")
         weights = F.softmax(raw_output, dim=-1)
 
         return weights
