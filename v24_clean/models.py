@@ -67,6 +67,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.num_candidates = num_candidates
         self.score_rep = score_rep
         self.device=device
+        self.num_loss_terms = num_loss_terms
 
         if self.use_backbone_enc:
             if restrict_qk:
@@ -327,7 +328,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
 
         else:
-            loss_weights = torch.ones(3, device=self.device)/3 # set loss terms equal each time feedback is reset
+            # set loss terms equal each time feedback is reset
+            loss_weights = torch.ones(self.num_loss_terms, device=self.device)/self.num_loss_terms
 
         # # if combining prior to positional encodings, use this
         # if self.feedback is not None:
