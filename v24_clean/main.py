@@ -223,7 +223,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             sentences = sentences.to(device) # passed to model to get output and recreation of inputs
             target_nums = target_nums.to(device)  # used to select from among candidates
-            feedback = feedback.to(device)
+
+            if feedback is not None:
+                feedback = feedback.to(device)
 
             # logging.info("Running forward pass of model...\n")
 
