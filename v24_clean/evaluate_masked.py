@@ -20,7 +20,9 @@ def evaluate_model_dist(model, dataloader, device, max_batches=None, reset_feedb
             # move images to the device
             sentences = sentences.to(device) # shape (B,9,1,160,160)
             target_nums = target_nums.to(device)
-            feedback = feedback.to(device)
+
+            if feedback is not None:
+                feedback = feedback.to(device)
 
             # forward pass
             dists, _, _, _, _, _, _, feedback = model(sentences, feedback)
@@ -58,8 +60,9 @@ def evaluate_model_by_type(model, dataloader, device, max_batches=None, reset_fe
             # move images to the device
             sentences = sentences.to(device) # shape (B,9,1,160,160)
             target_nums = target_nums.to(device)
-            feedback = feedback.to(device)
 
+            if feedback is not None:
+                feedback = feedback.to(device)
             # forward pass
             dists, _, _, _, _, _, _, feedback = model(sentences, feedback)
 
