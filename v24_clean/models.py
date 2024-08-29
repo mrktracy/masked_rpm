@@ -319,6 +319,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
             # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
             self.feedback = reas_encoded[0, 0, :].squeeze().to(self.device)
+            logging.info(f"Feedback tensor (first 10 values): {self.feedback[:10]}")
 
             loss_weights = self.loss_weight_mlp.forward(self.feedback)
             self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
@@ -460,7 +461,6 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
         self.feedback_new = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
-        logging.info(f"self.feedback_new: {self.feedback_new}")
 
         reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1).contiguous()
 
