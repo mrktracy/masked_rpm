@@ -311,6 +311,9 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # attempt at new approach
         # add classification token for further processing across batch dimension
         if self.feedback_new is not None:
+
+            logging.info(f"self.feedback_new is not None")
+
             cls_tokens = self.cls_token.unsqueeze(0)
             reas_encoded = torch.cat((cls_tokens, self.feedback_new), dim=0).unsqueeze(0)
 
@@ -461,6 +464,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
         self.feedback_new = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
+        logging.info(f"self.feedback_new is not None? {self.feedback_new is not None}")
 
         reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1).contiguous()
 
