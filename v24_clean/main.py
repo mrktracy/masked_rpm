@@ -14,7 +14,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr38_full"
+version = "v24-itr38_pgm_extr"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -107,15 +107,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
-    # root_dir = '../../pgm_data/extrapolation/'
+    root_dir = '../../pgm_data/extrapolation/'
     # root_dir = '../../i_raven_data_cnst/'
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
     ''' Transformer model v9 '''
     train_dataset = rpm_dataset(train_files, device=device)
     val_dataset = rpm_dataset(val_files, device=device)
+    test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
     EPOCHS = 20
@@ -125,7 +126,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 5
+    EPOCHS_PER_SAVE = 1
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
     BETA = 7.5
@@ -136,6 +137,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     # logging.info("Data loaded.\n")
 
@@ -344,8 +346,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # To evaluate model, uncomment this part
     transformer_model.eval()
 
-    val_loss = evaluation_function(transformer_model, val_dataloader, device)
-    output = f"val: {val_loss:.2f}\n"
+    val_loss = evaluation_function(transformer_model, test_dataloader, device)
+    output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
 if __name__ == "__main__":
