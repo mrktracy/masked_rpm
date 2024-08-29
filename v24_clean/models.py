@@ -460,6 +460,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
         self.feedback_new = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
+        logging.info(f"self.feedback_new: {self.feedback_new}")
 
         reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1).contiguous()
 
