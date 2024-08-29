@@ -512,7 +512,10 @@ class LossWeightingMLP(nn.Module):
 
     def forward(self, feedback_vector):
         # Produce weights for each loss term
-        weights = F.softmax(self.mlp(feedback_vector), dim=-1)
+        raw_output = self.mlp(feedback_vector)
+        print("Raw Output Before Softmax:", raw_output)
+        weights = F.softmax(raw_output, dim=-1)
+
         return weights
 
 class AutoencoderBottleneck(nn.Module):
