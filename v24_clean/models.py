@@ -209,6 +209,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # self.perception_norm = L2Norm(dim=-1)
         # self.feedback_norm = L2Norm(dim=-1)
 
+        self.loss_weight_mlp = LossWeightingMLP(feedback_dim=feedback_dim, num_loss_terms=num_loss_terms)
+
     def reset_feedback(self):
         self.feedback = None
 
@@ -311,6 +313,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
             # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
             self.feedback = reas_encoded[0, 0, :].squeeze()
+
+            loss_weights = self.loss_weight_mlp(self.feedback)
             self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
 
             # # for no skip connection, use this
@@ -318,6 +322,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
             # for skip connection, use this
             embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+        else:
+            loss_weights = torch.ones(3)/3 # set loss terms equal each time feedback is reset
 
         # # if combining prior to positional encodings, use this
         # if self.feedback is not None:
@@ -469,7 +475,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # logging.info("Forward pass complete.\n")
 
-        return dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas
+        return dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights
 
     def encode(self, images):
         embeddings = self.perception.forward(images)  # takes input (B, 1, 160, 160), gives output (B, embed_dim)
@@ -489,6 +495,20 @@ class L2Norm(nn.Module):
 
     def forward(self, x):
         return x / torch.norm(x, p=2, dim=self.dim, keepdim=True).clamp(min=self.eps)
+
+class LossWeightingMLP(nn.Module):
+    def __init__(self, feedback_dim, num_loss_terms, hidden_dim=128):
+        super(LossWeightingMLP, self).__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(feedback_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_loss_terms)
+        )
+
+    def forward(self, feedback_vector):
+        # Produce weights for each loss term
+        weights = F.softmax(self.mlp(feedback_vector), dim=-1)
+        return weights
 
 class AutoencoderBottleneck(nn.Module):
     def __init__(self, input_dim=512, bottleneck_dim=32):
