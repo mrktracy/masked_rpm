@@ -218,7 +218,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
     def reset_feedback(self):
         self.feedback = None
-        self.register_buffer('feedback_new', None)
+        self.feedback_new = None
 
     @staticmethod
     def ternary_operation(x):
