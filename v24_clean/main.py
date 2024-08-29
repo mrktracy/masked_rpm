@@ -159,7 +159,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     #                                lr=LEARNING_RATE,
     #                                weight_decay=1e-4)
 
-    optimizer_2 = torch.optim.Adam(list(transformer_model.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
+    optimizer_2 = torch.optim.Adam(list(transformer_model.module.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
                                                 weight_decay=1e-4)
 
     scheduler_1 = ExponentialLR(optimizer_1, gamma=0.95)
