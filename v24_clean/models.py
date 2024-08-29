@@ -45,7 +45,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  meta_2_proj_drop=0,
                  meta_2_drop_path_max=0,
                  num_candidates=8,
-                 score_rep=8
+                 score_rep=8,
+                 num_loss_terms=3
                  ):
 
         super(TransformerModelv24, self).__init__()

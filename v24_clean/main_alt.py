@@ -6,7 +6,7 @@ from torch.optim.lr_scheduler import StepLR, ExponentialLR
 from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
-from evaluate_masked import evaluate_model_dist as evaluation_function
+from evaluate_masked_alt import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models_alt import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
