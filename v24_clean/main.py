@@ -231,6 +231,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
+            loss_weights = loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False)
+
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
             meta_err = criterion_3(reas_raw, reas_decoded)
