@@ -512,19 +512,20 @@ class L2Norm(nn.Module):
 class LossWeightingMLP(nn.Module):
     def __init__(self, feedback_dim, num_loss_terms, hidden_dim=128):
         super(LossWeightingMLP, self).__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(feedback_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, num_loss_terms)
-        )
+        # self.mlp = nn.Sequential(
+        #     nn.Linear(feedback_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, num_loss_terms)
+        # )
+
+        self.mlp = nn.Linear(feedback_dim, num_loss_terms)
 
     def forward(self, feedback_vector):
         # Produce weights for each loss term
         raw_output = self.mlp(feedback_vector)
         # logging.info(f"Raw Output Before Softmax: {raw_output}")
-        weights = F.softmax(raw_output, dim=-1)
 
-        return weights
+        return raw_output
 
 class AutoencoderBottleneck(nn.Module):
     def __init__(self, input_dim=512, bottleneck_dim=32):
