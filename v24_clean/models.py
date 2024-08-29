@@ -310,11 +310,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # attempt at new approach
         # add classification token for further processing across batch dimension
-        logging.info(f"self.feedback_new is not None? {self.feedback_new is not None}")
+        # logging.info(f"self.feedback_new is not None? {self.feedback_new is not None}")
 
         if self.feedback_new is not None:
 
-            logging.info(f"self.feedback_new is not None")
+            # logging.info(f"self.feedback_new is not None")
 
             cls_tokens = self.cls_token.unsqueeze(0)
             reas_encoded = torch.cat((cls_tokens, self.feedback_new), dim=0).unsqueeze(0)
@@ -324,9 +324,9 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
             # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
             self.feedback = reas_encoded[0, 0, :].squeeze().to(self.device)
-            logging.info(f"Feedback tensor (first 10 values): {self.feedback[:10]}")
+            # logging.info(f"Feedback tensor (first 10 values): {self.feedback[:10]}")
 
-            logging.info("About to call loss_weight_mlp")
+            # logging.info("About to call loss_weight_mlp")
             loss_weights = self.loss_weight_mlp.forward(self.feedback)
             self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
 
@@ -523,7 +523,7 @@ class LossWeightingMLP(nn.Module):
     def forward(self, feedback_vector):
         # Produce weights for each loss term
         raw_output = self.mlp(feedback_vector)
-        logging.info(f"Raw Output Before Softmax: {raw_output}")
+        # logging.info(f"Raw Output Before Softmax: {raw_output}")
         weights = F.softmax(raw_output, dim=-1)
 
         return weights
