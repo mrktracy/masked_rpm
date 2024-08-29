@@ -68,7 +68,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.score_rep = score_rep
         self.device=device
         self.num_loss_terms = num_loss_terms
-        self.feedback_new = None
+        self.register_buffer('feedback_new', None)
 
         if self.use_backbone_enc:
             if restrict_qk:
@@ -218,7 +218,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
     def reset_feedback(self):
         self.feedback = None
-        self.feedback_new = None
+        self.register_buffer('feedback_new', None)
 
     @staticmethod
     def ternary_operation(x):
