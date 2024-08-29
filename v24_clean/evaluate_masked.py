@@ -5,8 +5,9 @@ import torch.nn.functional as F
 def evaluate_model_dist(model, dataloader, device, max_batches=None, reset_feedback=True):
 
     model.eval()
-    if reset_feedback and hasattr(model, 'reset_feedback'):
-        model.reset_feedback()
+    # if reset_feedback and hasattr(model, 'reset_feedback'):
+    #     model.reset_feedback()
+    feedback = None # reset feedback before evaluation
 
     with torch.no_grad():
 
@@ -19,9 +20,10 @@ def evaluate_model_dist(model, dataloader, device, max_batches=None, reset_feedb
             # move images to the device
             sentences = sentences.to(device) # shape (B,9,1,160,160)
             target_nums = target_nums.to(device)
+            feedback = feedback.to(device)
 
             # forward pass
-            dists, _, _, _, _, _, _ = model(sentences)
+            dists, _, _, _, _, _, _, feedback = model(sentences, feedback)
 
             dists_softmax = F.softmax(dists, dim = 1)
 
@@ -33,16 +35,18 @@ def evaluate_model_dist(model, dataloader, device, max_batches=None, reset_feedb
             if max_batches is not None and idx + 1 == max_batches:
                 break
 
-    if reset_feedback and hasattr(model, 'reset_feedback'):
-        model.reset_feedback()
+    # if reset_feedback and hasattr(model, 'reset_feedback'):
+    #     model.reset_feedback()
 
-    return 100*(num_correct / num_samples)
+    return 100*(num_correct / num_samples), None
 
 def evaluate_model_by_type(model, dataloader, device, max_batches=None, reset_feedback=True):
 
     model.eval()
-    if reset_feedback and hasattr(model, 'reset_feedback'):
-        model.reset_feedback()
+    # if reset_feedback and hasattr(model, 'reset_feedback'):
+    #     model.reset_feedback()
+
+    feedback = None # reset feedback
 
     with torch.no_grad():
 
@@ -54,9 +58,10 @@ def evaluate_model_by_type(model, dataloader, device, max_batches=None, reset_fe
             # move images to the device
             sentences = sentences.to(device) # shape (B,9,1,160,160)
             target_nums = target_nums.to(device)
+            feedback = feedback.to(device)
 
             # forward pass
-            dists, _, _, _, _, _, _ = model(sentences)
+            dists, _, _, _, _, _, _, feedback = model(sentences, feedback)
 
             dists_softmax = F.softmax(dists, dim = 1)
 
@@ -68,7 +73,7 @@ def evaluate_model_by_type(model, dataloader, device, max_batches=None, reset_fe
             if max_batches is not None and idx + 1 == max_batches:
                 break
 
-    if reset_feedback and hasattr(model, 'reset_feedback'):
-        model.reset_feedback()
+    # if reset_feedback and hasattr(model, 'reset_feedback'):
+    #     model.reset_feedback()
 
-    return record
+    return record, None

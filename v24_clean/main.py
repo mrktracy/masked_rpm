@@ -207,6 +207,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         count = 0
         tot_loss = 0
         times = 0
+        feedback = None # reset feedback at start of every epoch
 
         # logging.info("Initialized loop variables.\n")
 
@@ -222,10 +223,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             sentences = sentences.to(device) # passed to model to get output and recreation of inputs
             target_nums = target_nums.to(device)  # used to select from among candidates
+            feedback = feedback.to(device)
 
             # logging.info("Running forward pass of model...\n")
 
-            dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights = transformer_model(sentences)
+            dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
@@ -308,7 +310,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 logging.info(f"Weights: {loss_weights}")
 
             if (idx+1) % batches_per_log == 0:
-                val_loss = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
+                # Note: resets feedback to None
+                val_loss, feedback = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
                 # with open(logfile, 'a') as file:
@@ -323,7 +326,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             os.makedirs(os.path.dirname(save_file), exist_ok=True)
             torch.save({
                 'transformer_model_state_dict': transformer_model.state_dict(),
-                'dynamic_weights_state_dict': dynamic_weights.state_dict(),
+                # 'dynamic_weights_state_dict': dynamic_weights.state_dict(),
                 'optimizer_1_state_dict': optimizer_1.state_dict(),
                 'optimizer_2_state_dict': optimizer_2.state_dict(),
                 'scheduler_1_state_dict': scheduler_1.state_dict(),

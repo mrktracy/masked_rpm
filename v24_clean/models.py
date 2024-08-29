@@ -47,7 +47,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  num_candidates=8,
                  score_rep=8,
                  num_loss_terms=3,
-                 device=None
+                 device=None,
+                 feedback = None
                  ):
 
         super(TransformerModelv24, self).__init__()
@@ -62,13 +63,10 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.ternary_num = ternary_num
         self.restrict_qk = restrict_qk
         self.feedback_dim = feedback_dim
-        self.feedback = None
-        self.feedback_old = None
         self.num_candidates = num_candidates
         self.score_rep = score_rep
         self.device=device
         self.num_loss_terms = num_loss_terms
-        self.register_buffer('feedback_new', None)
 
         if self.use_backbone_enc:
             if restrict_qk:
@@ -216,9 +214,9 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         self.loss_weight_mlp = LossWeightingMLP(feedback_dim=feedback_dim, num_loss_terms=num_loss_terms)
 
-    def reset_feedback(self):
-        self.feedback = None
-        self.feedback_new = None
+    # def reset_feedback(self):
+    #     self.feedback = None
+    #     self.feedback_new = None
 
     @staticmethod
     def ternary_operation(x):
@@ -296,7 +294,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         return result
 
-    def forward(self, sentences):
+    def forward(self, sentences, feedback):
 
         batch_size = sentences.size(0)  # Get the batch size from the first dimension of x
 
@@ -312,26 +310,26 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         # add classification token for further processing across batch dimension
         # logging.info(f"self.feedback_new is not None? {self.feedback_new is not None}")
 
-        if self.feedback_new is not None:
+        if feedback is not None:
 
             # logging.info(f"self.feedback_new is not None")
 
             cls_tokens = self.cls_token.unsqueeze(0)
-            reas_encoded = torch.cat((cls_tokens, self.feedback_new), dim=0).unsqueeze(0)
+            reas_encoded = torch.cat((cls_tokens, feedback), dim=0).unsqueeze(0)
 
             for blk in self.blocks_meta:
                 reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
 
             # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
-            self.feedback = reas_encoded[0, 0, :].squeeze().to(self.device)
+            feedback_new = reas_encoded[0, 0, :].squeeze().to(self.device)
             # logging.info(f"Feedback tensor (first 10 values): {self.feedback[:10]}")
 
             # logging.info("About to call loss_weight_mlp")
-            loss_weights = self.loss_weight_mlp.forward(self.feedback)
-            self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
+            loss_weights = self.loss_weight_mlp.forward(feedback_new)
+            feedback_new = feedback_new.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
 
             # # for no skip connection, use this
-            embed_reshaped = self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
+            embed_reshaped = self.combiner(torch.cat([embed_reshaped, feedback_new], dim=-1))
 
             # for skip connection, use this
             # embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
@@ -466,7 +464,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw.view(batch_size, self.num_candidates, -1))
         reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
-        self.feedback_new = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
+        feedback = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
         # logging.info(f"self.feedback_new is not None? {self.feedback_new is not None}")
 
         reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1).contiguous()
@@ -490,7 +488,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # logging.info("Forward pass complete.\n")
 
-        return dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights
+        return dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback
 
     def encode(self, images):
         embeddings = self.perception.forward(images)  # takes input (B, 1, 160, 160), gives output (B, embed_dim)
