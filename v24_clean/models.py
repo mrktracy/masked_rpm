@@ -68,6 +68,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.score_rep = score_rep
         self.device=device
         self.num_loss_terms = num_loss_terms
+        self.feedback_new = None
 
         if self.use_backbone_enc:
             if restrict_qk:
@@ -217,6 +218,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
     def reset_feedback(self):
         self.feedback = None
+        self.feedback_new = None
 
     @staticmethod
     def ternary_operation(x):
@@ -308,9 +310,9 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
 
         # attempt at new approach
         # add classification token for further processing across batch dimension
-        if self.feedback is not None:
+        if self.feedback_new is not None:
             cls_tokens = self.cls_token.unsqueeze(0)
-            reas_encoded = torch.cat((cls_tokens, self.feedback), dim=0).unsqueeze(0)
+            reas_encoded = torch.cat((cls_tokens, self.feedback_new), dim=0).unsqueeze(0)
 
             for blk in self.blocks_meta:
                 reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
@@ -457,7 +459,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         reas_encoded, reas_decoded = self.reas_autoencoder.forward(reas_raw.view(batch_size, self.num_candidates, -1))
         reas_decoded = reas_decoded.view(batch_size * self.num_candidates, -1)
 
-        self.feedback = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
+        self.feedback_new = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
 
         reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1).contiguous()
 
