@@ -326,7 +326,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
             # for skip connection, use this
             embed_reshaped = embed_reshaped + self.combiner(torch.cat([embed_reshaped, self.feedback], dim=-1))
         else:
-            loss_weights = torch.ones(3).to(self.device)/3 # set loss terms equal each time feedback is reset
+            loss_weights = torch.ones(3, device=self.device)/3 # set loss terms equal each time feedback is reset
 
         # # if combining prior to positional encodings, use this
         # if self.feedback is not None:
