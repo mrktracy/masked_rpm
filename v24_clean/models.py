@@ -46,7 +46,8 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  meta_2_drop_path_max=0,
                  num_candidates=8,
                  score_rep=8,
-                 num_loss_terms=3
+                 num_loss_terms=3,
+                 device=None
                  ):
 
         super(TransformerModelv24, self).__init__()
@@ -65,6 +66,7 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.feedback_old = None
         self.num_candidates = num_candidates
         self.score_rep = score_rep
+        self.device=device
 
         if self.use_backbone_enc:
             if restrict_qk:
@@ -313,9 +315,9 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                 reas_encoded = blk(x_q=reas_encoded, x_k=reas_encoded, x_v=reas_encoded)
 
             # self.feedback = self.feedback_norm.forward(reas_encoded[0, :].squeeze())
-            self.feedback = reas_encoded[0, 0, :].squeeze()
+            self.feedback = reas_encoded[0, 0, :].squeeze().to(self.device)
 
-            loss_weights = self.loss_weight_mlp(self.feedback)
+            loss_weights = self.loss_weight_mlp.forward(self.feedback).to(self.device)
             self.feedback = self.feedback.unsqueeze(0).expand(batch_size * self.grid_size**2 * self.num_candidates, -1)
 
             # # for no skip connection, use this
