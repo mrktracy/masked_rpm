@@ -346,7 +346,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # To evaluate model, uncomment this part
     transformer_model.eval()
 
-    val_loss = evaluation_function(transformer_model, test_dataloader, device)
+    val_loss, feedback = evaluation_function(transformer_model, test_dataloader, device)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
