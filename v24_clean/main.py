@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from torch.optim.lr_scheduler import StepLR, ExponentialLR
 from funs import gather_files_pgm, gather_files_by_type
@@ -127,7 +128,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    BETA = 3
+    BETA = 10
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
@@ -231,7 +232,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
-            loss_weights = loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False)
+            loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False))
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
