@@ -128,11 +128,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         self.norm_y = norm_layer(self.model_dim)
 
         # if incorporating meta-reasoning vector into guesser head, use this
-        self.guesser_head = nn.Sequential(
-            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
-            nn.Dropout(p=mlp_drop),
-            nn.ReLU(),
-            nn.Linear(self.embed_dim, 1))
+        # self.guesser_head = nn.Sequential(
+        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor + self.feedback_dim, self.embed_dim),
+        #     nn.Dropout(p=mlp_drop),
+        #     nn.ReLU(),
+        #     nn.Linear(self.embed_dim, 1))
 
         # if not incorporating meta-reasoning vector into guesser head, use this
         # self.guesser_head = nn.Sequential(
@@ -141,10 +141,10 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         #     nn.ReLU(),
         #     nn.Linear(self.embed_dim, 1))
 
-        # # if not incorporating meta-reasoning vector into guesser head and using linear layer, use this
-        # self.guesser_head = nn.Sequential(
-        #     nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, 1)
-        # )
+        # if not incorporating meta-reasoning vector into guesser head and using linear layer, use this
+        self.guesser_head = nn.Sequential(
+            nn.Linear(self.model_dim + 2 * self.model_dim * self.symbol_factor, 1)
+        )
 
         if self.decoder_num == 1:
             self.decoder = MLPDecoder(embed_dim=self.embed_dim, mlp_drop=per_mlp_drop)
@@ -467,14 +467,13 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
         feedback = reas_encoded.clone().detach() # save tensor for feedback processing in next batch
         # logging.info(f"self.feedback_new is not None? {self.feedback_new is not None}")
 
-        reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1).contiguous()
-
-        # if incorporating meta-reasoning vector into guesser head, use this
-        reas_meta_reas = torch.cat([z_reshaped,
-                                    reas_encoded_expanded.view(batch_size*self.num_candidates, -1)], dim=-1)
+        # # if incorporating meta-reasoning vector into guesser head, use this
+        # reas_encoded_expanded = reas_encoded.unsqueeze(1).expand(-1, self.num_candidates, -1).contiguous()
+        # reas_meta_reas = torch.cat([z_reshaped,
+        #                             reas_encoded_expanded.view(batch_size*self.num_candidates, -1)], dim=-1)
 
         # # if not incorporating meta-reasoning vector into guesser head, use this
-        # reas_meta_reas = z_reshaped
+        reas_meta_reas = z_reshaped
 
         dist_reshaped = self.guesser_head(reas_meta_reas)
 
