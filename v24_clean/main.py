@@ -14,7 +14,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr38_full"
+version = "v24-itr38_pgm_extr"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -107,9 +107,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
-    # root_dir = '../../pgm_data/extrapolation/'
+    root_dir = '../../pgm_data/extrapolation/'
     # root_dir = '../../i_raven_data_cnst/'
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
@@ -346,7 +346,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # To evaluate model, uncomment this part
     transformer_model.eval()
 
-    val_loss = evaluation_function(transformer_model, val_dataloader, device)
+    val_loss = evaluation_function(transformer_model, test_dataloader, device)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
