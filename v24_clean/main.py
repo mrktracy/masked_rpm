@@ -134,6 +134,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
     WARMUP = 0
+    THRESHOLD = 5e-4
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -320,7 +321,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             ema_delta = ema_long - ema_short
 
             # Adjust BETA based on ema_delta
-            if ema_delta < 0:  # Recent performance is worse or stalled, increase BETA
+            if ema_delta < THRESHOLD:  # Recent performance is worse or stalled, increase BETA
                 adjustment_factor = math.exp(1 + abs(ema_delta) / ema_long)  # Scale BETA higher, regularization increases
             else:  # Recent performance is better, decrease BETA
                 adjustment_factor = 1 / (1 + ema_delta / ema_long)  # Scale BETA lower, exploration encouraged
