@@ -131,6 +131,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_perception = 0
     L1_reas = 0
     ALPHA = 0.75 # parameter for exponential moving average
+    WARMUP = 40
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -234,7 +235,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
-            loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False))
+            if epoch == 0 and idx < WARMUP:
+                loss_weights = torch.ones(3).to(device)/3
+            else:
+                loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False))
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
