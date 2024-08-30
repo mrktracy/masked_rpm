@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr42_full"
+version = "v24-itr43_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -123,7 +123,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 15
+    LOGS_PER_EPOCH = 0
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
@@ -211,13 +211,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ema_short = 1e-6
     ema_delta = 0
     adjustment_factor = 1
+    feedback = None  # reset feedback at start of every epoch
 
     # Training loop
     for epoch in range(FIRST_EPOCH, EPOCHS):
         count = 0
         tot_loss = 0
         times = 0
-        feedback = None # reset feedback at start of every epoch
 
         # logging.info("Initialized loop variables.\n")
 
@@ -342,17 +342,17 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 logging.info(output)
                 logging.info(f"Weights: {loss_weights}")
 
-            if (idx+1) % batches_per_log == 0:
-                # Note: resets feedback to None
-                val_loss, feedback = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                logging.info(output)
-                # with open(logfile, 'a') as file:
-                #     file.write(output)
-
-                tot_loss = 0
-                count = 0
-                BETA = BETA*(1+BETA_GROWTH_RATE)
+            # if (idx+1) % batches_per_log == 0:
+            #     # Note: resets feedback to None
+            #     val_loss, feedback = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
+            #     output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+            #     logging.info(output)
+            #     # with open(logfile, 'a') as file:
+            #     #     file.write(output)
+            #
+            #     tot_loss = 0
+            #     count = 0
+            #     BETA = BETA*(1+BETA_GROWTH_RATE)
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
