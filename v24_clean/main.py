@@ -126,7 +126,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 5
+    BETA = 7.5
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
