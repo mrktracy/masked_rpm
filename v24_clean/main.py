@@ -208,6 +208,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ema_long = None
     ema_short = 1e-6
     ema_delta = 0
+    adjustment_factor = 1
 
     # Training loop
     for epoch in range(FIRST_EPOCH, EPOCHS):
@@ -302,7 +303,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             loss = (loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err +
                     L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1) +
-                    1/(1 + ema_delta/ema_short) * BETA * torch.var(loss_weights))
+                    adjustment_factor * BETA * torch.var(loss_weights))
 
             tot_loss += loss.item() # update running averages
             count += 1
@@ -315,7 +316,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 ema_long = (1 - ALPHA_long) * ema_long + ALPHA_long * loss.item()
                 ema_short = (1 - ALPHA_short) * ema_short + ALPHA_short * loss.item()
 
-            ema_delta = max(0, ema_long - ema_short)
+            ema_delta = ema_long - ema_short
+
+            # Adjust BETA based on ema_delta
+            if ema_delta < 0:  # Recent performance is worse or stalled, increase BETA
+                adjustment_factor = torch.exp(1 + torch.abs(ema_delta) / ema_long)  # Scale BETA higher, regularization increases
+            else:  # Recent performance is better, decrease BETA
+                adjustment_factor = 1 / (1 + ema_delta / ema_long)  # Scale BETA lower, exploration encouraged
 
             # logging.info("Forward pass complete.\n")
 
