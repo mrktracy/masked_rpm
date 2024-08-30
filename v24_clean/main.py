@@ -120,13 +120,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS = 20
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.00005
+    LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 7.5
+    BETA = 5
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
