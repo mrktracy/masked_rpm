@@ -244,7 +244,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             if epoch == 0 and idx < WARMUP:
                 loss_weights = torch.ones(3).to(device)/3
             else:
-                loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False))
+                loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
