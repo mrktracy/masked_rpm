@@ -209,7 +209,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ema_long = None
     ema_short = 1e-6
-    ema_delta = 0
     adjustment_factor = 1
     feedback = None  # reset feedback at start of every epoch
 
@@ -363,7 +362,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 'optimizer_1_state_dict': optimizer_1.state_dict(),
                 'optimizer_2_state_dict': optimizer_2.state_dict(),
                 'scheduler_1_state_dict': scheduler_1.state_dict(),
-                'scheduler_2_state_dict': scheduler_2.state_dict()
+                'scheduler_2_state_dict': scheduler_2.state_dict(),
+                'feedback': feedback
             }, save_file)
 
         scheduler_1.step()
@@ -372,7 +372,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # To evaluate model, uncomment this part
     transformer_model.eval()
 
-    val_loss, feedback = evaluation_function(transformer_model, val_dataloader, device)
+    val_loss, _ = evaluation_function(transformer_model, val_dataloader, device)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
