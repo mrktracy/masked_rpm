@@ -126,12 +126,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 5
+    BETA = 7.5
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
-    ALPHA = 0.75 # parameter for exponential moving average
-    WARMUP = 40
+    ALPHA_short = 0.9 # parameter for exponential moving average
+    ALPHA_long = 0.5  # parameter for exponential moving average
+    WARMUP = 0
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -204,7 +205,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     # And comment out the remainder below here
 
-    loss_ema = 0
+    ema_long = None
+    ema_short = 1e-6
+    ema_delta = 0
 
     # Training loop
     for epoch in range(FIRST_EPOCH, EPOCHS):
@@ -299,16 +302,20 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             loss = (loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err +
                     L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1) +
-                    (1 + loss_ema) * BETA * torch.var(loss_weights))
+                    1/(1 + ema_delta/ema_short) * BETA * torch.var(loss_weights))
 
             tot_loss += loss.item() # update running averages
             count += 1
 
             # update exponential moving average of losses
             if epoch == 0 and idx == 0:  # On the first batch of the first epoch
-                loss_ema = loss.item()  # Initialize EMA with the first loss
+                ema_long = loss.item()  # Initialize EMA with the first loss
+                ema_short = loss.item()
             else:
-                loss_ema = (1 - ALPHA) * loss_ema + ALPHA * loss.item()
+                ema_long = (1 - ALPHA_long) * ema_long + ALPHA_long * loss.item()
+                ema_short = (1 - ALPHA_short) * ema_short + ALPHA_short * loss.item()
+
+            ema_delta = max(0, ema_long - ema_short)
 
             # logging.info("Forward pass complete.\n")
 
