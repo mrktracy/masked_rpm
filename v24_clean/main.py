@@ -14,7 +14,7 @@ from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 
-version = "v24-itr39_full"
+version = "v24-itr40_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -128,11 +128,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    BETA = 7.5
+    BETA = 5
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
+    ALPHA = 0.75 # parameter for exponential moving average
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -204,6 +204,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # logging.info(output)
 
     # And comment out the remainder below here
+
+    loss_ema = 0
 
     # Training loop
     for epoch in range(FIRST_EPOCH, EPOCHS):
@@ -295,10 +297,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             loss = (loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err +
                     L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1) +
-                    BETA * torch.var(loss_weights))
+                    (1 + loss_ema) * BETA * torch.var(loss_weights))
 
             tot_loss += loss.item() # update running averages
             count += 1
+
+            # update exponential moving average of losses
+            if epoch == 0 and idx == 0:  # On the first batch of the first epoch
+                loss_ema = loss.item()  # Initialize EMA with the first loss
+            else:
+                loss_ema = (1 - ALPHA) * loss_ema + ALPHA * loss.item()
 
             # logging.info("Forward pass complete.\n")
 
