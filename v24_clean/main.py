@@ -37,20 +37,18 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
-    MLP_DW = True
-    HISTORY_SIZE = 12
-    AUTO_REG = False
+    # MLP_DW = True
+    # HISTORY_SIZE = 12
+    # AUTO_REG = False
 
-    if AUTO_REG:
-        max_history_length = HISTORY_SIZE*6
-    else:
-        max_history_length = HISTORY_SIZE*3
+    # if AUTO_REG:
+    #     max_history_length = HISTORY_SIZE*6
+    # else:
+    #     max_history_length = HISTORY_SIZE*3
 
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
-    # print(num_gpus)
-
 
     transformer_model = TransformerModelv24(embed_dim=512,
                                             symbol_factor=1,
