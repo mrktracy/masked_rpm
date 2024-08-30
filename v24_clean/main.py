@@ -13,6 +13,7 @@ from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
+import math
 
 version = "v24-itr41_full"
 
@@ -320,7 +321,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # Adjust BETA based on ema_delta
             if ema_delta < 0:  # Recent performance is worse or stalled, increase BETA
-                adjustment_factor = torch.exp(1 + abs(ema_delta) / ema_long)  # Scale BETA higher, regularization increases
+                adjustment_factor = math.exp(1 + abs(ema_delta) / ema_long)  # Scale BETA higher, regularization increases
             else:  # Recent performance is better, decrease BETA
                 adjustment_factor = 1 / (1 + ema_delta / ema_long)  # Scale BETA lower, exploration encouraged
 
