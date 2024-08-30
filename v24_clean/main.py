@@ -211,6 +211,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ema_short = 1e-6
     adjustment_factor = 1
     feedback = None  # reset feedback at start of every epoch
+    val_feedback = None
 
     # Training loop
     for epoch in range(FIRST_EPOCH, EPOCHS):
@@ -343,7 +344,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             if (idx+1) % batches_per_log == 0:
                 # Note: resets feedback to None
-                val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
+                val_loss, val_feedback = evaluation_function(transformer_model, val_feedback, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
                 # with open(logfile, 'a') as file:
@@ -372,7 +373,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # To evaluate model, uncomment this part
     transformer_model.eval()
 
-    val_loss, _ = evaluation_function(transformer_model, val_dataloader, device)
+    val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, feedback=None)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 

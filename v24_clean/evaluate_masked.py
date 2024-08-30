@@ -2,12 +2,9 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 
-def evaluate_model_dist(model, dataloader, device, max_batches=None, reset_feedback=True):
+def evaluate_model_dist(model, dataloader, device, max_batches=None, feedback=None):
 
     model.eval()
-    # if reset_feedback and hasattr(model, 'reset_feedback'):
-    #     model.reset_feedback()
-    feedback = None # reset feedback before evaluation
 
     with torch.no_grad():
 
@@ -42,13 +39,11 @@ def evaluate_model_dist(model, dataloader, device, max_batches=None, reset_feedb
 
     return 100*(num_correct / num_samples), None
 
-def evaluate_model_by_type(model, dataloader, device, max_batches=None, reset_feedback=True):
+def evaluate_model_by_type(model, dataloader, device, max_batches=None, feedback=None):
 
     model.eval()
     # if reset_feedback and hasattr(model, 'reset_feedback'):
     #     model.reset_feedback()
-
-    feedback = None # reset feedback
 
     with torch.no_grad():
 
