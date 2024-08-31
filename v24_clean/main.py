@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr45_full"
+version = "v24-itr46_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -114,7 +114,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     WARMUP = 120
     THRESHOLD = 0.05
     NU_1 = 1
-    NU_2 = 1
+    NU_2 = 5
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
