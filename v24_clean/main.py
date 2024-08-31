@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr45_full"
+version = "v24-itr46_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -44,31 +44,30 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     transformer_model = TransformerModelv24(embed_dim=512,
                                             symbol_factor=1,
-                                            trans_depth=8,
-                                            abs_1_depth=8,
-                                            abs_2_depth=8,
-                                            trans_num_heads=16,
-                                            abs_1_num_heads=16,
-                                            abs_2_num_heads=16,
+                                            trans_depth=4,
+                                            abs_1_depth=4,
+                                            abs_2_depth=4,
+                                            trans_num_heads=8,
+                                            abs_1_num_heads=8,
+                                            abs_2_num_heads=8,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
                                             decoder_num=2,  # 1 - MLP, 2 - Deconvolution, 3 - Backbone
-                                            bb_depth=4,
-                                            bb_num_heads=16,
+                                            bb_depth=2,
+                                            bb_num_heads=8,
                                             ternary_num=3, # 1 - C, 2 - Hadamard, 3 - MLP
-                                            mlp_drop=0.5,
-                                            proj_drop=0.5,
-                                            attn_drop=0.5,
-                                            drop_path_max=0.5,
+                                            proj_drop=0,
+                                            attn_drop=0,
+                                            drop_path_max=0,
                                             per_mlp_drop=0,
-                                            ternary_drop=0.3,
+                                            ternary_drop=0,
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False,
                                             feedback_dim=1024,
-                                            meta_1_depth=4,
-                                            meta_1_num_heads=8,
-                                            meta_2_depth=4,
-                                            meta_2_num_heads=8,
+                                            meta_1_depth=2,
+                                            meta_1_num_heads=4,
+                                            meta_2_depth=2,
+                                            meta_2_num_heads=4,
                                             score_rep=0,
                                             num_loss_terms=3,
                                             device=device

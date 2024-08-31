@@ -25,12 +25,11 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  bb_depth=1,
                  bb_num_heads=2,
                  ternary_num=1,
-                 mlp_drop=0.3,
-                 proj_drop=0.3,
-                 attn_drop=0.3,
-                 drop_path_max=0.3,
-                 per_mlp_drop=0.3,
-                 ternary_drop=0.3,
+                 proj_drop=0,
+                 attn_drop=0,
+                 drop_path_max=0,
+                 per_mlp_drop=0,
+                 ternary_drop=0,
                  ternary_mlp_ratio=1,
                  restrict_qk=False,
                  feedback_dim=1024,
@@ -48,7 +47,6 @@ class TransformerModelv24(nn.Module): # takes in images, embeds, performs self-a
                  score_rep=8,
                  num_loss_terms=3,
                  device=None,
-                 feedback = None
                  ):
 
         super(TransformerModelv24, self).__init__()
@@ -836,8 +834,8 @@ class BackbonePerceptionAlt(nn.Module):
 
         self.blocks = nn.ModuleList([
             Block(self.out_channels, self.out_channels*2, self.num_heads, self.mlp_ratio,
-                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0.1, attn_drop=0.1,
-                  drop_path=0.5*((i+1)/self.depth), restrict_qk=True) for i in range(self.depth)])
+                  q_bias=True, k_bias=True, v_bias=True, norm_layer=norm_layer, proj_drop=0, attn_drop=0,
+                  drop_path=0*((i+1)/self.depth), restrict_qk=True) for i in range(self.depth)])
 
         self.mlp = nn.Linear(self.out_channels * 2 * self.grid_size**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
@@ -901,8 +899,8 @@ class BackbonePerception(nn.Module):
 
         self.blocks = nn.ModuleList([
             Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
-                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.3, attn_drop=0.3,
-                  drop_path=0.5*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0, attn_drop=0,
+                  drop_path=0*((i+1)/self.depth), restrict_qk=False) for i in range(self.depth)])
 
         self.mlp = nn.Linear(self.out_channels * self.grid_dim**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
