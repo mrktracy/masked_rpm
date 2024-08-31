@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr46_full"
+version = "v24-itr47_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -113,7 +113,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ALPHA_long = 0.5  # parameter for exponential moving average
     WARMUP = 120
     THRESHOLD = 0.05
-    NU_1 = 1
+    NU_1 = 100
     NU_2 = 5
 
     ''' Instantiate data loaders, optimizer, criterion '''
