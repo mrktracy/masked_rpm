@@ -105,15 +105,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 7.5
+    BETA = 10
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
-    WARMUP = 40
-    THRESHOLD = 5e-4
-    NU = 1
+    WARMUP = 120
+    THRESHOLD = 0.05
+    NU_1 = 1
+    NU_2 = 1
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -231,13 +232,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 ema_long = (1 - ALPHA_long) * ema_long + ALPHA_long * loss.item()
                 ema_short = (1 - ALPHA_short) * ema_short + ALPHA_short * loss.item()
 
-            ema_delta = ema_long - ema_short
+            ema_delta = (ema_long - ema_short)/ema_long
 
             # Adjust BETA based on ema_delta
             if ema_delta < THRESHOLD:  # Recent performance is worse or stalled, increase BETA
-                adjustment_factor = math.exp(1 + abs(ema_delta) / ema_long)  # Scale BETA higher, regularization increases
+                adjustment_factor = math.exp(1 + NU_1 * abs(ema_delta))  # Scale BETA higher, regularization increases
             else:  # Recent performance is better, decrease BETA
-                adjustment_factor = 1 / (1 + NU * ema_delta / ema_long)  # Scale BETA lower, exploration encouraged
+                adjustment_factor = 1 / (1 + NU_2 * ema_delta)  # Scale BETA lower, exploration encouraged
 
             # logging.info("Forward pass complete.\n")
 
