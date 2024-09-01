@@ -41,7 +41,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
-
     transformer_model = TransformerModelv24(embed_dim=512,
                                             symbol_factor=1,
                                             trans_depth=8,
@@ -66,12 +65,19 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             feedback_dim=1024,
                                             meta_1_depth=4,
                                             meta_1_num_heads=8,
+                                            meta_1_attn_drop=0.3,
+                                            meta_1_proj_drop=0.3,
+                                            meta_1_drop_path_max=0.5,
                                             meta_2_depth=4,
                                             meta_2_num_heads=32,
+                                            meta_2_attn_drop=0.3,
+                                            meta_2_proj_drop=0.3,
+                                            meta_2_drop_path_max=0.5,
                                             score_rep=0,
                                             num_loss_terms=3,
                                             device=device
                                             ).to(device)
+
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
