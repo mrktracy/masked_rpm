@@ -179,6 +179,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ema_long = None
     ema_short = 1e-6
     adjustment_factor = 1
+    uniform_weights = torch.ones(3).to(device) / 3
 
     # Training loop
     for epoch in range(FIRST_EPOCH, EPOCHS):
@@ -207,7 +208,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
             if epoch < WARMUP_EPOCHS:
-                loss_weights = torch.ones(3).to(device)/3
+                loss_weights = uniform_weights
             else:
                 loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
 
@@ -217,8 +218,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Calculating loss...\n")
 
-            entropy = -torch.sum(loss_weights * torch.log(loss_weights + 1e-9))
-            ent_factor = (1 + adjustment_factor * BETA * entropy)
+            entropy_uniform = -torch.sum(uniform_weights * torch.log(uniform_weights + 1e-9))
+            entropy_weights = -torch.sum(loss_weights * torch.log(loss_weights + 1e-9))
+
+            ent_factor = (1 + adjustment_factor * BETA * (entropy_uniform - entropy_weights))
 
             loss = ((loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err)*ent_factor +
                     L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1))
