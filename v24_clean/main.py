@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr47_full"
+version = "v24-itr48_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -217,9 +217,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Calculating loss...\n")
 
-            loss = (loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err +
-                    L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1) +
-                    adjustment_factor * BETA * torch.var(loss_weights))
+            var_factor = (1 + adjustment_factor * BETA * torch.var(loss_weights)**2)
+
+            loss = ((loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err)*var_factor +
+                    L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1))
 
             tot_loss += loss.item() # update running averages
             count += 1
