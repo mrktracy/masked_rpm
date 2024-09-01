@@ -220,8 +220,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             entropy_uniform = -torch.sum(uniform_weights * torch.log(uniform_weights + 1e-9))
             entropy_weights = -torch.sum(loss_weights * torch.log(loss_weights + 1e-9))
+            entropy_diff = entropy_uniform - entropy_weights
 
-            ent_factor = (1 + adjustment_factor * BETA * (entropy_uniform - entropy_weights))
+            ent_factor = (1 + adjustment_factor * BETA * entropy_diff)
 
             loss = ((loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err)*ent_factor +
                     L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1))
@@ -259,9 +260,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 batch_time = end_time - start_time
                 output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}"
                 logging.info(output)
-                logging.info(f"Weights: {loss_weights}, entropy: {entropy}")
+                logging.info(f"Weights: {loss_weights}, entropy: {entropy_weights}")
+                logging.info(f"entropy_diff: {entropy_diff}")
+                logging.info(f"ent_factor: {ent_factor}")
                 logging.info(f"ema_short: {ema_short}, ema_long: {ema_long}")
                 logging.info(f"ema_delta: {ema_delta}")
+                logging.info(f"adjustment_factor: {adjustment_factor}")
 
             if (idx+1) % batches_per_log == 0:
                 # Note: resets feedback to None
