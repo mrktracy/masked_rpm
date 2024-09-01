@@ -220,7 +220,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             entropy_uniform = -torch.sum(uniform_weights * torch.log(uniform_weights + 1e-9))
             entropy_weights = -torch.sum(loss_weights * torch.log(loss_weights + 1e-9))
-            entropy_penalty = torch.exp(entropy_uniform /(entropy_weights + 1e-9))
+            entropy_penalty = torch.exp(entropy_uniform /(entropy_weights + 1e-9)) * (entropy_uniform - entropy_weights)
 
             ent_factor = (1 + adjustment_factor * BETA * entropy_penalty)
 
