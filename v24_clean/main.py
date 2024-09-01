@@ -112,7 +112,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ALPHA_short = 0.99 # parameter for exponential moving average
     ALPHA_long = 0.90  # parameter for exponential moving average
     WARMUP_EPOCHS = 1
-    THRESHOLD = 0.10
+    THRESHOLD = 0.025
     NU_1 = 5
     NU_2 = 5
 
@@ -242,9 +242,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # Adjust BETA based on ema_delta
             if ema_delta < THRESHOLD:  # Recent performance is worse or stalled, increase BETA
-                adjustment_factor = math.exp(1 + NU_1 * abs(ema_delta))  # Scale BETA higher, regularization increases
-            else:  # Recent performance is better, decrease BETA
                 adjustment_factor = 1 / (1 + NU_2 * ema_delta)  # Scale BETA lower, exploration encouraged
+            else:  # Recent performance is better, decrease BETA
+                adjustment_factor = math.exp(1 + NU_1 * abs(ema_delta))  # Scale BETA higher, regularization increases
 
             # logging.info("Forward pass complete.\n")
 
