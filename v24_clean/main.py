@@ -113,7 +113,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ALPHA_long = 0.5  # parameter for exponential moving average
     WARMUP = 120
     THRESHOLD = 0.05
-    NU_1 = 100
+    NU_1 = 5
     NU_2 = 5
 
     ''' Instantiate data loaders, optimizer, criterion '''
