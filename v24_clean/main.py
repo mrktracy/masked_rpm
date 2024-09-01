@@ -265,7 +265,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 logging.info(f"ent_factor: {ent_factor}")
                 logging.info(f"ema_short: {ema_short}, ema_long: {ema_long}")
                 logging.info(f"ema_delta: {ema_delta}")
-                logging.info(f"adjustment_factor: {adjustment_factor}")
+                logging.info(f"adjustment_factor: {adjustment_factor}\n")
 
             if (idx+1) % batches_per_log == 0:
                 # Note: resets feedback to None
