@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr48_full"
+version = "v24-itr49_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -109,7 +109,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
-    ALPHA_short = 0.9 # parameter for exponential moving average
+    ALPHA_short = 0.99 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
     WARMUP_EPOCHS = 1
     THRESHOLD = 0.05
@@ -217,9 +217,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Calculating loss...\n")
 
-            var_factor = (1 + adjustment_factor * BETA * torch.var(loss_weights)**2)
+            entropy = -torch.sum(loss_weights * torch.log(loss_weights + 1e-9))
+            ent_factor = (1 + adjustment_factor * BETA * entropy)
 
-            loss = ((loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err)*var_factor +
+            loss = ((loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err)*ent_factor +
                     L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1))
 
             tot_loss += loss.item() # update running averages
