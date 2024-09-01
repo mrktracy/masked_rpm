@@ -111,7 +111,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
-    WARMUP = 120
+    WARMUP_EPOCHS = 1
     THRESHOLD = 0.05
     NU_1 = 5
     NU_2 = 5
@@ -206,7 +206,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
-            if epoch == 0 and idx < WARMUP:
+            if epoch < WARMUP_EPOCHS:
                 loss_weights = torch.ones(3).to(device)/3
             else:
                 loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
