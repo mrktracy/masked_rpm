@@ -256,15 +256,15 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 batch_time = end_time - start_time
                 output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}"
                 logging.info(output)
-                logging.info(f"Weights: {loss_weights}")
+                logging.info(f"Weights: {loss_weights}, entropy: {entropy}")
+                logging.info(f"ema_short: {ema_short}, ema_long: {ema_long}")
+                logging.info(f"ema_delta: {ema_delta}")
 
             if (idx+1) % batches_per_log == 0:
                 # Note: resets feedback to None
                 val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, max_batches=150, feedback=None)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
-                # with open(logfile, 'a') as file:
-                #     file.write(output)
 
                 BETA = BETA*(1+BETA_GROWTH_RATE)
                 feedback = None
