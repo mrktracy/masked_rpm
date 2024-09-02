@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr50_full"
+version = "v24-itr51_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -105,22 +105,22 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS = 20
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.00005
+    LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 10
+    BETA = 7.5
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
     ALPHA_short = 0.99 # parameter for exponential moving average
     ALPHA_long = 0.90  # parameter for exponential moving average
-    WARMUP_EPOCHS = 1
-    THRESHOLD = 0.025
-    NU_1 = 5
-    NU_2 = 5
+    WARMUP_EPOCHS = 0
+    THRESHOLD = 0.005
+    NU_explore = 15
+    NU_exploit = 5
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -248,9 +248,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # Adjust BETA based on ema_delta
             if ema_delta < THRESHOLD:  # Recent performance is worse or stalled, increase BETA
-                adjustment_factor = 1 / (1 + NU_2 * ema_delta)  # Scale BETA lower, exploration encouraged
+                adjustment_factor = 1 / (1 + NU_explore * ema_delta)  # Scale BETA lower, exploration encouraged
             else:  # Recent performance is better, decrease BETA
-                adjustment_factor = math.exp(1 + NU_1 * abs(ema_delta))  # Scale BETA higher, regularization increases
+                adjustment_factor = math.exp(1 + NU_exploit * abs(ema_delta))  # Scale BETA higher, regularization increases
 
             # logging.info("Forward pass complete.\n")
 
