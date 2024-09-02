@@ -264,7 +264,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}"
+                output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Average training loss: {tot_loss/count}"
                 logging.info(output)
                 logging.info(f"Weights: {loss_weights}, entropy: {entropy_weights}")
                 logging.info(f"entropy_penalty: {entropy_penalty}")
@@ -276,7 +276,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             if (idx+1) % batches_per_log == 0:
                 # Note: resets feedback to None
                 val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, max_batches=150, feedback=None)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. Avg loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
 
                 BETA = BETA*(1+BETA_GROWTH_RATE)
