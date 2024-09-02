@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr51_full"
+version = "v24-itr51_pgm_extr"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -90,9 +90,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
-    # root_dir = '../../pgm_data/extrapolation/'
+    root_dir = '../../pgm_data/extrapolation/'
     # root_dir = '../../i_raven_data_cnst/'
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
@@ -102,14 +102,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 20
+    EPOCHS = 5
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 15
+    LOGS_PER_EPOCH = 45
     BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 5
+    EPOCHS_PER_SAVE = 1
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     BETA = 7.5
     BETA_GROWTH_RATE = 0
@@ -117,7 +117,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_reas = 0
     ALPHA_short = 0.99 # parameter for exponential moving average
     ALPHA_long = 0.90  # parameter for exponential moving average
-    WARMUP_EPOCHS = 1
+    # WARMUP_EPOCHS = 1
+    WARMUP_IDX = 1500
     THRESHOLD = 0.005
     NU_explore = 15
     NU_exploit = 5
@@ -213,7 +214,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
-            if epoch < WARMUP_EPOCHS:
+            if epoch == 0 and idx < WARMUP_IDX:
+            # if epoch < WARMUP_EPOCHS:
                 loss_weights = uniform_weights
             else:
                 loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
@@ -301,7 +303,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # To evaluate model, uncomment this part
     transformer_model.eval()
 
-    val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, feedback=None)
+    val_loss, _ = evaluation_function(transformer_model, test_dataloader, device, feedback=None)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
