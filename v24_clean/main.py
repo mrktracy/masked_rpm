@@ -117,7 +117,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_reas = 0
     ALPHA_short = 0.99 # parameter for exponential moving average
     ALPHA_long = 0.90  # parameter for exponential moving average
-    WARMUP_EPOCHS = 0
+    WARMUP_EPOCHS = 1
     THRESHOLD = 0.005
     NU_explore = 15
     NU_exploit = 5
@@ -226,7 +226,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             entropy_uniform = -torch.sum(uniform_weights * torch.log(uniform_weights + 1e-9))
             entropy_weights = -torch.sum(loss_weights * torch.log(loss_weights + 1e-9))
-            entropy_penalty = torch.exp(entropy_uniform /(entropy_weights + 1e-9)) * (entropy_uniform - entropy_weights)
+            entropy_penalty = torch.exp(entropy_uniform /(entropy_weights + 1e-9)) * (entropy_uniform - entropy_weights)**2
 
             ent_factor = (1 + adjustment_factor * BETA * entropy_penalty)
 
