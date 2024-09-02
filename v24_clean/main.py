@@ -248,7 +248,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # Adjust BETA based on ema_delta
             if ema_delta < THRESHOLD:  # Recent performance is worse or stalled, increase BETA
-                adjustment_factor = 1 / (1 + NU_explore * ema_delta)  # Scale BETA lower, exploration encouraged
+                adjustment_factor = 1 / (1 + NU_explore * abs(ema_delta))  # Scale BETA lower, exploration encouraged
             else:  # Recent performance is better, decrease BETA
                 adjustment_factor = math.exp(1 + NU_exploit * abs(ema_delta))  # Scale BETA higher, regularization increases
 
