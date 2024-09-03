@@ -102,10 +102,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 5
+    EPOCHS = 20
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.000075
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
@@ -165,8 +165,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
 
     # transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
-    #
-    # dynamic_weights.load_state_dict(state_dict['dynamic_weights_state_dict'])
     #
     # optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
     # optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
@@ -276,6 +274,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 logging.info(f"adjustment_factor: {adjustment_factor}\n")
 
             if (idx+1) % batches_per_log == 0:
+
                 # Note: resets feedback to None
                 val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, max_batches=150, feedback=None)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. Avg loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
