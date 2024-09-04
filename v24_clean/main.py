@@ -8,14 +8,14 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+# from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 import math
 
-version = "v24-itr54_full"
+version = "v24-itr55_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -117,7 +117,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
-    WARMUP_EPOCHS = 20
+    WARMUP_EPOCHS = 1
     # WARMUP_IDX = 1500
     THRESHOLD = 0.005
     NU_explore = 15
