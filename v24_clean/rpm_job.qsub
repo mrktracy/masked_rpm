@@ -3,7 +3,7 @@
 #$ -P noc-lab           # project name
 #$ -N v24-itr55_full         # job name
 
-#$ -l h_rt=48:00:00     # hard time limit of 48 hours
+#$ -l h_rt=96:00:00     # hard time limit of 48 hours
 #$ -m bea                # send email when finished or aborted
 #$ -j y			# merge error and output files into one
 
