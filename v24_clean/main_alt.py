@@ -1,19 +1,21 @@
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from torch.optim.lr_scheduler import StepLR, ExponentialLR
 from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
-from evaluate_masked_alt import evaluate_model_dist as evaluation_function
+from evaluate_masked import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
-from models_alt import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
+from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
+import math
 
-version = "v24-itr37_full"
+version = "v24-itr55_pgm_extr"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -36,36 +38,23 @@ def initialize_weights_he(m):
 
 def main_BERT(VERSION, RESULTS_FOLDER):
 
-    MLP_DW = True
-    HISTORY_SIZE = 12
-    AUTO_REG = False
-
-    if AUTO_REG:
-        max_history_length = HISTORY_SIZE*6
-    else:
-        max_history_length = HISTORY_SIZE*3
-
     # Initialize device, model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
-    # print(num_gpus)
-
-
     transformer_model = TransformerModelv24(embed_dim=512,
                                             symbol_factor=1,
-                                            trans_depth=2,
-                                            abs_1_depth=2,
-                                            abs_2_depth=2,
-                                            trans_num_heads=4,
-                                            abs_1_num_heads=4,
-                                            abs_2_num_heads=4,
+                                            trans_depth=4,
+                                            abs_1_depth=4,
+                                            abs_2_depth=4,
+                                            trans_num_heads=8,
+                                            abs_1_num_heads=8,
+                                            abs_2_num_heads=8,
                                             mlp_ratio=4,
                                             use_backbone_enc=True,
                                             decoder_num=2,  # 1 - MLP, 2 - Deconvolution, 3 - Backbone
-                                            bb_depth=1,
-                                            bb_num_heads=4,
-                                            ternary_num=3, # 1 - C, 2 - Hadamard, 3 - MLP
-                                            mlp_drop=0.5,
+                                            bb_depth=2,
+                                            bb_num_heads=8,
+                                            ternary_num=3,  # 1 - C, 2 - Hadamard, 3 - MLP
                                             proj_drop=0.5,
                                             attn_drop=0.5,
                                             drop_path_max=0.5,
@@ -74,65 +63,70 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             ternary_mlp_ratio=3,
                                             restrict_qk=False,
                                             feedback_dim=1024,
-                                            meta_1_depth=1,
-                                            meta_1_num_heads=2,
-                                            meta_2_depth=1,
-                                            meta_2_num_heads=2,
-                                            score_rep=0
+                                            meta_1_depth=2,
+                                            meta_1_num_heads=8,
+                                            meta_1_attn_drop=0.3,
+                                            meta_1_proj_drop=0.3,
+                                            meta_1_drop_path_max=0.5,
+                                            meta_2_depth=2,
+                                            meta_2_num_heads=32,
+                                            meta_2_attn_drop=0.3,
+                                            meta_2_proj_drop=0.3,
+                                            meta_2_drop_path_max=0.5,
+                                            score_rep=0,
+                                            num_loss_terms=3,
+                                            device=device
                                             ).to(device)
-    if MLP_DW:
-        dynamic_weights = DynamicWeighting(embed_dim=max_history_length,
-                                           mlp_ratio=2,
-                                           mlp_drop=0.1,
-                                           output_dim=2).to(device)
-    else:
-        if AUTO_REG:
-            dynamic_weights = DynamicWeightingRNN(input_dim=4).to(device)
-        else:
-            dynamic_weights = DynamicWeightingRNN(input_dim=2).to(device)
+
 
     # initialize weights
-    # transformer_model.apply(initialize_weights_he)
-    # dynamic_weights.apply(initialize_weights_he)
+    transformer_model.apply(initialize_weights_he)
 
     if num_gpus > 1:  # use multiple GPUs
         transformer_model = nn.DataParallel(transformer_model)
-        dynamic_weights = nn.DataParallel(dynamic_weights)
         # transformer_model = nn.DataParallel(transformer_model, device_ids=["cuda:0", "cuda:3"])
 
     # logging.info("Models declared and initialized.\n")
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
-    # root_dir = '../../pgm_data/extrapolation/'
+    root_dir = '../../pgm_data/extrapolation/'
     # root_dir = '../../i_raven_data_cnst/'
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
     ''' Transformer model v9 '''
     train_dataset = rpm_dataset(train_files, device=device)
     val_dataset = rpm_dataset(val_files, device=device)
+    test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 20
+    EPOCHS = 5
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.00005
+    LEARNING_RATE = 0.000075
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 15
+    LOGS_PER_EPOCH = 45
     BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 5
+    EPOCHS_PER_SAVE = 1
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    # ALPHA = 0.5 # for relative importance of guess vs. autoencoder accuracy
-    BETA = 2
+    BETA = 7.5
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
+    ALPHA_short = 0.9 # parameter for exponential moving average
+    ALPHA_long = 0.5  # parameter for exponential moving average
+    # WARMUP_EPOCHS = 1
+    WARMUP_IDX = 1500
+    THRESHOLD = 0.005
+    NU_explore = 15
+    NU_exploit = 5
 
     ''' Instantiate data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     # logging.info("Data loaded.\n")
 
@@ -153,8 +147,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                  lr=LEARNING_RATE,
                                  weight_decay=1e-4)
 
-    optimizer_2 = torch.optim.Adam(list(dynamic_weights.parameters()),
-                                   lr=LEARNING_RATE,
+    if num_gpus > 1:
+        optimizer_2 = torch.optim.Adam(list(transformer_model.module.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
+                                                weight_decay=1e-4)
+    else:
+        optimizer_2 = torch.optim.Adam(list(transformer_model.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
                                    weight_decay=1e-4)
 
     scheduler_1 = ExponentialLR(optimizer_1, gamma=0.95)
@@ -163,22 +160,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_1 = nn.CrossEntropyLoss()
     criterion_2 = nn.MSELoss()
     criterion_3 = nn.MSELoss()
-    criterion_4 = nn.MSELoss()
-
-    if MLP_DW:
-        err_history = torch.zeros(max_history_length).to(device)
-    else:
-        err_history = torch.zeros(HISTORY_SIZE, 4).to(device) if AUTO_REG else torch.zeros(HISTORY_SIZE, 2).to(
-            device)
-
-    weights = torch.zeros(2).to(device)
 
     ''' Load saved models '''
     # state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
 
     # transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
-    #
-    # dynamic_weights.load_state_dict(state_dict['dynamic_weights_state_dict'])
     #
     # optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
     # optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
@@ -195,11 +181,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     # And comment out the remainder below here
 
+    ema_long = None
+    ema_short = 1e-6
+    adjustment_factor = 1
+    uniform_weights = torch.ones(3).to(device) / 3
+
     # Training loop
     for epoch in range(FIRST_EPOCH, EPOCHS):
         count = 0
         tot_loss = 0
-        times = 0
+        feedback = None  # reset feedback at start of every epoch
 
         # logging.info("Initialized loop variables.\n")
 
@@ -208,75 +199,58 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             if idx % BATCHES_PER_PRINT == 0:
                 start_time = time.time()
 
-            batch_size = sentences.size(0)
-
             optimizer_1.zero_grad()
             optimizer_2.zero_grad()
 
             sentences = sentences.to(device) # passed to model to get output and recreation of inputs
             target_nums = target_nums.to(device)  # used to select from among candidates
 
+            if feedback is not None:
+                feedback = feedback.to(device)
+
             # logging.info("Running forward pass of model...\n")
 
-            dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas = transformer_model(sentences)
+            dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
+
+            if epoch == 0 and idx < WARMUP_IDX:
+            # if epoch < WARMUP_EPOCHS:
+                loss_weights = uniform_weights
+            else:
+                loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
             meta_err = criterion_3(reas_raw, reas_decoded)
 
-            # logging.info("Updating error history...\n")
-
-            # task_share = task_err / (task_err + rec_err + meta_err)
-            # rec_share = rec_err / (task_err + rec_err + meta_err)
-            # meta_share = 1 - task_share - rec_share
-
-            rec_share = rec_err / (rec_err + meta_err)
-            meta_share = 1 - rec_share
-
-            if MLP_DW:
-                if AUTO_REG:
-                    err_history = torch.cat([err_history[4:], torch.stack([rec_share, meta_share], dim=-1),
-                                             weights], dim=-1).detach()
-
-                else:
-                    err_history = torch.cat([err_history[2:], torch.stack([rec_share, meta_share], dim=-1)],
-                                            dim=-1).detach()
-
-            else:
-                if AUTO_REG:
-                    # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, torch.cat([torch.stack([rec_share, meta_share], dim=-1).unsqueeze(0), \
-                                             weights.unsqueeze(0)], dim=-1)], dim=0).detach()
-
-                else:
-                    # Concatenate the current task error and reconstruction error to the history
-                    err_history = torch.cat([err_history, \
-                                             torch.stack([rec_share, meta_share], dim=-1).unsqueeze(0)], dim=0).detach()
-
-                # Remove the oldest entry if the history length exceeds the desired length
-                if err_history.size(1) > HISTORY_SIZE:
-                    err_history = err_history[:, -HISTORY_SIZE:, :]
-
-            # logging.info(f"err_history: {err_history.shape}")
-
-            # logging.info("Retrieving loss weights...\n")
-
-            # weights = dynamic_weights(err_history.unsqueeze(0)) # unsqueeze to create "batch" dimension expected
-
-            # loss = ALPHA*task_err + (1 - ALPHA)*rec_err + L1*torch.norm(embeddings, p=1)
-
             # logging.info("Calculating loss...\n")
 
-            # loss = (task_err + weights[0]*rec_err + weights[1]*meta_err + L1_perception * torch.norm(embeddings, p=1) +
-            #         L1_reas * torch.norm(reas_meta_reas, p=1) + BETA*torch.var(weights))
+            entropy_uniform = -torch.sum(uniform_weights * torch.log(uniform_weights + 1e-9))
+            entropy_weights = -torch.sum(loss_weights * torch.log(loss_weights + 1e-9))
+            entropy_penalty = torch.exp(entropy_uniform /(entropy_weights + 1e-9)) * (entropy_uniform - entropy_weights)**2
 
-            # loss = (task_err + rec_err + meta_err + fb_err + L1 * torch.norm(embeddings, p=1))
+            ent_factor = (1 + adjustment_factor * BETA * entropy_penalty)
 
-            loss = (task_err + rec_err + meta_err + L1_perception * torch.norm(embeddings, p=1) +
-                    L1_reas * torch.norm(reas_meta_reas, p=1))
+            loss = ((loss_weights[0]*task_err + loss_weights[1]*rec_err + loss_weights[2]*meta_err)*ent_factor +
+                    L1_perception * torch.norm(embeddings, p=1) + L1_reas * torch.norm(reas_meta_reas, p=1))
 
             tot_loss += loss.item() # update running averages
             count += 1
+
+            # update exponential moving average of losses
+            if epoch == 0 and idx == 0:  # On the first batch of the first epoch
+                ema_long = loss.item()  # Initialize EMA with the first loss
+                ema_short = loss.item()
+            else:
+                ema_long = (1 - ALPHA_long) * ema_long + ALPHA_long * loss.item()
+                ema_short = (1 - ALPHA_short) * ema_short + ALPHA_short * loss.item()
+
+            ema_delta = (ema_long - ema_short)/ema_long
+
+            # Adjust BETA based on ema_delta
+            if ema_delta < THRESHOLD:  # Recent performance is worse or stalled, increase BETA
+                adjustment_factor = 1 / (1 + NU_explore * abs(ema_delta))  # Scale BETA lower, exploration encouraged
+            else:  # Recent performance is better, decrease BETA
+                adjustment_factor = math.exp(1 + NU_exploit * abs(ema_delta))  # Scale BETA higher, regularization increases
 
             # logging.info("Forward pass complete.\n")
 
@@ -290,31 +264,36 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             if (idx+1) % BATCHES_PER_PRINT == 0:
                 end_time = time.time()
                 batch_time = end_time - start_time
-                output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Training loss: {tot_loss/count}"
+                output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Average training loss: {tot_loss/count}"
                 logging.info(output)
-                logging.info(f"Weights: {weights}")
+                logging.info(f"Weights: {loss_weights}, entropy: {entropy_weights}")
+                logging.info(f"entropy_penalty: {entropy_penalty}")
+                logging.info(f"ent_factor: {ent_factor}")
+                logging.info(f"ema_short: {ema_short}, ema_long: {ema_long}")
+                logging.info(f"ema_delta: {ema_delta}")
+                logging.info(f"adjustment_factor: {adjustment_factor}\n")
 
             if (idx+1) % batches_per_log == 0:
-                val_loss = evaluation_function(transformer_model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                logging.info(output)
-                # with open(logfile, 'a') as file:
-                #     file.write(output)
 
-                tot_loss = 0
-                count = 0
+                # Note: resets feedback to None
+                val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, max_batches=150, feedback=None)
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. Avg loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                logging.info(output)
+
                 BETA = BETA*(1+BETA_GROWTH_RATE)
+                feedback = None
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
             save_file = f"../../modelsaves/{VERSION}/{VERSION_SUBFOLDER}tf_{VERSION}_ep{epoch + 1}.pth"
             os.makedirs(os.path.dirname(save_file), exist_ok=True)
             torch.save({
                 'transformer_model_state_dict': transformer_model.state_dict(),
-                'dynamic_weights_state_dict': dynamic_weights.state_dict(),
+                # 'dynamic_weights_state_dict': dynamic_weights.state_dict(),
                 'optimizer_1_state_dict': optimizer_1.state_dict(),
                 'optimizer_2_state_dict': optimizer_2.state_dict(),
                 'scheduler_1_state_dict': scheduler_1.state_dict(),
-                'scheduler_2_state_dict': scheduler_2.state_dict()
+                'scheduler_2_state_dict': scheduler_2.state_dict(),
+                'feedback': feedback
             }, save_file)
 
         scheduler_1.step()
@@ -323,8 +302,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # To evaluate model, uncomment this part
     transformer_model.eval()
 
-    val_loss = evaluation_function(transformer_model, val_dataloader, device)
-    output = f"val: {val_loss:.2f}\n"
+    val_loss, _ = evaluation_function(transformer_model, test_dataloader, device, feedback=None)
+    output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
 if __name__ == "__main__":
