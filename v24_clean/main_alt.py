@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr55_pgm_extr"
+version = "v24-itr56_pgm_extr"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -105,7 +105,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS = 5
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.000075
+    LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 45
     BATCHES_PER_PRINT = 40
