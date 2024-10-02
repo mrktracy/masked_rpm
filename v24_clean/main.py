@@ -17,7 +17,7 @@ import math
 
 version = "v24-itr55_full"
 
-logfile = f"../../tr_results/{version}/runlog_{version}.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -102,8 +102,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 20
-    FIRST_EPOCH = 0
+    EPOCHS = 10
+    FIRST_EPOCH = 11
     BATCH_SIZE = 32
     LEARNING_RATE = 0.000075
     # MOMENTUM = 0.90
@@ -117,7 +117,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
-    WARMUP_EPOCHS = 1
+    WARMUP_EPOCHS = 0
     # WARMUP_IDX = 1500
     THRESHOLD = 0.005
     NU_explore = 15
@@ -162,15 +162,15 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_3 = nn.MSELoss()
 
     ''' Load saved models '''
-    # state_dict = torch.load('../../modelsaves/v22-itr54_pgm_extr/tf_v22-itr54_pgm_extr_ep15.pth')
+    state_dict = torch.load('../../modelsaves/v24-itr55_full/tf_v24-itr55_full_ep10.pth')
 
-    # transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
-    #
-    # optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
-    # optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
-    #
-    # scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
-    # scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
+    transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
+
+    optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
+    optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
+
+    scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
+    scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
 
     # # To evaluate model, uncomment this part
     # transformer_model.eval()
