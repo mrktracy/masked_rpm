@@ -9,9 +9,9 @@
 
 #$ -l mem_per_core=6G	# memory requirements per CPU core
 
-#$ -l gpus=4		# number of GPUs
+#$ -l gpus=3		# number of GPUs
 #$ -l gpu_c=6		# GPU minimum capability
-#$ -l gpu_type=L40S	# GPU type
+#$ -l gpu_type=A40	# GPU type
 
 module load miniconda
 conda activate rpm
