@@ -102,7 +102,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 5
+    EPOCHS = 15
     FIRST_EPOCH = 5
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
