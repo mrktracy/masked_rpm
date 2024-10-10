@@ -237,7 +237,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             count += 1
 
             # update exponential moving average of losses
-            if epoch == 0 and idx == 0:  # On the first batch of the first epoch
+            if epoch == FIRST_EPOCH and idx == 0:  # On the first batch of the first epoch
                 ema_long = loss.item()  # Initialize EMA with the first loss
                 ema_short = loss.item()
             else:
