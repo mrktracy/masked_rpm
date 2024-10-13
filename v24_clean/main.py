@@ -15,9 +15,9 @@ import os
 import logging
 import math
 
-version = "v24-itr55_full"
+version = "v24-itr56_full"
 
-logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -102,10 +102,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 30
-    FIRST_EPOCH = 11
+    EPOCHS = 20
+    FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.000075
+    LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 30
     BATCHES_PER_PRINT = 40
