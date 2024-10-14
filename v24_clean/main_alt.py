@@ -17,7 +17,7 @@ import math
 
 version = "v24-itr56_pgm_extr"
 
-logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}_2.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -102,8 +102,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 15
-    FIRST_EPOCH = 5
+    EPOCHS = 1
+    FIRST_EPOCH = 12
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
@@ -118,7 +118,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
     # WARMUP_EPOCHS = 1
-    WARMUP_IDX = 0
+    WARMUP_IDX = 1500
     THRESHOLD = 0.005
     NU_explore = 15
     NU_exploit = 5
@@ -162,7 +162,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_3 = nn.MSELoss()
 
     ''' Load saved models '''
-    state_dict = torch.load('../../modelsaves/v24-itr56_pgm_extr/tf_v24-itr56_pgm_extr_ep5.pth')
+    state_dict = torch.load('../../modelsaves/v24-itr56_pgm_extr/tf_v24-itr56_pgm_extr_ep11.pth')
 
     transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
 
@@ -187,7 +187,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     uniform_weights = torch.ones(3).to(device) / 3
 
     # Training loop
-    for epoch in range(FIRST_EPOCH, EPOCHS):
+    for epoch in range(FIRST_EPOCH, FIRST_EPOCH + EPOCHS):
         count = 0
         tot_loss = 0
         feedback = None  # reset feedback at start of every epoch
@@ -212,7 +212,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
-            if epoch == 0 and idx < WARMUP_IDX:
+            if epoch == FIRST_EPOCH and idx < WARMUP_IDX:
             # if epoch < WARMUP_EPOCHS:
                 loss_weights = uniform_weights
             else:
