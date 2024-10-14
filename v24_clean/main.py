@@ -117,7 +117,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
-    WARMUP_EPOCHS = 0
+    WARMUP_EPOCHS = 1
     # WARMUP_IDX = 1500
     THRESHOLD = 0.005
     NU_explore = 15
