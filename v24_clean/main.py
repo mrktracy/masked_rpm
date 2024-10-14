@@ -162,15 +162,15 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_3 = nn.MSELoss()
 
     ''' Load saved models '''
-    state_dict = torch.load('../../modelsaves/v24-itr55_full/tf_v24-itr55_full_ep10.pth')
-
-    transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
-
-    optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
-    optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
-
-    scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
-    scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
+    # state_dict = torch.load('../../modelsaves/v24-itr55_full/tf_v24-itr55_full_ep10.pth')
+    #
+    # transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
+    #
+    # optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
+    # optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
+    #
+    # scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
+    # scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
 
     # # To evaluate model, uncomment this part
     # transformer_model.eval()
