@@ -17,7 +17,7 @@ import math
 
 version = "v24-itr56_full"
 
-logfile = f"../../tr_results/{version}/runlog_{version}.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -78,7 +78,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             device=device
                                             ).to(device)
 
-
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
@@ -102,8 +101,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 20
-    FIRST_EPOCH = 0
+    EPOCHS = 12
+    FIRST_EPOCH = 11
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
@@ -117,7 +116,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
-    WARMUP_EPOCHS = 1
+    WARMUP_EPOCHS = 0
     # WARMUP_IDX = 1500
     THRESHOLD = 0.005
     NU_explore = 15
@@ -161,25 +160,26 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_2 = nn.MSELoss()
     criterion_3 = nn.MSELoss()
 
-    ''' Load saved models '''
-    # state_dict = torch.load('../../modelsaves/v24-itr55_full/tf_v24-itr55_full_ep10.pth')
-    #
-    # transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
-    #
-    # optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
-    # optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
-    #
-    # scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
-    # scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
+    ''' Invert comments below to load saved model '''
 
-    # # To evaluate model, uncomment this part
-    # transformer_model.eval()
-    #
-    # val_loss = evaluation_function(transformer_model, val_dataloader, device)
-    # output = f"val: {val_loss:.2f}\n"
-    # logging.info(output)
+    state_dict = torch.load('../../modelsaves/v24-itr56_full/tf_v24-itr56_full_ep10.pth')
 
-    # And comment out the remainder below here
+    transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
+
+    optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
+    optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
+
+    scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
+    scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
+
+    # To evaluate model, uncomment this part
+    transformer_model.eval()
+
+    val_loss = evaluation_function(transformer_model, val_dataloader, device)
+    output = f"val: {val_loss:.2f}\n"
+    logging.info(output)
+
+    ''' End load saved model '''
 
     ema_long = None
     ema_short = 1e-6
@@ -187,7 +187,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     uniform_weights = torch.ones(3).to(device) / 3
 
     # Training loop
-    for epoch in range(FIRST_EPOCH, EPOCHS):
+    for epoch in range(FIRST_EPOCH, FIRST_EPOCH + EPOCHS):
         count = 0
         tot_loss = 0
         feedback = None  # reset feedback at start of every epoch
