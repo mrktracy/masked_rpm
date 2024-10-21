@@ -173,11 +173,11 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
 
     # To evaluate model, uncomment this part
-    transformer_model.eval()
-
-    val_loss = evaluation_function(transformer_model, val_dataloader, device)
-    output = f"val: {val_loss:.2f}\n"
-    logging.info(output)
+    # transformer_model.eval()
+    #
+    # val_loss = evaluation_function(transformer_model, val_dataloader, device)
+    # output = f"val: {val_loss:.2f}\n"
+    # logging.info(output)
 
     ''' End load saved model '''
 
