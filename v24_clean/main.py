@@ -102,7 +102,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Define Hyperparameters '''
     EPOCHS = 12
-    FIRST_EPOCH = 11
+    FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
@@ -116,7 +116,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
-    WARMUP_EPOCHS = 0
+    WARMUP_EPOCHS = 1
     # WARMUP_IDX = 1500
     THRESHOLD = 0.005
     NU_explore = 75
@@ -160,19 +160,18 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_2 = nn.MSELoss()
     criterion_3 = nn.MSELoss()
 
-    ''' Invert comments below to load saved model '''
+    ''' Un-comment below to load saved model '''
+    # state_dict = torch.load('../../modelsaves/v24-itr56_full/tf_v24-itr56_full_ep10.pth')
+    #
+    # transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
+    #
+    # optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
+    # optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
+    #
+    # scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
+    # scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
 
-    state_dict = torch.load('../../modelsaves/v24-itr56_full/tf_v24-itr56_full_ep10.pth')
-
-    transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
-
-    optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
-    optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
-
-    scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
-    scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
-
-    # To evaluate model, uncomment this part
+    ''' To evaluate model, uncomment this part '''
     # transformer_model.eval()
     #
     # val_loss = evaluation_function(transformer_model, val_dataloader, device)
