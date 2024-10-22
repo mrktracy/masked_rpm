@@ -197,7 +197,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     WARMUP_EPOCHS = 1
     # WARMUP_IDX = 1500
     THRESHOLD = 0.005
-    NU_explore = 75
+    NU_explore = 15
     NU_exploit = 5
 
     ''' Instantiate data loaders, optimizer, criterion '''
