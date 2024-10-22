@@ -13,6 +13,8 @@
 #$ -l gpu_c=6		# GPU minimum capability
 #$ -l gpu_type=A100	# GPU type
 
+#$ -pe omp 4
+
 module load miniconda
 conda activate rpm
 python main.py
