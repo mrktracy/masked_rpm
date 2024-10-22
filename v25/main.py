@@ -409,11 +409,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 val_loss, _ = evaluation_function(model_1, model_2, model_3, val_dataloader,
                                                   device, max_batches=150, feedback_1=None,
                                                   feedback_2=None, feedback_3=None)
-                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. Avg loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                output = f"Epoch {epoch+1} - {idx+1}/{train_length}. Avg loss: {tot_loss/count:.4f}. lr: {scheduler_1_a.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
 
                 BETA = BETA*(1+BETA_GROWTH_RATE)
-                feedback = None
+
+                feedback_1 = None
+                feedback_2 = None
+                feedback_3 = None
 
         scheduler_1_a.step()
         scheduler_2_a.step()
