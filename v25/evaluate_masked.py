@@ -35,11 +35,11 @@ def evaluate_model_dist(model_1, model_2, model_3, dataloader, device, max_batch
             dist_2, _, _, _, _, _, _, feedback = model_1(sentences, feedback_1)
             dist_3, _, _, _, _, _, _, feedback = model_1(sentences, feedback_2)
 
-            dist = torch.mean(torch.stack(dist_1, dist_2, dist_3))
+            dist = torch.stack([dist_1, dist_2, dist_3]).mean(dim=0)
 
             dist_softmax = F.softmax(dist, dim=-1)
 
-            guesses = torch.argmax(dist, dim=-1) # take highest probability guess
+            guesses = torch.argmax(dist_softmax, dim=-1) # take highest probability guess
 
             num_correct += torch.eq(guesses, target_nums).sum().item()
             num_samples += sentences.size(0)

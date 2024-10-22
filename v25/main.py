@@ -8,7 +8,7 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 # from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
@@ -179,7 +179,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 12
+    EPOCHS = 20
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
@@ -331,13 +331,13 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 loss_weights_2 = F.softmax(loss_weights_2.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
                 loss_weights_3 = F.softmax(loss_weights_3.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
 
-                loss_weights = torch.mean(torch.stack(loss_weights_1, loss_weights_2, loss_weights_3))
+                loss_weights = torch.stack([loss_weights_1, loss_weights_2, loss_weights_3]).mean(dim=0)
 
                 # ensure loss weights sum to 1
                 loss_weights = F.softmax(loss_weights, dim=-1)
 
             # Aggregate guesses
-            dist = torch.mean(torch.stack(dist_1, dist_2, dist_3))
+            dist = torch.stack([dist_1, dist_2, dist_3]).mean(dim=0)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = (criterion_2(sentences, recreation_1) + criterion_2(sentences, recreation_2) +
