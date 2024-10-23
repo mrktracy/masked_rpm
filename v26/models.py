@@ -287,7 +287,7 @@ class TransformerModelv26(nn.Module): # takes in images, embeds, performs self-a
 
         # logging.info("Ternary operation complete.\n")
 
-        x_2 = x_ternary.view(batch_size, self.num_candidates, self.grid_size*2*comb(self.grid_size, 2), -1)
+        x_2 = x_ternary.view(batch_size, self.num_candidates, self.grid_size*2 + 2*comb(self.grid_size, 2), -1)
 
         # apply temporal context normalization
         x_1 = self.tcn_1.forward(x_1)
@@ -297,7 +297,7 @@ class TransformerModelv26(nn.Module): # takes in images, embeds, performs self-a
 
         # reshape x for batch processing
         x_1 = x_1.view(batch_size*self.num_candidates, self.grid_size**2, -1)
-        x_2 = x_2.view(batch_size*self.num_candidates, self.grid_size*2*comb(self.grid_size, 2), -1)
+        x_2 = x_2.view(batch_size*self.num_candidates, self.grid_size*2 + 2*comb(self.grid_size, 2), -1)
 
         # clone x for passing to transformer blocks
         y = x_1.clone()
@@ -350,7 +350,7 @@ class TransformerModelv26(nn.Module): # takes in images, embeds, performs self-a
 
         x_1 = x_1.view([batch_size, self.num_candidates, self.grid_size**2, -1])
 
-        x_2 = x_2.view([batch_size, self.num_candidates, self.grid_size*2*comb(self.grid_size, 2), -1])
+        x_2 = x_2.view([batch_size, self.num_candidates, self.grid_size*2 + 2*comb(self.grid_size, 2), -1])
 
         y = y.view(batch_size, self.num_candidates, self.grid_size**2, -1)
         y = self.tcn_1.inverse(y)
