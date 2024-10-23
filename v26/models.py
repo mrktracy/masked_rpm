@@ -226,7 +226,7 @@ class TransformerModelv26(nn.Module): # takes in images, embeds, performs self-a
 
         y = torch.cat([y_1, y_2], dim = -1)
 
-        higher_order = self.mu(y).reshape(batch_size, 6, -1)
+        higher_order = self.mu_mlp(y).reshape(batch_size, 6, -1)
 
         result = torch.cat([rows_cols, higher_order], dim=1) # should return (B, 12, model_dim)
 
