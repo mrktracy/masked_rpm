@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v25-itr0_full"
+version = "v25-itr1_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -245,7 +245,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         optimizer_3_b = torch.optim.Adam(list(model_3.loss_weight_mlp.parameters()), lr=LEARNING_RATE,
                                          weight_decay=1e-4)
 
-
     scheduler_1_a = ExponentialLR(optimizer_1_a, gamma=0.95)
     scheduler_2_a = ExponentialLR(optimizer_2_a, gamma=0.95)
     scheduler_3_a = ExponentialLR(optimizer_3_a, gamma=0.95)
@@ -319,9 +318,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             # logging.info("Running forward pass of model...\n")
 
-            dist_1, recreation_1, embeddings_1, reas_raw_1, reas_decoded_1, reas_meta_reas_1, loss_weights_1, feedback_1 = model_1(sentences, feedback_3)
-            dist_2, recreation_2, embeddings_2, reas_raw_2, reas_decoded_2, reas_meta_reas_2, loss_weights_2, feedback_2 = model_2(sentences, feedback_1)
-            dist_3, recreation_3, embeddings_3, reas_raw_3, reas_decoded_3, reas_meta_reas_3, loss_weights_3, feedback_3 = model_2(sentences, feedback_2)
+            dist_1, recreation_1, embeddings_1, reas_raw_1, reas_decoded_1, reas_meta_reas_1, loss_weights_1, feedback_1 = model_1(sentences, feedback_1)
+            dist_2, recreation_2, embeddings_2, reas_raw_2, reas_decoded_2, reas_meta_reas_2, loss_weights_2, feedback_2 = model_2(sentences, feedback_2)
+            dist_3, recreation_3, embeddings_3, reas_raw_3, reas_decoded_3, reas_meta_reas_3, loss_weights_3, feedback_3 = model_2(sentences, feedback_3)
 
             # if epoch == 0 and idx < WARMUP_IDX:
             if epoch < WARMUP_EPOCHS:
@@ -336,7 +335,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 # ensure loss weights sum to 1
                 loss_weights = F.softmax(loss_weights, dim=-1)
 
-            # Aggregate guesses
+            # Aggregate guesses by taking softmax and then mean
+            dist_1, dist_2, dist_3 = (F.softmax(dist, dim=-1) for dist in [dist_1, dist_2, dist_3])
             dist = torch.stack([dist_1, dist_2, dist_3]).mean(dim=0)
 
             task_err = criterion_1(dist, target_nums)
