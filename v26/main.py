@@ -8,14 +8,14 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv26, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 import math
 
-version = "v26-itr0_full"
+version = "v26-itr1_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -110,7 +110,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 4
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 7.5
+    BETA = 1
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
