@@ -8,14 +8,14 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 import math
 
-version = "v24-itr57_full"
+version = "v24-itr58_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
 results_folder = os.path.dirname(logfile)
@@ -101,16 +101,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 12
+    EPOCHS = 20
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 30
+    LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 4
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 7.5
+    BETA = 1
     BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
@@ -119,7 +119,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     WARMUP_EPOCHS = 1
     # WARMUP_IDX = 1500
     THRESHOLD = 0.005
-    NU_explore = 75
+    NU_explore = 15
     NU_exploit = 5
 
     ''' Instantiate data loaders, optimizer, criterion '''
