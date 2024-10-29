@@ -17,7 +17,7 @@ import math
 
 version = "v24-itr59_full"
 
-logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -111,7 +111,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     EPOCHS_PER_SAVE = 4
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     BETA = 7.5
-    BETA_GROWTH_RATE = 0.05
+    BETA_GROWTH_RATE = 0
     L1_perception = 0
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
@@ -214,8 +214,10 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             # if epoch == 0 and idx < WARMUP_IDX:
             if epoch < WARMUP_EPOCHS:
                 loss_weights = uniform_weights
-            else:
+            elif num_gpus > 1:
                 loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
+            else:
+                loss_weights = F.softmax(loss_weights, dim=-1)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
