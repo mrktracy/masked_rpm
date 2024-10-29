@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr58_full"
+version = "v24-itr59_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}_1.txt"
 results_folder = os.path.dirname(logfile)
@@ -101,7 +101,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 20
+    EPOCHS = 30
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
@@ -110,8 +110,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     BATCHES_PER_PRINT = 40
     EPOCHS_PER_SAVE = 4
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 1
-    BETA_GROWTH_RATE = 0
+    BETA = 7.5
+    BETA_GROWTH_RATE = 0.05
     L1_perception = 0
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
@@ -278,8 +278,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, max_batches=150, feedback=None)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. Avg loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
-
-                BETA = BETA*(1+BETA_GROWTH_RATE)
                 feedback = None
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
@@ -297,6 +295,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
         scheduler_1.step()
         scheduler_2.step()
+        BETA = BETA * (1 + BETA_GROWTH_RATE)
 
     # To evaluate model, uncomment this part
     transformer_model.eval()
