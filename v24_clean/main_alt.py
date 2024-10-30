@@ -8,16 +8,16 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+# from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 import math
 
-version = "v24-itr56_pgm_extr"
+version = "v24-itr61_full"
 
-logfile = f"../../tr_results/{version}/runlog_{version}_2.txt"
+logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 
 os.makedirs(results_folder, exist_ok=True)
@@ -78,7 +78,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                                             device=device
                                             ).to(device)
 
-
     # initialize weights
     transformer_model.apply(initialize_weights_he)
 
@@ -90,9 +89,9 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
     ''' Use for PGM or I-RAVEN dataset '''
     # root_dir = '../../pgm_data/neutral/'
-    root_dir = '../../pgm_data/extrapolation/'
+    # root_dir = '../../pgm_data/extrapolation/'
     # root_dir = '../../i_raven_data_cnst/'
-    # root_dir = '../../i_raven_data_full/'
+    root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
     # train_files, val_files, test_files = gather_files_by_type(root_dir)
 
@@ -102,23 +101,23 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 1
-    FIRST_EPOCH = 12
+    EPOCHS = 30
+    FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.00005
     # MOMENTUM = 0.90
-    LOGS_PER_EPOCH = 45
+    LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 1
+    EPOCHS_PER_SAVE = 4
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
-    BETA = 7.5
-    BETA_GROWTH_RATE = 0
+    BETA = 7.5/1.05
+    BETA_GROWTH_RATE = 0.05
     L1_perception = 0
     L1_reas = 0
     ALPHA_short = 0.9 # parameter for exponential moving average
     ALPHA_long = 0.5  # parameter for exponential moving average
-    # WARMUP_EPOCHS = 1
-    WARMUP_IDX = 1500
+    WARMUP_EPOCHS = 1
+    # WARMUP_IDX = 1500
     THRESHOLD = 0.005
     NU_explore = 15
     NU_exploit = 5
@@ -161,25 +160,25 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     criterion_2 = nn.MSELoss()
     criterion_3 = nn.MSELoss()
 
-    ''' Load saved models '''
-    state_dict = torch.load('../../modelsaves/v24-itr56_pgm_extr/tf_v24-itr56_pgm_extr_ep11.pth')
+    ''' Un-comment below to load saved model '''
+    # state_dict = torch.load('../../modelsaves/v24-itr56_full/tf_v24-itr56_full_ep10.pth')
+    #
+    # transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
+    #
+    # optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
+    # optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
+    #
+    # scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
+    # scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
 
-    transformer_model.load_state_dict(state_dict['transformer_model_state_dict'])
-
-    optimizer_1.load_state_dict(state_dict['optimizer_1_state_dict'])
-    optimizer_2.load_state_dict(state_dict['optimizer_2_state_dict'])
-
-    scheduler_1.load_state_dict(state_dict['scheduler_1_state_dict'])
-    scheduler_2.load_state_dict(state_dict['scheduler_2_state_dict'])
-
-    # # To evaluate model, uncomment this part
+    ''' To evaluate model, uncomment this part '''
     # transformer_model.eval()
     #
     # val_loss = evaluation_function(transformer_model, val_dataloader, device)
     # output = f"val: {val_loss:.2f}\n"
     # logging.info(output)
 
-    # And comment out the remainder below here
+    ''' End load saved model '''
 
     ema_long = None
     ema_short = 1e-6
@@ -212,8 +211,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
             dist, recreation, embeddings, reas_raw, reas_decoded, reas_meta_reas, loss_weights, feedback = transformer_model(sentences, feedback)
 
-            if epoch == FIRST_EPOCH and idx < WARMUP_IDX:
-            # if epoch < WARMUP_EPOCHS:
+            # if epoch == 0 and idx < WARMUP_IDX:
+            if epoch < WARMUP_EPOCHS:
                 loss_weights = uniform_weights
             else:
                 loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
@@ -279,8 +278,6 @@ def main_BERT(VERSION, RESULTS_FOLDER):
                 val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, max_batches=150, feedback=None)
                 output = f"Epoch {epoch+1} - {idx+1}/{train_length}. Avg loss: {tot_loss/count:.4f}. lr: {scheduler_1.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
-
-                BETA = BETA*(1+BETA_GROWTH_RATE)
                 feedback = None
 
         if (epoch+1) % EPOCHS_PER_SAVE == 0:
@@ -298,11 +295,12 @@ def main_BERT(VERSION, RESULTS_FOLDER):
 
         scheduler_1.step()
         scheduler_2.step()
+        BETA = BETA * (1 + BETA_GROWTH_RATE)
 
     # To evaluate model, uncomment this part
     transformer_model.eval()
 
-    val_loss, _ = evaluation_function(transformer_model, test_dataloader, device, feedback=None)
+    val_loss, _ = evaluation_function(transformer_model, val_dataloader, device, feedback=None)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
