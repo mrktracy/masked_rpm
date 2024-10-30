@@ -8,14 +8,14 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+# from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import TransformerModelv24, DynamicWeighting, DynamicWeightingRNN
 import os
 import logging
 import math
 
-version = "v24-itr59_full"
+version = "v24-itr60_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -214,10 +214,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             # if epoch == 0 and idx < WARMUP_IDX:
             if epoch < WARMUP_EPOCHS:
                 loss_weights = uniform_weights
-            elif num_gpus > 1:
-                loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
             else:
-                loss_weights = F.softmax(loss_weights, dim=-1)
+                loss_weights = F.softmax(loss_weights.view(num_gpus, -1).mean(dim=0, keepdim=False), dim=-1)
 
             task_err = criterion_1(dist, target_nums)
             rec_err = criterion_2(sentences, recreation)
