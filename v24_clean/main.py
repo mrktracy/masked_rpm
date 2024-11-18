@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "v24-itr62_full"
+version = "v24-itr63_full"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
@@ -108,7 +108,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 4
+    EPOCHS_PER_SAVE = 5
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     BETA = 7.5
     BETA_GROWTH_RATE = 0
@@ -118,7 +118,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     ALPHA_long = 0.5  # parameter for exponential moving average
     WARMUP_EPOCHS = 1
     # WARMUP_IDX = 1500
-    THRESHOLD = 0.05
+    THRESHOLD = 0.005
     NU_explore = 15
     NU_exploit = 5
 
