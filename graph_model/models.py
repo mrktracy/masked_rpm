@@ -51,6 +51,10 @@ class Perception(nn.Module):
         return embeddings_final
 
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class AGMBrain(nn.Module):
     def __init__(self,
                  neuron_dim,
@@ -82,32 +86,47 @@ class AGMBrain(nn.Module):
 
     def forward(self, x):
         batch_cand_size = x.size(0)  # batch_size * num_candidates
+        embed_dim_doubled = x.size(1) // (self.grid_size ** 2)
 
         # Transform input to neuron dimension
         x_transformed = self.input_proj(x)  # Shape: (batch_cand_size, neuron_dim)
 
+        assert x_transformed.size(-1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
+
         # Initialize neuron states
-        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons, self.neuron_dim)
+        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons, self.neuron_dim)  # Shape: (batch_cand_size, n_neurons, neuron_dim)
+
+        assert states.size(-1) == self.neuron_dim, f"states feature mismatch: {states.size(-1)} != {self.neuron_dim}"
+        assert states.size(1) == self.n_neurons, f"states neuron mismatch: {states.size(1)} != {self.n_neurons}"
 
         # Add input to neuron states
-        states = states + x_transformed.unsqueeze(1)
+        states = states + x_transformed.unsqueeze(1)  # Broadcast input to all neurons
 
-        # Normalize edge vectors
-        edge_vectors = self.edge_vectors / (self.edge_vectors.norm(dim=-1, keepdim=True) + 1e-8)
+        # Debugging: Print shapes
+        print(f"states shape: {states.shape}, edge_vectors shape: {self.edge_vectors.shape}")
+        print(f"states.device: {states.device}, edge_vectors.device: {self.edge_vectors.device}")
 
+        # Normalize edge vectors to constrain magnitude
+        edge_vectors = F.normalize(self.edge_vectors, dim=-1)
+
+        # Create mask to avoid self-loops
+        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=states.device).unsqueeze(-1)  # Shape: (n_neurons, n_neurons, 1)
+
+        # Message passing
         for _ in range(self.n_steps):
-            # Debugging: Check dimensions before einsum
-            print(f"states shape: {states.shape}, edge_vectors shape: {edge_vectors.shape}")
-            print(f"states.device: {states.device}, edge_vectors.device: {edge_vectors.device}")
-
             # Compute transformation matrices
-            transform_matrices = torch.einsum('bnd,ijd->bnij', states, edge_vectors)  # (batch_size, n_neurons, n_neurons, neuron_dim)
+            transform_matrices = torch.einsum('bnd,ijd->bnijd', states, edge_vectors)  # Shape: [batch_size, n_neurons, n_neurons, neuron_dim, neuron_dim]
 
-            # Apply transformation matrix to sending nodes
-            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)  # (batch_size, n_neurons, neuron_dim)
+            # Mask out self-loops
+            transform_matrices = transform_matrices * mask.unsqueeze(0).float()
 
-            # Aggregate messages and update states
-            new_states = messages.sum(dim=1)  # Sum across neighbors
+            # Aggregate messages
+            messages = torch.einsum('bnijd,bmd->bnij', transform_matrices, states)  # [batch_size, n_neurons, n_neurons, neuron_dim]
+
+            # Sum messages for each receiving neuron
+            new_states = messages.sum(dim=2)  # Aggregate across sending neurons, shape: [batch_size, n_neurons, neuron_dim]
+
+            # Update neuron states
             states = states + F.relu(new_states)  # Add transformed messages to current state
 
         # Output states (final neuron states)
@@ -119,7 +138,7 @@ class AGMBrain(nn.Module):
 
         # Reshape outputs
         batch_size = batch_cand_size // self.num_candidates
-        recreation = recreation.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
+        recreation = recreation.view(batch_size, self.num_candidates, self.grid_size ** 2, embed_dim_doubled)
         scores = scores.view(batch_size, self.num_candidates)
 
         return recreation, scores
