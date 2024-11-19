@@ -51,10 +51,6 @@ class Perception(nn.Module):
         return embeddings_final
 
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
 class AGMBrain(nn.Module):
     def __init__(self,
                  neuron_dim,
@@ -74,8 +70,8 @@ class AGMBrain(nn.Module):
         self.input_features = input_features
 
         # Trainable parameters for neuron states and edge vectors
-        self.neuron_states = nn.Parameter(torch.randn(self.n_neurons, self.neuron_dim, device=device))  # Shape: (n_neurons, neuron_dim)
-        self.edge_vectors = nn.Parameter(torch.randn(self.n_neurons, self.n_neurons, self.neuron_dim, device=device))  # Shape: (n_neurons, n_neurons, neuron_dim)
+        self.neuron_states = nn.Parameter(torch.randn(self.n_neurons, self.neuron_dim, device=device))  # (n_neurons, neuron_dim)
+        self.edge_vectors = nn.Parameter(torch.randn(self.n_neurons, self.n_neurons, self.neuron_dim, device=device))  # (n_neurons, n_neurons, neuron_dim)
 
         # Input transformation to neuron dimensions
         self.input_proj = nn.Linear(self.input_features, self.neuron_dim)
@@ -89,45 +85,44 @@ class AGMBrain(nn.Module):
         embed_dim_doubled = x.size(1) // (self.grid_size ** 2)
 
         # Transform input to neuron dimension
-        x_transformed = self.input_proj(x)  # Shape: (batch_cand_size, neuron_dim)
+        x_transformed = self.input_proj(x)  # (batch_cand_size, neuron_dim)
 
         assert x_transformed.size(-1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
 
         # Initialize neuron states
-        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons, self.neuron_dim)  # Shape: (batch_cand_size, n_neurons, neuron_dim)
-
-        assert states.size(-1) == self.neuron_dim, f"states feature mismatch: {states.size(-1)} != {self.neuron_dim}"
-        assert states.size(1) == self.n_neurons, f"states neuron mismatch: {states.size(1)} != {self.n_neurons}"
+        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons, self.neuron_dim)  # (batch_cand_size, n_neurons, neuron_dim)
 
         # Add input to neuron states
         states = states + x_transformed.unsqueeze(1)  # Broadcast input to all neurons
 
-        # Debugging: Print shapes
-        print(f"states shape: {states.shape}, edge_vectors shape: {self.edge_vectors.shape}")
-        print(f"states.device: {states.device}, edge_vectors.device: {self.edge_vectors.device}")
-
-        # Normalize edge vectors to constrain magnitude
-        edge_vectors = F.normalize(self.edge_vectors, dim=-1)
+        # Debugging shapes
+        print(f"Initial states shape: {states.shape}, edge_vectors shape: {self.edge_vectors.shape}")
 
         # Create mask to avoid self-loops
-        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=states.device).unsqueeze(-1)  # Shape: (n_neurons, n_neurons, 1)
+        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)  # (n_neurons, n_neurons)
 
         # Message passing
         for _ in range(self.n_steps):
-            # Compute transformation matrices
-            transform_matrices = torch.einsum('bnd,ijd->bnijd', states, edge_vectors)  # Shape: [batch_size, n_neurons, n_neurons, neuron_dim, neuron_dim]
+            # Normalize edge vectors
+            edge_vectors = F.normalize(self.edge_vectors, p=2, dim=-1)
 
-            # Mask out self-loops
-            transform_matrices = transform_matrices * mask.unsqueeze(0).float()
+            # Compute the transform matrices
+            transform_matrices = torch.einsum('bnd,ijd->bnijdd', states, edge_vectors)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim, neuron_dim)
 
             # Aggregate messages
-            messages = torch.einsum('bnijd,bmd->bnij', transform_matrices, states)  # [batch_size, n_neurons, n_neurons, neuron_dim]
+            messages = torch.einsum('bnijdd,bnd->bnijd', transform_matrices, states)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
 
-            # Sum messages for each receiving neuron
-            new_states = messages.sum(dim=2)  # Aggregate across sending neurons, shape: [batch_size, n_neurons, neuron_dim]
+            # Apply mask
+            messages = messages * mask.unsqueeze(0).unsqueeze(-1).float()  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
 
-            # Update neuron states
+            # Reduce across sending neurons
+            new_states = messages.sum(dim=2)  # (batch_cand_size, n_neurons, neuron_dim)
+
+            # Update states
             states = states + F.relu(new_states)  # Add transformed messages to current state
+
+        # Debugging shapes
+        print(f"Final states shape: {states.shape}")
 
         # Output states (final neuron states)
         output_states = states[:, -1, :]  # Take final state of the last neuron
