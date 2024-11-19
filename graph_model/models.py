@@ -107,6 +107,9 @@ class AGMBrain(nn.Module):
         self.recreate_proj = nn.Linear(neuron_dim, input_dim)
         self.score_proj = nn.Linear(neuron_dim, 1)
 
+        # Add edge normalization
+        self.edge_vectors = nn.Parameter(F.normalize(torch.randn(n_neurons, n_neurons, neuron_dim), dim=-1))
+
     def forward(self, x):
         """
         Args:
@@ -130,15 +133,24 @@ class AGMBrain(nn.Module):
 
         # Message passing (vectorized)
         for _ in range(self.n_steps):
-            states_j = states.unsqueeze(1)  # (batch, 1, n_neurons, neuron_dim)
-            states_i = states.unsqueeze(2)  # (batch, n_neurons, 1, neuron_dim)
-            edge_vecs = self.edge_vectors.unsqueeze(0)  # (1, n_neurons, n_neurons, neuron_dim)
+            new_states = torch.zeros_like(states)
 
-            transform_matrices = torch.einsum('bnjd,ijdk->bnijk', states_j,
-                                            edge_vecs.expand(batch_cand_size, -1, -1, -1))
+            # Normalize edge vectors
+            edge_vecs = F.normalize(self.edge_vectors, dim=-1)
 
-            messages = torch.einsum('bnijk,bnik->bnij', transform_matrices, states_i)
-            messages = messages * mask.unsqueeze(0).unsqueeze(-1)
+            # Compute transformation matrices using outer product
+            # states: (batch, n_neurons, neuron_dim)
+            # edge_vecs: (n_neurons, n_neurons, neuron_dim)
+
+            # First compute n_j · e_ij^T for all pairs
+            # This creates transformation matrices of shape (batch, n_neurons, n_neurons, neuron_dim, neuron_dim)
+            transform_matrices = torch.einsum('bkd,ijd->bijk', states, edge_vecs)
+
+            # Then apply transformation to n_i
+            messages = torch.einsum('bijk,bid->bij', transform_matrices, states)
+
+            # Apply mask and sum
+            messages = messages * mask.unsqueeze(0)
             new_states = messages.sum(dim=2)
 
             states = F.relu(new_states)
