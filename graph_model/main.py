@@ -49,8 +49,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         n_msg_passing_steps=5,  # Retain reasoning depth
         bb_depth=2,  # Minimal backbone depth for feature extraction
         bb_num_heads=8,  # Transformer heads are fine as-is
-        neuron_dim=512,  # Halved from 1024
-        n_neurons=3,  # Reduced neuron count
+        neuron_dim=64,
+        n_neurons=32,
         device=device
     ).to(device)
 
