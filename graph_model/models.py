@@ -97,7 +97,7 @@ class Perception(nn.Module):
         self.n_steps = n_msg_passing_steps
         self.grid_size = grid_size
         self.num_candidates = num_candidates
-        self.bb_depth = bb_depth,
+        self.bb_depth = bb_depth
         self.bb_num_heads = bb_num_heads
 
         # Initialize positional embeddings
@@ -105,8 +105,7 @@ class Perception(nn.Module):
         pos_embed = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float())
 
-        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth,
-                                             num_heads=bb_num_heads, mlp_drop=per_mlp_drop)
+        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=self.bb_depth, num_heads=bb_num_heads, mlp_drop=per_mlp_drop)
 
     def forward(self, sentences):
         """
