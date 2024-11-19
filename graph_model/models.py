@@ -110,29 +110,28 @@ class AGMBrain(nn.Module):
         for _ in range(self.n_steps):
 
             states = states.view(batch_cand_size, self.n_neurons, self.neuron_dim)
-            self.edge_vectors = self.edge_vectors.view(self.n_neurons, self.n_neurons, self.neuron_dim)
+            # Create a local reshaped copy of edge_vectors
+            edge_vectors = self.edge_vectors.view(self.n_neurons, self.n_neurons, self.neuron_dim)
 
-            print(f"states.device: {states.device}, edge_vectors.device: {self.edge_vectors.device}")
-            print(f"states.dtype: {states.dtype}, edge_vectors.dtype: {self.edge_vectors.dtype}")
+            # Debugging: Ensure shapes are consistent
+            print(f"states shape: {states.shape}, edge_vectors shape: {edge_vectors.shape}")
 
             # Ensure shapes align
-            assert states.size(1) == self.edge_vectors.size(
-                0), f"Mismatch: states neurons {states.size(1)} != edge_vecs neurons {self.edge_vectors.size(0)}"
-            assert states.size(-1) == self.edge_vectors.size(
-                -1), f"Mismatch: states features {states.size(-1)} != edge_vecs features {self.edge_vectors.size(-1)}"
+            assert states.size(1) == edge_vectors.size(
+                0), f"Mismatch: states neurons {states.size(1)} != edge_vectors neurons {edge_vectors.size(0)}"
+            assert states.size(-1) == edge_vectors.size(
+                -1), f"Mismatch: states features {states.size(-1)} != edge_vectors features {edge_vectors.size(-1)}"
 
             # Einsum operation to compute messages
-            transform_matrices = torch.einsum('bnd,ijd->bnij', states,
-                                              self.edge_vectors)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
-            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()  # Apply mask
+            transform_matrices = torch.einsum('bnd,ijd->bnij', states, edge_vectors)
+            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()
 
             # Aggregate messages
-            messages = torch.einsum('bnij,bnd->bni', transform_matrices,
-                                    states)  # (batch_cand_size, n_neurons, neuron_dim)
+            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)
 
             # Update states
-            new_states = messages.sum(dim=1)  # Aggregate across neurons
-            states = F.relu(new_states)  # Apply nonlinearity
+            new_states = messages.sum(dim=1)
+            states = F.relu(new_states)
 
         # Output states (final neuron states)
         output_states = states[:, -1, :]  # Take final state of the last neuron
