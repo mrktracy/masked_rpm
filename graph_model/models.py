@@ -136,8 +136,7 @@ class AGMBrain(nn.Module):
             messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)
 
             # Update states
-            new_states = messages.sum(dim=1)
-            states = F.relu(new_states)
+            states = F.relu(messages)  # Keeps neuron interactions
 
         # Output states (final neuron states)
         output_states = states[:, -1, :]  # Take final state of the last neuron
