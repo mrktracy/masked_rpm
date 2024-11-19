@@ -43,15 +43,16 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     num_gpus = torch.cuda.device_count()
 
     transformer_model = AsymmetricGraphModel(
-        embed_dim=512,
-        grid_size=3,
-        num_candidates=8,
-        n_msg_passing_steps=5,
-        bb_depth=2,
-        bb_num_heads=8,
-        neuron_dim=1024,
-        n_neurons=10,
-        device=device).to(device)
+        embed_dim=512,  # Reasonable size for embeddings
+        grid_size=3,  # Keep grid size consistent
+        num_candidates=8,  # Consistent with problem formulation
+        n_msg_passing_steps=5,  # Retain reasoning depth
+        bb_depth=2,  # Minimal backbone depth for feature extraction
+        bb_num_heads=8,  # Transformer heads are fine as-is
+        neuron_dim=512,  # Halved from 1024
+        n_neurons=3,  # Reduced neuron count
+        device=device
+    ).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
