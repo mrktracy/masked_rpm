@@ -50,7 +50,8 @@ def main_BERT(VERSION, RESULTS_FOLDER):
         bb_depth=2,
         bb_num_heads=8,
         neuron_dim=1024,
-        n_neurons=10).to(device)
+        n_neurons=10,
+        device=device).to(device)
 
     # initialize weights
     transformer_model.apply(initialize_weights_he)
