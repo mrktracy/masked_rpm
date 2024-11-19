@@ -7,7 +7,6 @@ import torch.utils.checkpoint
 from timm.layers import Mlp, DropPath, use_fused_attn
 import logging
 
-
 class AsymmetricGraphModel(nn.Module):
     def __init__(self,
                  embed_dim,
@@ -19,20 +18,6 @@ class AsymmetricGraphModel(nn.Module):
                  neuron_dim,
                  n_neurons,
                  device=None):
-        """
-        Combines perception and reasoning modules into an integrated pipeline.
-
-        Args:
-            embed_dim: Dimensionality of the perception module's embeddings.
-            grid_size: Dimension of the image grid (grid_size x grid_size).
-            num_candidates: Number of candidate answers.
-            n_msg_passing_steps: Number of message-passing steps in AGMBrain.
-            bb_depth: Depth of the perception backbone.
-            bb_num_heads: Number of attention heads in perception's transformer blocks.
-            neuron_dim: Dimensionality of neuron embeddings in AGMBrain.
-            n_neurons: Number of neurons in AGMBrain.
-            device: Device to run the model on.
-        """
         super(AsymmetricGraphModel, self).__init__()
 
         self.embed_dim = embed_dim
@@ -50,15 +35,16 @@ class AsymmetricGraphModel(nn.Module):
             bb_num_heads=bb_num_heads
         )
 
-        # AGMBrain reasoning module - modified input_dim calculation
+        # AGMBrain reasoning module - now matches AGMBrain's init parameters
+        input_features = grid_size**2 * embed_dim*2  # Total dimension of input features
         self.reasoning = AGMBrain(
-            input_dim=grid_size**2 * embed_dim*2,  # Total dimension of concatenated panel features
             neuron_dim=neuron_dim,
             n_neurons=n_neurons,
             n_msg_passing_steps=n_msg_passing_steps,
             grid_size=grid_size,
             num_candidates=num_candidates,
-            device=device
+            device=device,
+            input_features=input_features
         )
 
     def forward(self, sentences):
@@ -87,6 +73,33 @@ class AsymmetricGraphModel(nn.Module):
 
 
 class AGMBrain(nn.Module):
+    def __init__(self,
+                 neuron_dim,
+                 n_neurons,
+                 n_msg_passing_steps,
+                 grid_size,
+                 num_candidates,
+                 device,
+                 input_features):
+        super().__init__()
+        self.n_neurons = n_neurons
+        self.neuron_dim = neuron_dim
+        self.n_steps = n_msg_passing_steps
+        self.grid_size = grid_size
+        self.num_candidates = num_candidates
+        self.device = device
+
+        # Input transformation - takes concatenated panel features
+        self.input_proj = nn.Linear(input_features, neuron_dim)
+
+        # Initialize neuron states and edge vectors
+        self.neuron_states = nn.Parameter(torch.randn(n_neurons, neuron_dim))
+        self.edge_vectors = nn.Parameter(torch.randn(n_neurons, n_neurons, neuron_dim))
+
+        # Output projections
+        self.recreate_proj = nn.Linear(neuron_dim, input_features)
+        self.score_proj = nn.Linear(neuron_dim, 1)
+
     def forward(self, x):
         batch_cand_size = x.size(0)  # batch_size * num_candidates
         embed_dim_doubled = x.size(1) // (self.grid_size ** 2)
