@@ -84,12 +84,18 @@ class AGMBrain(nn.Module):
         embed_dim_doubled = x.size(1) // (self.grid_size ** 2)
 
         # Transform input to neuron dimension
-        x_transformed = self.input_proj(x)  # Shape: (batch_size * num_candidates, neuron_dim)
+        x_transformed = self.input_proj(x)  # Shape: (batch_cand_size, neuron_dim)
+        assert x_transformed.size(
+            -1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
 
         # Initialize neuron states
-        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, -1,
-                                                        -1)  # (batch_cand_size, n_neurons, neuron_dim)
-        states = states + x_transformed.unsqueeze(1)  # Add input to all neurons
+        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons,
+                                                        self.neuron_dim)  # (batch_cand_size, n_neurons, neuron_dim)
+        assert states.size(-1) == self.neuron_dim, f"states feature mismatch: {states.size(-1)} != {self.neuron_dim}"
+        assert states.size(1) == self.n_neurons, f"states neuron mismatch: {states.size(1)} != {self.n_neurons}"
+
+        # Add input to neuron states
+        states = states + x_transformed.unsqueeze(1)  # Broadcast input to all neurons
 
         # Debugging: Print shapes
         print(f"states shape: {states.shape}, edge_vecs shape: {self.edge_vectors.shape}")
@@ -110,16 +116,14 @@ class AGMBrain(nn.Module):
             # Einsum operation to compute messages
             transform_matrices = torch.einsum('bnd,ijd->bnij', states,
                                               edge_vecs)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
-
-            # Apply mask to transform_matrices
-            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()  # (b, n, n, d)
+            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()  # Apply mask
 
             # Aggregate messages
             messages = torch.einsum('bnij,bnd->bni', transform_matrices,
                                     states)  # (batch_cand_size, n_neurons, neuron_dim)
 
-            # Aggregate messages and update states
-            new_states = messages.sum(dim=1)  # Aggregate across neurons: (batch_cand_size, neuron_dim)
+            # Update states
+            new_states = messages.sum(dim=1)  # Aggregate across neurons
             states = F.relu(new_states)  # Apply nonlinearity
 
         # Output states (final neuron states)
