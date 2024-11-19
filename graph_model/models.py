@@ -87,8 +87,10 @@ class AGMBrain(nn.Module):
         x_transformed = self.input_proj(x)  # Shape: (batch_size * num_candidates, neuron_dim)
 
         # Initialize neuron states
-        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, -1, -1)  # Shape: (batch_cand_size, n_neurons, neuron_dim)
-        states = states + x_transformed.unsqueeze(1)  # Broadcast input to all neurons
+        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, -1,
+                                                        -1)  # (batch_cand_size, n_neurons, neuron_dim)
+        states = states.transpose(1, 2)  # Transpose to (batch_cand_size, neuron_dim, n_neurons)
+        states = states + x_transformed.unsqueeze(-1)  # Broadcast input to all neurons
 
         # Create mask to avoid self-loops
         mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)  # Shape: (n_neurons, n_neurons)
@@ -98,20 +100,23 @@ class AGMBrain(nn.Module):
             edge_vecs = self.edge_vectors  # Shape: (n_neurons, n_neurons, neuron_dim)
 
             # Ensure shapes align
-            assert states.size(-1) == edge_vecs.size(-1), f"Mismatch: states {states.size(-1)} != edge_vecs {edge_vecs.size(-1)}"
+            assert states.size(-1) == edge_vecs.size(
+                -2), f"Mismatch: states {states.size(-1)} != edge_vecs {edge_vecs.size(-2)}"
 
             # Einsum operation to compute messages
-            transform_matrices = torch.einsum('bnd,ijd->bnij', states, edge_vecs)  # Shape: (batch_cand_size, n_neurons, n_neurons)
-            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)  # Shape: (batch_cand_size, n_neurons, neuron_dim)
+            transform_matrices = torch.einsum('bdn,ijn->bdij', states,
+                                              edge_vecs)  # Shape: (batch_cand_size, neuron_dim, n_neurons, n_neurons)
+            messages = torch.einsum('bdij,bdn->bdi', transform_matrices,
+                                    states)  # Shape: (batch_cand_size, neuron_dim, n_neurons)
 
             # Apply mask to prevent self-loops
             messages = messages * mask.unsqueeze(0).float()  # Broadcast mask along batch dimension
 
             # Aggregate messages and update states
-            new_states = messages.sum(dim=1)  # Aggregate across neighbors: (batch_cand_size, neuron_dim)
+            new_states = messages.sum(dim=-1)  # Aggregate across neurons: (batch_cand_size, neuron_dim)
             states = F.relu(new_states)  # Apply nonlinearity
 
-        output_states = states[:, -1]  # Take final state of the last neuron
+        output_states = states[:, :, -1]  # Take final state of the last neuron
 
         # Project to outputs
         recreation = self.recreate_proj(output_states)
