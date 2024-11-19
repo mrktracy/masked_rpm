@@ -15,7 +15,7 @@ import os
 import logging
 import math
 
-version = "AGM_v0_itr0"
+version = "HADNet_v0_itr0"
 
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
