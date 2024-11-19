@@ -107,10 +107,12 @@ class AGMBrain(nn.Module):
             edge_vectors = F.normalize(self.edge_vectors, p=2, dim=-1)
 
             # Compute the transform matrices
-            transform_matrices = torch.einsum('bnd,ijd->bnijdd', states, edge_vectors)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim, neuron_dim)
+            # Compute the transform matrices
+            transform_matrices = torch.einsum('bnd,ijd->bnijde', states,
+                                              edge_vectors)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim, neuron_dim)
 
             # Aggregate messages
-            messages = torch.einsum('bnijdd,bnd->bnijd', transform_matrices, states)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+            messages = torch.einsum('bnijde,bne->bnijd', transform_matrices, states)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
 
             # Apply mask
             messages = messages * mask.unsqueeze(0).unsqueeze(-1).float()  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
