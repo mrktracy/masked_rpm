@@ -101,27 +101,26 @@ class AGMBrain(nn.Module):
         # Create mask to avoid self-loops
         mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)  # (n_neurons, n_neurons)
 
-        # Message passing
+        # Message passing loop
         for _ in range(self.n_steps):
             # Normalize edge vectors
             edge_vectors = F.normalize(self.edge_vectors, p=2, dim=-1)
 
-            # Compute the transform matrices
-            # Compute the transform matrices
-            transform_matrices = torch.einsum('bnd,ije -> bnijde', states,
-                                              edge_vectors)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim, neuron_dim)
+            # Compute transform matrices
+            transform_matrices = torch.einsum(
+                'bnd,ije->bnijde', states, edge_vectors
+            )  # (batch_cand_size, n_neurons, n_neurons, neuron_dim, neuron_dim)
 
-            # Aggregate messages
-            messages = torch.einsum('bnijde,bne->bnijd', transform_matrices, states)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+            # Compute messages
+            messages = torch.einsum(
+                'bnijde,bne->bnid', transform_matrices, states
+            )  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
 
-            # Apply mask
-            messages = messages * mask.unsqueeze(0).unsqueeze(-1).float()  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+            # Apply mask to messages
+            messages = messages * mask.unsqueeze(0).unsqueeze(-1).float()  # Avoid self-loops
 
-            # Reduce across sending neurons
-            new_states = messages.sum(dim=2)  # (batch_cand_size, n_neurons, neuron_dim)
-
-            # Update states
-            states = states + F.relu(new_states)  # Add transformed messages to current state
+            # Update states with ReLU activation
+            states = states + F.relu(messages)
 
         # Debugging shapes
         print(f"Final states shape: {states.shape}")
