@@ -87,46 +87,50 @@ class AGMBrain(nn.Module):
         # Transform input to neuron dimension
         x_transformed = self.input_proj(x)  # Shape: (batch_cand_size, neuron_dim)
 
-        assert x_transformed.size(-1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
+        assert x_transformed.size(
+            -1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
 
         # Initialize neuron states
-        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons, self.neuron_dim)  # (batch_cand_size, n_neurons, neuron_dim)
+        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons, self.neuron_dim)
 
         assert states.size(-1) == self.neuron_dim, f"states feature mismatch: {states.size(-1)} != {self.neuron_dim}"
         assert states.size(1) == self.n_neurons, f"states neuron mismatch: {states.size(1)} != {self.n_neurons}"
 
         # Add input to neuron states
-        states = states + x_transformed.unsqueeze(1)  # Broadcast input to all neurons
+        states = states + x_transformed.unsqueeze(1)
+
+        # Normalize edge vectors
+        edge_vectors = self.edge_vectors / (self.edge_vectors.norm(dim=-1, keepdim=True) + 1e-8)
 
         # Debugging: Print shapes
-        print(f"states shape: {states.shape}, edge_vectors shape: {self.edge_vectors.shape}")
-        print(f"states.device: {states.device}, edge_vectors.device: {self.edge_vectors.device}")
-        print(f"states.dtype: {states.dtype}, edge_vectors.dtype: {self.edge_vectors.dtype}")
+        print(f"states shape: {states.shape}, edge_vectors shape: {edge_vectors.shape}")
+        print(f"states.device: {states.device}, edge_vectors.device: {edge_vectors.device}")
 
         # Create mask to avoid self-loops
-        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)  # Shape: (n_neurons, n_neurons)
+        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)
 
         # Message passing
         for _ in range(self.n_steps):
-            # Debugging: Print shapes to ensure correctness
-            print(f"states shape before einsum: {states.shape}, edge_vectors shape: {self.edge_vectors.shape}")
-            print(f"states.device: {states.device}, edge_vectors.device: {self.edge_vectors.device}")
 
-            # Compute transformation matrices
-            transform_matrices = torch.einsum('bnd,ijd->bnij', states,
-                                              self.edge_vectors)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+            # Debugging: Ensure shapes are consistent
+            print(f"states shape before einsum: {states.shape}, edge_vectors shape: {edge_vectors.shape}")
+            print(f"states.device: {states.device}, edge_vectors.device: {edge_vectors.device}")
 
-            # Apply mask to remove self-loops
-            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(
-                -1).float()  # Ensure mask broadcasting
+            # Ensure shapes align
+            assert states.size(1) == edge_vectors.size(
+                0), f"Mismatch: states neurons {states.size(1)} != edge_vectors neurons {edge_vectors.size(0)}"
+            assert states.size(-1) == edge_vectors.size(
+                -1), f"Mismatch: states features {states.size(-1)} != edge_vectors features {edge_vectors.size(-1)}"
+
+            # Einsum operation to compute messages
+            transform_matrices = torch.einsum('bnd,ijd->bnij', states, edge_vectors)
+            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()
 
             # Aggregate messages
-            messages = torch.einsum('bnij,bnd->bni', transform_matrices,
-                                    states)  # Shape: (batch_cand_size, n_neurons, neuron_dim)
+            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)
 
-            # Update states by combining current state with the aggregated messages
-            new_states = messages.sum(dim=1,
-                                      keepdim=True)  # Aggregate across neurons; retain dimension for broadcasting
+            # Update states
+            new_states = messages.sum(dim=1)
             states = states + F.relu(new_states)  # Add messages to current state
 
         # Output states (final neuron states)
