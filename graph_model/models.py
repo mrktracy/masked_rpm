@@ -108,7 +108,7 @@ class AGMBrain(nn.Module):
 
             # Compute the transform matrices
             # Compute the transform matrices
-            transform_matrices = torch.einsum('bnd,ijd->bnijde', states,
+            transform_matrices = torch.einsum('bnd,ije -> bnijde', states,
                                               edge_vectors)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim, neuron_dim)
 
             # Aggregate messages
