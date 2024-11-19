@@ -12,6 +12,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pos_embed as pos
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import pos_embed as pos
+
+
 class Perception(nn.Module):
     def __init__(self,
                  embed_dim,
@@ -31,7 +37,7 @@ class Perception(nn.Module):
         pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
 
-        # Perception backbone for feature extraction
+        # Backbone for feature extraction
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads, mlp_drop=per_mlp_drop)
 
     def forward(self, sentences):
@@ -77,7 +83,7 @@ class AGMBrain(nn.Module):
 
         # Trainable parameters for neuron states and edge vectors
         self.neuron_states = nn.Parameter(torch.randn(n_neurons, neuron_dim))
-        self.edge_vectors = nn.Parameter(torch.randn(n_neurons, n_neurons, neuron_dim))
+        self.edge_vectors = nn.Parameter(torch.randn(n_neurons, n_neurons, neuron_dim, neuron_dim))
 
         # Output projections
         self.recreate_proj = nn.Linear(neuron_dim, input_features)
@@ -99,7 +105,12 @@ class AGMBrain(nn.Module):
 
         # Message passing
         for _ in range(self.n_steps):
-            edge_vecs = self.edge_vectors.unsqueeze(0)  # (1, n_neurons, n_neurons, neuron_dim)
+            edge_vecs = self.edge_vectors  # (n_neurons, n_neurons, neuron_dim, neuron_dim)
+
+            # Ensure states and edge_vecs align
+            assert states.size(-1) == edge_vecs.size(-2), f"Mismatch: states {states.size(-1)} != edge_vecs {edge_vecs.size(-2)}"
+
+            # Einsum operation
             transform_matrices = torch.einsum('bnd,ijdk->bijk', states, edge_vecs)
             messages = torch.einsum('bijk,bik->bij', transform_matrices, states)
             messages = messages * mask.unsqueeze(0).unsqueeze(-1)
@@ -172,17 +183,16 @@ class AsymmetricGraphModel(nn.Module):
             scores: Task-specific output scores (batch_size, num_candidates)
         """
         # Step 1: Perception
-        embeddings = self.perception(sentences)
+        embeddings = self.perception.forward(sentences)
 
         # Step 2: Flatten embeddings for reasoning
         batch_size = embeddings.size(0)
         grid_features = embeddings.view(batch_size * embeddings.size(1), -1)
 
         # Step 3: Reasoning
-        recreation, scores = self.reasoning(grid_features)
+        recreation, scores = self.reasoning.forward(grid_features)
 
         return embeddings, recreation, scores
-
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
