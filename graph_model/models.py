@@ -67,17 +67,18 @@ class AGMBrain(nn.Module):
         self.grid_size = grid_size
         self.num_candidates = num_candidates
         self.device = device
-
-        # Input transformation to neuron dimensions
-        self.input_proj = nn.Linear(input_features, neuron_dim)
+        self.input_features = input_features
 
         # Trainable parameters for neuron states and edge vectors
-        self.neuron_states = nn.Parameter(torch.randn(n_neurons, neuron_dim))  # Shape: (n_neurons, neuron_dim)
-        self.edge_vectors = nn.Parameter(torch.randn(n_neurons, n_neurons, neuron_dim))  # Shape: (n_neurons, n_neurons, neuron_dim)
+        self.neuron_states = nn.Parameter(torch.randn(self.n_neurons, self.neuron_dim))  # Shape: (n_neurons, neuron_dim)
+        self.edge_vectors = nn.Parameter(torch.randn(self.n_neurons, self.n_neurons, self.neuron_dim))  # Shape: (n_neurons, n_neurons, neuron_dim)
+
+        # Input transformation to neuron dimensions
+        self.input_proj = nn.Linear(self.input_features, self.neuron_dim)
 
         # Output projections
-        self.recreate_proj = nn.Linear(neuron_dim, input_features)
-        self.score_proj = nn.Linear(neuron_dim, 1)
+        self.recreate_proj = nn.Linear(self.neuron_dim, self.input_features)
+        self.score_proj = nn.Linear(self.neuron_dim, 1)
 
     def forward(self, x):
         batch_cand_size = x.size(0)  # batch_size * num_candidates
@@ -85,12 +86,14 @@ class AGMBrain(nn.Module):
 
         # Transform input to neuron dimension
         x_transformed = self.input_proj(x)  # Shape: (batch_cand_size, neuron_dim)
+
         assert x_transformed.size(
             -1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
 
         # Initialize neuron states
         states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons,
                                                         self.neuron_dim)  # (batch_cand_size, n_neurons, neuron_dim)
+
         assert states.size(-1) == self.neuron_dim, f"states feature mismatch: {states.size(-1)} != {self.neuron_dim}"
         assert states.size(1) == self.n_neurons, f"states neuron mismatch: {states.size(1)} != {self.n_neurons}"
 
@@ -105,17 +108,16 @@ class AGMBrain(nn.Module):
 
         # Message passing
         for _ in range(self.n_steps):
-            edge_vecs = self.edge_vectors  # Shape: (n_neurons, n_neurons, neuron_dim)
 
             # Ensure shapes align
-            assert states.size(1) == edge_vecs.size(
-                0), f"Mismatch: states neurons {states.size(1)} != edge_vecs neurons {edge_vecs.size(0)}"
-            assert states.size(-1) == edge_vecs.size(
-                -1), f"Mismatch: states features {states.size(-1)} != edge_vecs features {edge_vecs.size(-1)}"
+            assert states.size(1) == self.edge_vectors.size(
+                0), f"Mismatch: states neurons {states.size(1)} != edge_vecs neurons {self.edge_vectors.size(0)}"
+            assert states.size(-1) == self.edge_vectors.size(
+                -1), f"Mismatch: states features {states.size(-1)} != edge_vecs features {self.edge_vectors.size(-1)}"
 
             # Einsum operation to compute messages
             transform_matrices = torch.einsum('bnd,ijd->bnij', states,
-                                              edge_vecs)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+                                              self.edge_vectors)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
             transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()  # Apply mask
 
             # Aggregate messages
