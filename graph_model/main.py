@@ -135,7 +135,7 @@ def main_BERT(VERSION, RESULTS_FOLDER):
             embeddings, recreation, dist = transformer_model(sentences)
 
             task_err = criterion_1(dist, target_nums)
-            rec_err = criterion_2(sentences, recreation)
+            rec_err = criterion_2(embeddings, recreation)
 
            # logging.info("Calculating loss...\n")
 
