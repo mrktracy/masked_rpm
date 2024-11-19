@@ -6,6 +6,7 @@ import torch.utils.checkpoint
 # from torch.jit import Final
 from timm.layers import Mlp, DropPath, use_fused_attn
 import logging
+from typing import Tuple
 
 
 class Perception(nn.Module):
