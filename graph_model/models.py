@@ -7,17 +7,6 @@ import torch.utils.checkpoint
 from timm.layers import Mlp, DropPath, use_fused_attn
 import logging
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import pos_embed as pos
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import pos_embed as pos
-
-
 class Perception(nn.Module):
     def __init__(self,
                  embed_dim,
@@ -101,21 +90,25 @@ class AGMBrain(nn.Module):
         states = states + x_transformed.unsqueeze(1)
 
         # Create mask to avoid self-loops
-        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)
+        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)  # Shape: (n_neurons, n_neurons)
 
         # Message passing
         for _ in range(self.n_steps):
             edge_vecs = self.edge_vectors  # (n_neurons, n_neurons, neuron_dim, neuron_dim)
 
-            # Ensure states and edge_vecs align
+            # Ensure shapes align
             assert states.size(-1) == edge_vecs.size(-2), f"Mismatch: states {states.size(-1)} != edge_vecs {edge_vecs.size(-2)}"
 
             # Einsum operation
-            transform_matrices = torch.einsum('bnd,ijdk->bijk', states, edge_vecs)
-            messages = torch.einsum('bijk,bik->bij', transform_matrices, states)
-            messages = messages * mask.unsqueeze(0).unsqueeze(-1)
-            new_states = messages.sum(dim=2)
-            states = F.relu(new_states)
+            transform_matrices = torch.einsum('bnd,ijdk->bijk', states, edge_vecs)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+            messages = torch.einsum('bijk,bik->bij', transform_matrices, states)  # (batch_cand_size, n_neurons, neuron_dim)
+
+            # Broadcast mask to align with `messages`
+            messages = messages * mask.unsqueeze(0).float()  # Broadcast mask along batch dimension
+
+            # Sum over neighbors to update states
+            new_states = messages.sum(dim=1)  # Aggregate across neurons
+            states = F.relu(new_states)  # Update states
 
         output_states = states[:, -1]  # Take final state of the last neuron
 
@@ -183,14 +176,14 @@ class AsymmetricGraphModel(nn.Module):
             scores: Task-specific output scores (batch_size, num_candidates)
         """
         # Step 1: Perception
-        embeddings = self.perception.forward(sentences)
+        embeddings = self.perception(sentences)
 
         # Step 2: Flatten embeddings for reasoning
         batch_size = embeddings.size(0)
         grid_features = embeddings.view(batch_size * embeddings.size(1), -1)
 
         # Step 3: Reasoning
-        recreation, scores = self.reasoning.forward(grid_features)
+        recreation, scores = self.reasoning(grid_features)
 
         return embeddings, recreation, scores
 
