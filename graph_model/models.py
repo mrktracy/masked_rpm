@@ -98,9 +98,6 @@ class AGMBrain(nn.Module):
         # Debugging shapes
         print(f"Initial states shape: {states.shape}, edge_vectors shape: {self.edge_vectors.shape}")
 
-        # Create mask to avoid self-loops
-        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)  # (n_neurons, n_neurons)
-
         # Message passing loop
         for _ in range(self.n_steps):
             # Normalize edge vectors
@@ -115,9 +112,6 @@ class AGMBrain(nn.Module):
             messages = torch.einsum(
                 'bnjde,bne->bnd', transform_matrices, states
             )  # (batch_cand_size, n_neurons, neuron_dim)
-
-            # Apply mask to messages
-            messages = messages * mask.unsqueeze(0).unsqueeze(-1).float()  # Avoid self-loops
 
             # Update states with ReLU activation
             states = states + F.relu(messages)
