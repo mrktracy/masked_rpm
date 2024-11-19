@@ -70,8 +70,8 @@ class AGMBrain(nn.Module):
         self.input_features = input_features
 
         # Trainable parameters for neuron states and edge vectors
-        self.neuron_states = nn.Parameter(torch.randn(self.n_neurons, self.neuron_dim)).to(device)  # Shape: (n_neurons, neuron_dim)
-        self.edge_vectors = nn.Parameter(torch.randn(self.n_neurons, self.n_neurons, self.neuron_dim)).to(device)  # Shape: (n_neurons, n_neurons, neuron_dim)
+        self.neuron_states = nn.Parameter(torch.randn(self.n_neurons, self.neuron_dim, device=device))  # Shape: (n_neurons, neuron_dim)
+        self.edge_vectors = nn.Parameter(torch.randn(self.n_neurons, self.n_neurons, self.neuron_dim, device=device))  # Shape: (n_neurons, n_neurons, neuron_dim)
 
         # Input transformation to neuron dimensions
         self.input_proj = nn.Linear(self.input_features, self.neuron_dim)
