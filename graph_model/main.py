@@ -8,8 +8,8 @@ from funs import gather_files_pgm, gather_files_by_type
 import time
 import random
 from evaluate_masked import evaluate_model_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from models import AsymmetricGraphModel
 import os
 import logging
@@ -77,14 +77,14 @@ def main_BERT(VERSION, RESULTS_FOLDER):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Define Hyperparameters '''
-    EPOCHS = 30
+    EPOCHS = 100
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.001
     # MOMENTUM = 0.90
     LOGS_PER_EPOCH = 15
-    BATCHES_PER_PRINT = 40
-    EPOCHS_PER_SAVE = 5
+    BATCHES_PER_PRINT = 30
+    EPOCHS_PER_SAVE = 20
     VERSION_SUBFOLDER = "" # e.g. "MNIST/" or ""
     ALPHA = 0.5
 
