@@ -7,6 +7,7 @@ import torch.utils.checkpoint
 from timm.layers import Mlp, DropPath, use_fused_attn
 import logging
 
+
 class Perception(nn.Module):
     def __init__(self,
                  embed_dim,
