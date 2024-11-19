@@ -113,6 +113,9 @@ class AGMBrain(nn.Module):
                 'bnjde,bne->bnd', transform_matrices, states
             )  # (batch_cand_size, n_neurons, neuron_dim)
 
+            # Normalize messages across nodes
+            messages = F.normalize(messages, p=2, dim=1)
+
             # Update states with ReLU activation
             states = states + F.relu(messages)
 
