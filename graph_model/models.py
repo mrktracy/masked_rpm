@@ -7,6 +7,7 @@ import torch.utils.checkpoint
 from timm.layers import Mlp, DropPath, use_fused_attn
 import logging
 
+
 class AsymmetricGraphModel(nn.Module):
     def __init__(self,
                  embed_dim,
@@ -16,7 +17,8 @@ class AsymmetricGraphModel(nn.Module):
                  bb_depth,
                  bb_num_heads,
                  neuron_dim,
-                 n_neurons):
+                 n_neurons,
+                 device=None):
         """
         Combines perception and reasoning modules into an integrated pipeline.
 
@@ -29,8 +31,14 @@ class AsymmetricGraphModel(nn.Module):
             bb_num_heads: Number of attention heads in perception's transformer blocks.
             neuron_dim: Dimensionality of neuron embeddings in AGMBrain.
             n_neurons: Number of neurons in AGMBrain.
+            device: Device to run the model on.
         """
         super(AsymmetricGraphModel, self).__init__()
+
+        self.embed_dim = embed_dim
+        self.grid_size = grid_size
+        self.num_candidates = num_candidates
+        self.device = device
 
         # Perception module
         self.perception = Perception(
@@ -42,12 +50,15 @@ class AsymmetricGraphModel(nn.Module):
             bb_num_heads=bb_num_heads
         )
 
-        # AGMBrain reasoning module
+        # AGMBrain reasoning module - modified input_dim calculation
         self.reasoning = AGMBrain(
-            input_dim=embed_dim*2,  # Account for positional embeddings
+            input_dim=grid_size**2 * embed_dim*2,  # Total dimension of concatenated panel features
             neuron_dim=neuron_dim,
             n_neurons=n_neurons,
-            n_msg_passing_steps=n_msg_passing_steps
+            n_msg_passing_steps=n_msg_passing_steps,
+            grid_size=grid_size,
+            num_candidates=num_candidates,
+            device=device
         )
 
     def forward(self, sentences):
@@ -55,29 +66,95 @@ class AsymmetricGraphModel(nn.Module):
         Forward pass through perception and reasoning pipeline.
 
         Args:
-            sentences: Input tensor of shape (batch_size, num_candidates, grid_size, 1, 160, 160).
+            sentences: Input tensor of shape (batch_size, num_candidates, grid_size**2, 1, 160, 160).
 
         Returns:
-            embeddings: Perception embeddings, shape (batch_size, num_candidates, grid_size**2, embed_dim + positional_dim).
-            final_states: Final neuron states from AGMBrain.
-            scores: Task-specific output scores.
+            embeddings: Perception embeddings (batch_size, num_candidates, grid_size**2, embed_dim*2)
+            recreation: Reconstructed embeddings (batch_size, num_candidates, grid_size**2, embed_dim*2)
+            scores: Task-specific output scores (batch_size, num_candidates)
         """
-        # Step 1: Perception
-        # Shape: (batch_size, num_candidates, grid_size**2, embed_dim + positional_dim)
-        embeddings = self.perception.forward(sentences)
+        # Step 1: Perception with positional encodings
+        embeddings = self.perception(sentences)  # (batch_size, num_candidates, grid_size**2, embed_dim*2)
 
-        # Reshape embeddings for reasoning
+        # Reshape embeddings for reasoning - concatenate all panels for each candidate
         batch_size = embeddings.size(0)
-        num_candidates = embeddings.size(1)
-        grid_features = embeddings.view(batch_size * num_candidates, -1)  # Flatten grid for reasoning
+        grid_features = embeddings.view(batch_size * embeddings.size(1), -1)  # (batch_size * num_candidates, grid_size**2 * embed_dim*2)
 
         # Step 2: Reasoning
-        recreation, scores = self.reasoning.forward(grid_features)  # Final reasoning results
-
-        # Reshape scores back to candidate format
-        scores = scores.view(batch_size, num_candidates)  # (batch_size, num_candidates)
+        recreation, scores = self.reasoning(grid_features)  # Returns properly shaped outputs
 
         return embeddings, recreation, scores
+
+
+class AGMBrain(nn.Module):
+    def __init__(self, input_dim, neuron_dim, n_neurons=16, n_msg_passing_steps=3, grid_size=3, num_candidates=8, device=None):
+        super().__init__()
+        self.n_neurons = n_neurons
+        self.neuron_dim = neuron_dim
+        self.n_steps = n_msg_passing_steps
+        self.grid_size = grid_size
+        self.num_candidates = num_candidates
+        self.device = device
+
+        # Input transformation - takes concatenated panel features
+        self.input_proj = nn.Linear(input_dim, neuron_dim)
+
+        # Initialize neuron states and edge vectors
+        self.neuron_states = nn.Parameter(torch.randn(n_neurons, neuron_dim))
+        self.edge_vectors = nn.Parameter(torch.randn(n_neurons, n_neurons, neuron_dim))
+
+        # Output projections
+        self.recreate_proj = nn.Linear(neuron_dim, input_dim)
+        self.score_proj = nn.Linear(neuron_dim, 1)
+
+    def forward(self, x):
+        """
+        Args:
+            x: Tensor of shape (batch_size * num_candidates, grid_size**2 * embed_dim*2)
+        Returns:
+            recreation: Tensor of shape (batch_size, num_candidates, grid_size**2, embed_dim*2)
+            scores: Tensor of shape (batch_size, num_candidates)
+        """
+        batch_cand_size = x.size(0)  # batch_size * num_candidates
+        embed_dim_doubled = x.size(1) // (self.grid_size ** 2)  # This is embed_dim*2
+
+        # Transform input to neuron dimension
+        x_transformed = self.input_proj(x)  # (batch_size * num_candidates, neuron_dim)
+
+        # Initialize states: broadcast base states + input to all neurons
+        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, -1, -1)
+        states = states + x_transformed.unsqueeze(1)
+
+        # Create mask to avoid self-loops
+        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)
+
+        # Message passing (vectorized)
+        for _ in range(self.n_steps):
+            states_j = states.unsqueeze(1)  # (batch, 1, n_neurons, neuron_dim)
+            states_i = states.unsqueeze(2)  # (batch, n_neurons, 1, neuron_dim)
+            edge_vecs = self.edge_vectors.unsqueeze(0)  # (1, n_neurons, n_neurons, neuron_dim)
+
+            transform_matrices = torch.einsum('bnjd,ijdk->bnijk', states_j,
+                                            edge_vecs.expand(batch_cand_size, -1, -1, -1))
+
+            messages = torch.einsum('bnijk,bnik->bnij', transform_matrices, states_i)
+            messages = messages * mask.unsqueeze(0).unsqueeze(-1)
+            new_states = messages.sum(dim=2)
+
+            states = F.relu(new_states)
+
+        output_states = states[:, -1]
+
+        # Project to reconstruction and scores
+        recreation = self.recreate_proj(output_states)
+        scores = self.score_proj(output_states)
+
+        # Reshape outputs to match required dimensions
+        batch_size = batch_cand_size // self.num_candidates
+        recreation = recreation.view(batch_size, self.num_candidates, self.grid_size**2, embed_dim_doubled)
+        scores = scores.view(batch_size, self.num_candidates)
+
+        return recreation, scores
 
 
 class Perception(nn.Module):
@@ -129,60 +206,6 @@ class Perception(nn.Module):
         embeddings_final = torch.cat([embeddings, pos_embed_final], dim=-1) # (B, 8, 9, embed_dim)
 
         return embeddings_final
-
-class AGMBrain(nn.Module):
-    def __init__(self, input_dim, neuron_dim, n_neurons=16, n_msg_passing_steps=3):
-        super().__init__()
-        self.n_neurons = n_neurons
-        self.neuron_dim = neuron_dim
-        self.n_steps = n_msg_passing_steps
-
-        # Input transformation
-        self.input_proj = nn.Linear(input_dim, neuron_dim)
-
-        # Initialize neuron states and edge vectors
-        self.neuron_states = nn.Parameter(torch.randn(n_neurons, neuron_dim))
-        self.edge_vectors = nn.Parameter(torch.randn(n_neurons, n_neurons, neuron_dim))
-
-        # Output projection
-        self.score_proj = nn.Linear(neuron_dim, 1)
-        self.recreate_proj = nn.Linear(neuron_dim, input_dim)
-
-    def forward(self, x):
-        """
-        Args:
-            x: Tensor of shape (batch_size, input_dim)
-        """
-        batch_size = x.size(0)
-
-        # Transform input to neuron dimension
-        x_transformed = self.input_proj(x)  # (batch_size, neuron_dim)
-
-        # Initialize states: broadcast base states + input to all neurons
-        states = self.neuron_states.unsqueeze(0).expand(batch_size, -1, -1)  # (batch_size, n_neurons, neuron_dim)
-        states = states + x_transformed.unsqueeze(1)  # broadcast input to all neurons
-
-        # Message passing
-        for _ in range(self.n_steps):
-            new_states = torch.zeros_like(states)
-
-            for i in range(self.n_neurons):
-                for j in range(self.n_neurons):
-                    if i != j:
-                        e_ij = self.edge_vectors[i, j]
-                        transform_i = torch.outer(states[:, j], e_ij).view(-1, self.neuron_dim, self.neuron_dim)
-                        m_i = torch.bmm(transform_i.unsqueeze(1), states[:, i].unsqueeze(2)).squeeze()
-                        new_states[:, i] += m_i
-
-            states = F.relu(new_states)
-
-        # Take final state of last neuron for output
-        output_states = states[:, -1]  # (batch_size, neuron_dim)
-
-        recreation = self.recreate_proj(output_states)
-        scores = self.score_proj(output_states)  # (batch_size, 1)
-
-        return recreation, scores
 
 
 class ResidualBlock(nn.Module):
