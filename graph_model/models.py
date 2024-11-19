@@ -109,15 +109,17 @@ class AGMBrain(nn.Module):
 
             # Einsum operation to compute messages
             transform_matrices = torch.einsum('bnd,ijd->bnij', states,
-                                              edge_vecs)  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+                                              edge_vecs)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+
+            # Apply mask to transform_matrices
+            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()  # (b, n, n, d)
+
+            # Aggregate messages
             messages = torch.einsum('bnij,bnd->bni', transform_matrices,
                                     states)  # (batch_cand_size, n_neurons, neuron_dim)
 
-            # Apply mask to prevent self-loops
-            messages = messages * mask.unsqueeze(0).unsqueeze(-1).float()  # Broadcast mask
-
             # Aggregate messages and update states
-            new_states = messages.sum(dim=2)  # Aggregate across neurons: (batch_cand_size, n_neurons, neuron_dim)
+            new_states = messages.sum(dim=1)  # Aggregate across neurons: (batch_cand_size, neuron_dim)
             states = F.relu(new_states)  # Apply nonlinearity
 
         # Output states (final neuron states)
