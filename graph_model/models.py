@@ -87,75 +87,37 @@ class AsymmetricGraphModel(nn.Module):
 
 
 class AGMBrain(nn.Module):
-    def __init__(self, input_dim, neuron_dim, n_neurons=16, n_msg_passing_steps=3, grid_size=3, num_candidates=8, device=None):
-        super().__init__()
-        self.n_neurons = n_neurons
-        self.neuron_dim = neuron_dim
-        self.n_steps = n_msg_passing_steps
-        self.grid_size = grid_size
-        self.num_candidates = num_candidates
-        self.device = device
-
-        # Input transformation - takes concatenated panel features
-        self.input_proj = nn.Linear(input_dim, neuron_dim)
-
-        # Initialize neuron states and edge vectors
-        self.neuron_states = nn.Parameter(torch.randn(n_neurons, neuron_dim))
-        self.edge_vectors = nn.Parameter(torch.randn(n_neurons, n_neurons, neuron_dim))
-
-        # Output projections
-        self.recreate_proj = nn.Linear(neuron_dim, input_dim)
-        self.score_proj = nn.Linear(neuron_dim, 1)
-
-        # Add edge normalization
-        self.edge_vectors = nn.Parameter(F.normalize(torch.randn(n_neurons, n_neurons, neuron_dim), dim=-1))
-
     def forward(self, x):
-        """
-        Args:
-            x: Tensor of shape (batch_size * num_candidates, grid_size**2 * embed_dim*2)
-        Returns:
-            recreation: Tensor of shape (batch_size, num_candidates, grid_size**2, embed_dim*2)
-            scores: Tensor of shape (batch_size, num_candidates)
-        """
         batch_cand_size = x.size(0)  # batch_size * num_candidates
-        embed_dim_doubled = x.size(1) // (self.grid_size ** 2)  # This is embed_dim*2
+        embed_dim_doubled = x.size(1) // (self.grid_size ** 2)
 
         # Transform input to neuron dimension
         x_transformed = self.input_proj(x)  # (batch_size * num_candidates, neuron_dim)
 
         # Initialize states: broadcast base states + input to all neurons
-        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, -1, -1)
-        states = states + x_transformed.unsqueeze(1)
+        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, -1,
+                                                        -1)  # (batch_cand_size, n_neurons, neuron_dim)
+        states = states + x_transformed.unsqueeze(1)  # broadcast input to all neurons
 
         # Create mask to avoid self-loops
         mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)
 
         # Message passing (vectorized)
         for _ in range(self.n_steps):
-            new_states = torch.zeros_like(states)
+            # No need for additional unsqueeze since states is already 3D
+            edge_vecs = self.edge_vectors.unsqueeze(0)  # (1, n_neurons, n_neurons, neuron_dim)
 
-            # Normalize edge vectors
-            edge_vecs = F.normalize(self.edge_vectors, dim=-1)
+            # Now states is (batch_cand_size, n_neurons, neuron_dim)
+            # edge_vecs is (1, n_neurons, n_neurons, neuron_dim)
+            transform_matrices = torch.einsum('bnd,ijdk->bijk', states, edge_vecs)
+            messages = torch.einsum('bijk,bik->bij', transform_matrices, states)
 
-            # Compute transformation matrices using outer product
-            # states: (batch, n_neurons, neuron_dim)
-            # edge_vecs: (n_neurons, n_neurons, neuron_dim)
-
-            # First compute n_j · e_ij^T for all pairs
-            # This creates transformation matrices of shape (batch, n_neurons, n_neurons, neuron_dim, neuron_dim)
-            transform_matrices = torch.einsum('bkd,ijd->bijk', states, edge_vecs)
-
-            # Then apply transformation to n_i
-            messages = torch.einsum('bijk,bid->bij', transform_matrices, states)
-
-            # Apply mask and sum
-            messages = messages * mask.unsqueeze(0)
+            messages = messages * mask.unsqueeze(0).unsqueeze(-1)
             new_states = messages.sum(dim=2)
 
             states = F.relu(new_states)
 
-        output_states = states[:, -1]
+        output_states = states[:, -1]  # (batch_cand_size, neuron_dim)
 
         # Project to reconstruction and scores
         recreation = self.recreate_proj(output_states)
@@ -163,7 +125,7 @@ class AGMBrain(nn.Module):
 
         # Reshape outputs to match required dimensions
         batch_size = batch_cand_size // self.num_candidates
-        recreation = recreation.view(batch_size, self.num_candidates, self.grid_size**2, embed_dim_doubled)
+        recreation = recreation.view(batch_size, self.num_candidates, self.grid_size ** 2, embed_dim_doubled)
         scores = scores.view(batch_size, self.num_candidates)
 
         return recreation, scores
