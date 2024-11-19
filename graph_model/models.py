@@ -109,6 +109,12 @@ class AGMBrain(nn.Module):
         # Message passing
         for _ in range(self.n_steps):
 
+            states = states.view(batch_cand_size, self.n_neurons, self.neuron_dim)
+            self.edge_vectors = self.edge_vectors.view(self.n_neurons, self.n_neurons, self.neuron_dim)
+
+            print(f"states.device: {states.device}, edge_vectors.device: {self.edge_vectors.device}")
+            print(f"states.dtype: {states.dtype}, edge_vectors.dtype: {self.edge_vectors.dtype}")
+
             # Ensure shapes align
             assert states.size(1) == self.edge_vectors.size(
                 0), f"Mismatch: states neurons {states.size(1)} != edge_vecs neurons {self.edge_vectors.size(0)}"
