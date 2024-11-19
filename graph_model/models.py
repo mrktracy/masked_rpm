@@ -108,15 +108,26 @@ class AGMBrain(nn.Module):
 
         # Message passing
         for _ in range(self.n_steps):
-            # Message computation: m_ij = (n_j * e_ij^T) * n_i
-            transform_matrices = torch.einsum('bnd,ijd->bnij', states, self.edge_vectors)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
-            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()  # Apply mask
+            # Debugging: Print shapes to ensure correctness
+            print(f"states shape before einsum: {states.shape}, edge_vectors shape: {self.edge_vectors.shape}")
+            print(f"states.device: {states.device}, edge_vectors.device: {self.edge_vectors.device}")
 
-            # Aggregate messages for each node
-            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)  # Shape: (batch_cand_size, n_neurons, neuron_dim)
+            # Compute transformation matrices
+            transform_matrices = torch.einsum('bnd,ijd->bnij', states,
+                                              self.edge_vectors)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
 
-            # Update states
-            states = F.relu(messages.sum(dim=1))  # Apply nonlinearity after summing messages
+            # Apply mask to remove self-loops
+            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(
+                -1).float()  # Ensure mask broadcasting
+
+            # Aggregate messages
+            messages = torch.einsum('bnij,bnd->bni', transform_matrices,
+                                    states)  # Shape: (batch_cand_size, n_neurons, neuron_dim)
+
+            # Update states by combining current state with the aggregated messages
+            new_states = messages.sum(dim=1,
+                                      keepdim=True)  # Aggregate across neurons; retain dimension for broadcasting
+            states = states + F.relu(new_states)  # Add messages to current state
 
         # Output states (final neuron states)
         output_states = states[:, -1, :]  # Take final state of the last neuron
