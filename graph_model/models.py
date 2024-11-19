@@ -108,13 +108,13 @@ class AGMBrain(nn.Module):
 
             # Compute transform matrices
             transform_matrices = torch.einsum(
-                'bnd,ije->bnijde', states, edge_vectors
+                'bnd,nje->bnjde', states, edge_vectors
             )  # (batch_cand_size, n_neurons, n_neurons, neuron_dim, neuron_dim)
 
             # Compute messages
             messages = torch.einsum(
-                'bnijde,bne->bnid', transform_matrices, states
-            )  # (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+                'bnjde,bne->bnd', transform_matrices, states
+            )  # (batch_cand_size, n_neurons, neuron_dim)
 
             # Apply mask to messages
             messages = messages * mask.unsqueeze(0).unsqueeze(-1).float()  # Avoid self-loops
