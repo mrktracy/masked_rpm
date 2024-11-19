@@ -82,19 +82,12 @@ class AGMBrain(nn.Module):
 
     def forward(self, x):
         batch_cand_size = x.size(0)  # batch_size * num_candidates
-        embed_dim_doubled = x.size(1) // (self.grid_size ** 2)
 
         # Transform input to neuron dimension
         x_transformed = self.input_proj(x)  # Shape: (batch_cand_size, neuron_dim)
 
-        assert x_transformed.size(
-            -1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
-
         # Initialize neuron states
         states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons, self.neuron_dim)
-
-        assert states.size(-1) == self.neuron_dim, f"states feature mismatch: {states.size(-1)} != {self.neuron_dim}"
-        assert states.size(1) == self.n_neurons, f"states neuron mismatch: {states.size(1)} != {self.n_neurons}"
 
         # Add input to neuron states
         states = states + x_transformed.unsqueeze(1)
@@ -102,36 +95,20 @@ class AGMBrain(nn.Module):
         # Normalize edge vectors
         edge_vectors = self.edge_vectors / (self.edge_vectors.norm(dim=-1, keepdim=True) + 1e-8)
 
-        # Debugging: Print shapes
-        print(f"states shape: {states.shape}, edge_vectors shape: {edge_vectors.shape}")
-        print(f"states.device: {states.device}, edge_vectors.device: {edge_vectors.device}")
-
-        # Create mask to avoid self-loops
-        mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)
-
-        # Message passing
         for _ in range(self.n_steps):
-
-            # Debugging: Ensure shapes are consistent
-            print(f"states shape before einsum: {states.shape}, edge_vectors shape: {edge_vectors.shape}")
+            # Debugging: Check dimensions before einsum
+            print(f"states shape: {states.shape}, edge_vectors shape: {edge_vectors.shape}")
             print(f"states.device: {states.device}, edge_vectors.device: {edge_vectors.device}")
 
-            # Ensure shapes align
-            assert states.size(1) == edge_vectors.size(
-                0), f"Mismatch: states neurons {states.size(1)} != edge_vectors neurons {edge_vectors.size(0)}"
-            assert states.size(-1) == edge_vectors.size(
-                -1), f"Mismatch: states features {states.size(-1)} != edge_vectors features {edge_vectors.size(-1)}"
+            # Compute transformation matrices
+            transform_matrices = torch.einsum('bnd,ijd->bnij', states, edge_vectors)  # (batch_size, n_neurons, n_neurons, neuron_dim)
 
-            # Einsum operation to compute messages
-            transform_matrices = torch.einsum('bnd,ijd->bnij', states, edge_vectors)
-            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()
+            # Apply transformation matrix to sending nodes
+            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)  # (batch_size, n_neurons, neuron_dim)
 
-            # Aggregate messages
-            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)
-
-            # Update states
-            new_states = messages.sum(dim=1)
-            states = states + F.relu(new_states)  # Add messages to current state
+            # Aggregate messages and update states
+            new_states = messages.sum(dim=1)  # Sum across neighbors
+            states = states + F.relu(new_states)  # Add transformed messages to current state
 
         # Output states (final neuron states)
         output_states = states[:, -1, :]  # Take final state of the last neuron
@@ -142,7 +119,7 @@ class AGMBrain(nn.Module):
 
         # Reshape outputs
         batch_size = batch_cand_size // self.num_candidates
-        recreation = recreation.view(batch_size, self.num_candidates, self.grid_size ** 2, embed_dim_doubled)
+        recreation = recreation.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
         scores = scores.view(batch_size, self.num_candidates)
 
         return recreation, scores
