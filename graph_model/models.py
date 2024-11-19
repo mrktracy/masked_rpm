@@ -87,12 +87,10 @@ class AGMBrain(nn.Module):
         # Transform input to neuron dimension
         x_transformed = self.input_proj(x)  # Shape: (batch_cand_size, neuron_dim)
 
-        assert x_transformed.size(
-            -1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
+        assert x_transformed.size(-1) == self.neuron_dim, f"x_transformed dimension mismatch: {x_transformed.size(-1)} != {self.neuron_dim}"
 
         # Initialize neuron states
-        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons,
-                                                        self.neuron_dim)  # (batch_cand_size, n_neurons, neuron_dim)
+        states = self.neuron_states.unsqueeze(0).expand(batch_cand_size, self.n_neurons, self.neuron_dim)  # (batch_cand_size, n_neurons, neuron_dim)
 
         assert states.size(-1) == self.neuron_dim, f"states feature mismatch: {states.size(-1)} != {self.neuron_dim}"
         assert states.size(1) == self.n_neurons, f"states neuron mismatch: {states.size(1)} != {self.n_neurons}"
@@ -101,42 +99,24 @@ class AGMBrain(nn.Module):
         states = states + x_transformed.unsqueeze(1)  # Broadcast input to all neurons
 
         # Debugging: Print shapes
-        print(f"states shape: {states.shape}, edge_vecs shape: {self.edge_vectors.shape}")
+        print(f"states shape: {states.shape}, edge_vectors shape: {self.edge_vectors.shape}")
+        print(f"states.device: {states.device}, edge_vectors.device: {self.edge_vectors.device}")
+        print(f"states.dtype: {states.dtype}, edge_vectors.dtype: {self.edge_vectors.dtype}")
 
         # Create mask to avoid self-loops
         mask = ~torch.eye(self.n_neurons, dtype=torch.bool, device=x.device)  # Shape: (n_neurons, n_neurons)
 
         # Message passing
         for _ in range(self.n_steps):
+            # Message computation: m_ij = (n_j * e_ij^T) * n_i
+            transform_matrices = torch.einsum('bnd,ijd->bnij', states, self.edge_vectors)  # Shape: (batch_cand_size, n_neurons, n_neurons, neuron_dim)
+            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()  # Apply mask
 
-            # states = states.view(batch_cand_size, self.n_neurons, self.neuron_dim)
-
-            # Create a local reshaped copy of edge_vectors
-            # edge_vectors = self.edge_vectors.view(self.n_neurons, self.n_neurons, self.neuron_dim)
-
-            # Create a local copy of edge_vectors
-            edge_vectors = self.edge_vectors
-
-            # Debugging: Ensure shapes are consistent
-            print(f"states shape: {states.shape}, edge_vectors shape: {edge_vectors.shape}")
-            print(f"states.device: {states.device}, edge_vectors.device: {edge_vectors.device}")
-            print(f"states.dtype: {states.dtype}, edge_vectors.dtype: {edge_vectors.dtype}")
-
-            # Ensure shapes align
-            assert states.size(1) == edge_vectors.size(
-                0), f"Mismatch: states neurons {states.size(1)} != edge_vectors neurons {edge_vectors.size(0)}"
-            assert states.size(-1) == edge_vectors.size(
-                -1), f"Mismatch: states features {states.size(-1)} != edge_vectors features {edge_vectors.size(-1)}"
-
-            # Einsum operation to compute messages
-            transform_matrices = torch.einsum('bnd,ijd->bnij', states, edge_vectors)
-            transform_matrices = transform_matrices * mask.unsqueeze(0).unsqueeze(-1).float()
-
-            # Aggregate messages
-            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)
+            # Aggregate messages for each node
+            messages = torch.einsum('bnij,bnd->bni', transform_matrices, states)  # Shape: (batch_cand_size, n_neurons, neuron_dim)
 
             # Update states
-            states = F.relu(messages)  # Keeps neuron interactions
+            states = F.relu(messages.sum(dim=1))  # Apply nonlinearity after summing messages
 
         # Output states (final neuron states)
         output_states = states[:, -1, :]  # Take final state of the last neuron
