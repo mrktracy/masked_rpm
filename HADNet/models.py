@@ -251,19 +251,19 @@ class ReasoningModule(nn.Module):
         self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
 
         # Abstractor layers
-        self.abstractor = nn.ModuleList([
+        self.abstractor = nn.ModuleList([  # Abstractor layers
             Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
             for i in range(abs_depth)
         ])
 
         # Ternary layers
-        self.ternary_module = nn.ModuleList([
+        self.ternary_module = nn.ModuleList([  # Ternary layers
             Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
 
         # Transformer layers
-        self.transformer = nn.ModuleList([
+        self.transformer = nn.ModuleList([  # Transformer layers
             Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
             for i in range(trans_depth)
         ])
@@ -374,15 +374,22 @@ class ReasoningModule(nn.Module):
         abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
         transformed = self.temporal_norm.de_normalize(transformed, embeddings)
 
-        # Concatenate all outputs (abstracted, ternary, and transformed) for scoring and recreation
-        concatenated = torch.cat([abstracted, ternary_tokens, transformed], dim=-1)
+        # Aggregating the three streams before scoring and recreation
+        transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
+        abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
+        ternary_tokens = abstracted.view([batch_size, self.num_candidates, self.grid_size * 2, -1])
+
+        z = torch.cat([transformed, abstracted], dim=-1)
+
+        z_reshaped = torch.cat([z.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
+            batch_size * self.num_candidates, -1)
 
         # Reconstruct the input from the concatenated outputs
-        recreation = self.decoder(concatenated.view(batch_size, -1))  # Shape: [batch_size, grid_size**2 * embed_dim]
+        recreation = self.decoder(z_reshaped)  # Shape: [batch_size * num_candidates, grid_size**2 * embed_dim]
         recreation = recreation.view(batch_size, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
 
         # Scores from the concatenated outputs
-        scores = self.guesser_head(concatenated).view(batch_size, num_candidates)  # [batch_size, num_candidates]
+        scores = self.guesser_head(z_reshaped).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
         return embeddings, recreation, scores
 
