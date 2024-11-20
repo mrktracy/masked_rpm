@@ -337,8 +337,11 @@ class ReasoningModule(nn.Module):
         # Normalize embeddings
         embeddings_normalized = self.temporal_norm.forward(embeddings)
 
-        # Apply ternary operation and normalize the ternary tokens
-        ternary_tokens = self.ternary_mlp(embeddings_normalized)
+        # Reshape embeddings_normalized to ensure correct dimensionality before passing to ternary_mlp
+        embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
+
+        # Now apply ternary operation
+        ternary_tokens = self.ternary_mlp(embeddings_normalized_reshaped)
         ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens)
 
         # Process embeddings with abstractor
