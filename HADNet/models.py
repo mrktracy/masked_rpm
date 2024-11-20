@@ -41,18 +41,18 @@ class Perception(nn.Module):
         self.projection = nn.Linear(512 * 25, embed_dim)  # 5x5=25 from final ResNet output
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Input shape: [batch_size * num_candidates, 9, 1, 160, 160]
-        batch_cand_size, n_nodes, _, height, width = x.shape
+        # Input shape: [batch_size, num_candidates, 9, 1, 160, 160]
+        batch_size, num_candidates, n_nodes, _, height, width = x.shape
         assert n_nodes == self.n_nodes, f"Unexpected number of nodes: {n_nodes} != {self.n_nodes}"
-        x = x.view(-1, 1, height, width)  # Flatten nodes and candidates for processing
+        x = x.view(-1, 1, height, width)  # Flatten batch and candidates for processing
 
         # Extract features
-        x = self.encoder(x)  # Shape: [batch_cand_size * n_nodes, 512, 5, 5]
-        x = x.reshape(batch_cand_size * n_nodes, -1)  # Flatten spatial dimensions
+        x = self.encoder(x)  # Shape: [batch_size * num_candidates * 9, 512, 5, 5]
+        x = x.reshape(-1, 512 * 25)  # Flatten spatial dimensions
 
         # Project to embedding dimension
         x = self.projection(x)
-        x = x.view(batch_cand_size, n_nodes, self.embed_dim)
+        x = x.view(batch_size * num_candidates, n_nodes, self.embed_dim)
 
         # Add positional embeddings
         x = x + self.pos_embed.unsqueeze(0)
@@ -79,7 +79,7 @@ class DialogicIntegrator(nn.Module):
         )
 
     def forward(self, assertion: torch.Tensor, doubt: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        # Input shape: [batch_size * num_candidates, grid_size^2, embed_dim]
+        # Input shape: [batch_size * num_candidates, 9, embed_dim]
         batch_cand_size, n_nodes, embed_dim = assertion.shape
 
         uncertainties = []
@@ -96,9 +96,8 @@ class DialogicIntegrator(nn.Module):
             integrated = level(combined)
             x_assertion = uncertainty * integrated + (1 - uncertainty) * x_assertion
 
-        uncertainties = torch.stack(uncertainties, dim=1).mean(dim=1)  # Average uncertainty
+        uncertainties = torch.stack(uncertainties, dim=1).mean(dim=1)  # Shape: [batch_size * num_candidates, 9, 1]
         return x_assertion, uncertainties
-
 
 
 class HADNet(nn.Module):
@@ -145,8 +144,11 @@ class HADNet(nn.Module):
         )
 
     def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # Initial perception
-        embeddings = self.perception(sentences)  # Shape: [batch_size * num_candidates, grid_size^2, embed_dim]
+        # Input shape: [batch_size, num_candidates, 9, 1, 160, 160]
+        print(f"Input sentences shape: {sentences.shape}")  # Debugging
+
+        # Pass through Perception module
+        embeddings = self.perception.forward(sentences)  # Shape: [batch_size * num_candidates, 9, embed_dim]
 
         # Process through assertion-doubt streams
         x_assertion = embeddings
@@ -157,10 +159,10 @@ class HADNet(nn.Module):
             x_doubt = doubt_block(x_doubt, x_doubt, x_doubt)
 
         # Integrate streams
-        integrated, uncertainty = self.integrator(x_assertion, x_doubt)
+        integrated, uncertainty = self.integrator.forward(x_assertion, x_doubt)
 
         # Generate outputs
-        recreation = self.recreation_head(integrated)  # Shape: [batch_size * num_candidates, grid_size^2, embed_dim]
+        recreation = self.recreation_head(integrated)  # Shape: [batch_size * num_candidates, 9, embed_dim]
 
         # Flatten nodes for scoring
         flat_integrated = integrated.view(-1, self.grid_size ** 2 * self.embed_dim)
