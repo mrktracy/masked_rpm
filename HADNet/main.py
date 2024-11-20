@@ -12,7 +12,6 @@ from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
 from models import HADNet, ReasoningModule
 
-
 # Versioning
 version = "HADNet_v0_itr1"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
@@ -92,6 +91,7 @@ def main(version, results_folder, model_class, model_params):
     for epoch in range(FIRST_EPOCH, FIRST_EPOCH + EPOCHS):
         count = 0
         tot_loss = 0
+        model.train()
 
         for idx, (sentences, target_nums, _, _) in enumerate(train_dataloader):
 
@@ -104,7 +104,12 @@ def main(version, results_folder, model_class, model_params):
             target_nums = target_nums.to(device)  # Shape: [batch_size]
 
             # Forward pass
-            embeddings, recreation, scores = model(sentences)
+            outputs = model(sentences)
+
+            if model_class == HADNet:
+                embeddings, recreation, scores = outputs
+            elif model_class == ReasoningModule:
+                scores, recreation, embeddings, *_ = outputs
 
             # Flatten embeddings to match recreation's shape
             embeddings_flat = embeddings.view(-1, embeddings.size(2), embeddings.size(3))
@@ -154,18 +159,6 @@ def main(version, results_folder, model_class, model_params):
 
 
 if __name__ == "__main__":
-    # Replace `HADNet` with any other model class and adjust parameters accordingly
-    MODEL_CLASS = HADNet
-    MODEL_PARAMS = {
-        "embed_dim": 512,
-        "grid_size": 3,
-        "num_candidates": 8,
-        "n_levels": 5,
-        "bb_depth": 2,
-        "bb_num_heads": 8,
-    }
-
-    # Uncomment the following lines to use the ReasoningModule instead of HADNet
     # MODEL_CLASS = ReasoningModule
     # MODEL_PARAMS = {
     #     "embed_dim": 512,
@@ -182,5 +175,22 @@ if __name__ == "__main__":
     #     "num_symbols_ternary": 6,
     #     "norm_layer": nn.LayerNorm,
     # }
+
+    # Uncomment the following lines to use the HADNet model instead of ReasoningModule
+    MODEL_CLASS = HADNet
+    MODEL_PARAMS = {
+        "embed_dim": 512,
+        "grid_size": 3,
+        "num_candidates": 8,
+        "n_levels": 5,
+        "bb_depth": 2,
+        "bb_num_heads": 8,
+        "trans_depth": 2,
+        "mlp_ratio": 4.0,
+        "proj_drop": 0.0,
+        "attn_drop": 0.0,
+        "drop_path_max": 0.0,
+        "norm_layer": nn.LayerNorm,
+    }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)

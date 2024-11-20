@@ -227,14 +227,22 @@ class ReasoningModule(nn.Module):
         self.embed_dim = embed_dim
         self.grid_size = grid_size
 
-        # Learnable symbols for abstractors
-        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim))
-        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
+        # Positional embeddings
+        self.pos_embed = nn.Parameter(torch.zeros([grid_size**2, embed_dim]), requires_grad=False)
+        pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
+
+        # Ternary operation MLP
+        self.phi_mlp = nn.Sequential(
+            nn.Linear(3 * embed_dim, 4 * embed_dim),
+            nn.ReLU(),
+            nn.Linear(4 * embed_dim, embed_dim),
+        )
 
         # Temporal Context Normalization
         self.temporal_norm = TemporalNorm(embed_dim)
 
-        # Abstractor for embeddings
+        # Abstractors
         self.abstractor = nn.ModuleList([
             Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop=proj_drop, attn_drop=attn_drop,
                   drop_path=drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
@@ -248,14 +256,14 @@ class ReasoningModule(nn.Module):
             for i in range(trans_depth)
         ])
 
-        # Ternary module (uses abstractor logic)
+        # Ternary module
         self.ternary_module = nn.ModuleList([
             Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop=proj_drop, attn_drop=attn_drop,
                   drop_path=drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
 
-        # Reconstruction decoder
+        # Decoder
         self.decoder = nn.Sequential(
             nn.Linear(embed_dim, embed_dim * grid_size**2),
             nn.ReLU(),
@@ -263,97 +271,82 @@ class ReasoningModule(nn.Module):
             nn.Sigmoid(),
         )
 
-        # Guesser head for scoring
-        self.guesser_head = nn.Sequential(
+        # Scoring head
+        self.score_head = nn.Sequential(
             nn.Linear(3 * embed_dim, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, 1),
         )
 
-    def forward(self, embeddings: torch.Tensor, pos_embed: torch.Tensor, ternary_op) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def ternary_mlp(self, embeddings: torch.Tensor) -> torch.Tensor:
+        """
+        Perform the ternary operation Φ_MLP(x1, x2, x3) for rows and columns across the sequence.
+        Input embeddings are of shape [batch_size, grid_size**2, embed_dim].
+        """
+        batch_size, _, embed_dim = embeddings.shape
+
+        slice_idx = torch.tensor([0, 3, 6, 0, 1, 2], device=embeddings.device)
+        increment = torch.tensor([1, 1, 1, 3, 3, 3], device=embeddings.device)
+
+        x1 = embeddings[:, slice_idx, :].reshape(batch_size * 6, -1)
+        x2 = embeddings[:, slice_idx + increment, :].reshape(batch_size * 6, -1)
+        x3 = embeddings[:, slice_idx + 2 * increment, :].reshape(batch_size * 6, -1)
+
+        x = torch.cat([x1, x2, x3], dim=-1)
+        result = self.phi_mlp(x).reshape(batch_size, 6, embed_dim)
+
+        return result
+
+    def forward(self, embeddings: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Args:
-            embeddings (torch.Tensor): Shape [batch_size, grid_size**2, embed_dim].
-            pos_embed (torch.Tensor): Positional embeddings [grid_size**2, embed_dim].
-            ternary_op (callable): Function implementing the ternary operation.
-
+            embeddings: Input tensor of shape [batch_size, grid_size**2, embed_dim].
         Returns:
-            embeddings (torch.Tensor): The input embeddings after processing.
-            recreation (torch.Tensor): Reconstructed input embeddings.
-            scores (torch.Tensor): Candidate scores [batch_size, num_candidates].
+            embeddings: Processed embeddings.
+            recreation: Reconstructed inputs.
+            scores: Candidate scores.
         """
         batch_size, grid_nodes, _ = embeddings.size()
 
-        # Add positional encodings
-        embeddings_positional = embeddings + pos_embed.unsqueeze(0)
+        # Add positional embeddings
+        pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)
+        embeddings_positional = embeddings + pos_embed
 
-        # Apply temporal normalization
-        embeddings_normalized = self.temporal_norm(embeddings_positional)
+        # Temporal normalization
+        embeddings_normalized = self.temporal_norm.forward(embeddings_positional)
 
-        # Ternary operation (produces 6 tokens for rows and columns)
-        ternary_tokens = ternary_op(embeddings_normalized)
+        # Ternary operation
+        ternary_tokens = self.ternary_mlp(embeddings_normalized)
 
-        # Normalize ternary tokens
-        ternary_normalized = self.temporal_norm(ternary_tokens)
-
-        # Process embeddings with abstractor
+        # Abstractor
         abstracted = embeddings_normalized
-        for idx, blk in enumerate(self.abstractor):
-            if idx == 0:
-                abstracted = blk(
-                    x_q=abstracted,
-                    x_k=abstracted,
-                    x_v=self.symbols_abs.unsqueeze(0).expand(batch_size, -1, -1)
-                )
-            else:
-                abstracted = blk(
-                    x_q=abstracted,
-                    x_k=abstracted,
-                    x_v=abstracted
-                )
+        for blk in self.abstractor:
+            abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=abstracted)
+        abstracted_denorm = self.temporal_norm.de_normalize(abstracted, embeddings_positional)
 
-        # De-normalize abstractor output
-        abstracted_de_normalized = self.temporal_norm.de_normalize(abstracted, embeddings_normalized)
+        # Ternary module
+        ternary_processed = ternary_tokens
+        for blk in self.ternary_module:
+            ternary_processed = blk(x_q=ternary_processed, x_k=ternary_processed, x_v=ternary_processed)
+        ternary_denorm = self.temporal_norm.de_normalize(ternary_processed, embeddings_positional)
 
-        # Process ternary tokens with abstractor
-        ternary_processed = ternary_normalized
-        for idx, blk in enumerate(self.ternary_module):
-            if idx == 0:
-                ternary_processed = blk(
-                    x_q=ternary_processed,
-                    x_k=ternary_processed,
-                    x_v=self.symbols_ternary.unsqueeze(0).expand(batch_size, -1, -1)
-                )
-            else:
-                ternary_processed = blk(
-                    x_q=ternary_processed,
-                    x_k=ternary_processed,
-                    x_v=ternary_processed
-                )
-
-        # De-normalize ternary tokens
-        ternary_de_normalized = self.temporal_norm.de_normalize(ternary_processed, ternary_normalized)
-
-        # Process embeddings with transformer (use a copy of embeddings_normalized)
-        transformed = embeddings_normalized.clone()
+        # Transformer
+        transformed = embeddings_normalized
         for blk in self.transformer:
             transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
+        transformed_denorm = self.temporal_norm.de_normalize(transformed, embeddings_positional)
 
-        # De-normalize transformer output
-        transformed_de_normalized = self.temporal_norm.de_normalize(transformed, embeddings_normalized)
+        # Reconstruct inputs
+        recreation = self.decoder(transformed_denorm.view(batch_size, -1))
+        recreation = recreation.view(batch_size, grid_nodes, -1)
 
-        # Reconstruct the input
-        recreation = self.decoder(transformed_de_normalized.view(batch_size, -1))  # Shape: [batch_size, grid_size**2 * embed_dim]
-        recreation = recreation.view(batch_size, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
-
-        # Pool outputs
-        abstracted_mean = abstracted_de_normalized.mean(dim=1)  # [batch_size, embed_dim]
-        ternary_mean = ternary_de_normalized.mean(dim=1)  # [batch_size, embed_dim]
-        transformed_mean = transformed_de_normalized.mean(dim=1)  # [batch_size, embed_dim]
-
-        # Concatenate and pass through guesser head
-        concatenated = torch.cat([abstracted_mean, ternary_mean, transformed_mean], dim=-1)
-        scores = self.guesser_head(concatenated).view(batch_size, -1)  # [batch_size, num_candidates]
+        # Scoring
+        pooled_features = torch.cat([
+            abstracted_denorm.mean(dim=1),
+            ternary_denorm.mean(dim=1),
+            transformed_denorm.mean(dim=1)
+        ], dim=-1)
+        scores = self.score_head(pooled_features).view(batch_size, -1)
 
         return embeddings, recreation, scores
 
