@@ -13,7 +13,7 @@ from funs import gather_files_pgm
 from models import HADNet, ReasoningModule
 
 # Versioning
-version = "HADNet_v0_itr2"
+version = "HADNet_v0_itr3"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -70,7 +70,7 @@ def main(version, results_folder, model_class, model_params):
     EPOCHS = 100
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.00005
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 20
