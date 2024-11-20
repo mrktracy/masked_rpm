@@ -270,9 +270,7 @@ class ReasoningModule(nn.Module):
 
         # Reconstruction decoder
         self.decoder = nn.Sequential(
-            nn.Linear(embed_dim * 3, embed_dim),  # Now uses concatenated for scoring and reconstruction
-            nn.ReLU(),
-            nn.Linear(embed_dim, embed_dim * grid_size**2),
+            nn.Linear(embed_dim * 3, embed_dim * grid_size**2),
             nn.ReLU(),
             nn.Linear(embed_dim * grid_size**2, grid_size**2 * embed_dim),
             nn.Sigmoid(),
@@ -333,12 +331,12 @@ class ReasoningModule(nn.Module):
         sentences_reshaped = sentences.view(-1, 1, height, width)  # Shape: [batch_size * num_candidates * grid_nodes, 1, 160, 160]
         embeddings = self.perception(sentences_reshaped)  # Shape: [batch_size * num_candidates * grid_nodes, embed_dim]
 
-        # Reshape embeddings to [batch_size, num_candidates, grid_size**2, embed_dim]
+        # Reshape embeddings to [batch_size, num_candidates, grid_size^2, embed_dim]
         embeddings = embeddings.view(batch_size, num_candidates, grid_nodes, -1)
 
         # Add positional embeddings
         pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
-        embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
+        embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size^2, embed_dim]
 
         # Normalize embeddings
         embeddings_normalized = self.temporal_norm(embeddings)
@@ -348,7 +346,7 @@ class ReasoningModule(nn.Module):
         ternary_tokens_normalized = self.temporal_norm(ternary_tokens)
 
         # Process embeddings with abstractor
-        abstracted = embeddings_normalized.clone()  # Clone embeddings for abstractor
+        abstracted = embeddings_normalized
         for idx, blk in enumerate(self.abstractor):
             if idx == 0:
                 abstracted = blk(
@@ -371,7 +369,7 @@ class ReasoningModule(nn.Module):
                 ternary_tokens_normalized = blk(x_q=ternary_tokens_normalized, x_k=ternary_tokens_normalized, x_v=ternary_tokens_normalized)
 
         # Process embeddings with transformer
-        transformed = embeddings_normalized.clone()  # Clone embeddings for transformer
+        transformed = embeddings_normalized.clone()
         for blk in self.transformer:
             transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
 
@@ -387,8 +385,8 @@ class ReasoningModule(nn.Module):
         recreation = self.decoder(concatenated.view(batch_size, -1))  # Shape: [batch_size, grid_size**2 * embed_dim]
         recreation = recreation.view(batch_size, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
 
-        # Scores from the concatenated outputs
-        scores = self.guesser_head(concatenated).view(batch_size, num_candidates)  # [batch_size, num_candidates]
+        # Scores from the concatenated and pooled results
+        scores = self.guesser_head(concatenated.mean(dim=2)).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
         return embeddings, recreation, scores
 
