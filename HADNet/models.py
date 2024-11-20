@@ -268,15 +268,15 @@ class ReasoningModule(nn.Module):
             for i in range(trans_depth)
         ])
 
-        # Reconstruction decoder
+        # Reconstruction decoder (adjusted to handle concatenated inputs)
         self.decoder = nn.Sequential(
-            nn.Linear(embed_dim * 3, embed_dim * grid_size**2),
+            nn.Linear(3 * embed_dim, embed_dim),  # Assuming concatenated_for_scoring will have 3 * embed_dim
             nn.ReLU(),
-            nn.Linear(embed_dim * grid_size**2, grid_size**2 * embed_dim),
+            nn.Linear(embed_dim, grid_size**2 * embed_dim),
             nn.Sigmoid(),
         )
 
-        # Guesser head
+        # Guesser head (adjusted for the same variable used for scoring)
         self.guesser_head = nn.Sequential(
             nn.Linear(3 * embed_dim, embed_dim),
             nn.ReLU(),
@@ -331,12 +331,12 @@ class ReasoningModule(nn.Module):
         sentences_reshaped = sentences.view(-1, 1, height, width)  # Shape: [batch_size * num_candidates * grid_nodes, 1, 160, 160]
         embeddings = self.perception(sentences_reshaped)  # Shape: [batch_size * num_candidates * grid_nodes, embed_dim]
 
-        # Reshape embeddings to [batch_size, num_candidates, grid_size^2, embed_dim]
+        # Reshape embeddings to [batch_size, num_candidates, grid_size**2, embed_dim]
         embeddings = embeddings.view(batch_size, num_candidates, grid_nodes, -1)
 
         # Add positional embeddings
         pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
-        embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size^2, embed_dim]
+        embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
         # Normalize embeddings
         embeddings_normalized = self.temporal_norm(embeddings)
@@ -385,8 +385,8 @@ class ReasoningModule(nn.Module):
         recreation = self.decoder(concatenated.view(batch_size, -1))  # Shape: [batch_size, grid_size**2 * embed_dim]
         recreation = recreation.view(batch_size, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
 
-        # Scores from the concatenated and pooled results
-        scores = self.guesser_head(concatenated.mean(dim=2)).view(batch_size, num_candidates)  # [batch_size, num_candidates]
+        # Scores from the concatenated outputs
+        scores = self.guesser_head(concatenated).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
         return embeddings, recreation, scores
 
