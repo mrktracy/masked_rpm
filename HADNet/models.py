@@ -381,7 +381,7 @@ class ReasoningModule(nn.Module):
         # Aggregating the three streams before scoring and recreation
         transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
         abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
-        ternary_tokens = ternary_tokens.view([batch_size, self.num_candidates, self.grid_size * 2, -1])
+        ternary_tokens_normalized = ternary_tokens_normalized.view([batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
         ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens_normalized, ternary_tokens)
