@@ -159,35 +159,44 @@ class HADNet(nn.Module):
             recreation: Recreated outputs after denormalization.
             scores: Candidate scores.
         """
+        # Extract batch size and other dimensions
         batch_size = sentences.size(0)
 
         # Pass through Perception module
         embeddings = self.perception.forward(sentences)  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
-        # Temporal normalization for embeddings
-        embeddings_normalized = self.temporal_norm(embeddings)
+        # Temporal normalization (single normalization shared for both streams)
+        embeddings_normalized = self.temporal_norm.forward(embeddings)
 
-        # Split normalized embeddings into assertion and doubt streams
+        # Process through assertion and doubt transformer blocks
         x_assertion = embeddings_normalized
         x_doubt = embeddings_normalized
 
-        # Process through assertion and doubt transformer blocks
         for assert_block, doubt_block in zip(self.assertion_stream, self.doubt_stream):
             x_assertion = assert_block(x_q=x_assertion, x_k=x_assertion, x_v=x_assertion)
             x_doubt = doubt_block(x_q=x_doubt, x_k=x_doubt, x_v=x_doubt)
 
+        # Reshape before integration
+        batch_size, num_candidates, n_nodes, embed_dim = x_assertion.shape
+        x_assertion = x_assertion.view(batch_size * num_candidates, n_nodes, embed_dim)
+        x_doubt = x_doubt.view(batch_size * num_candidates, n_nodes, embed_dim)
+
         # Integrate streams
         integrated, uncertainty = self.integrator.forward(x_assertion, x_doubt)
 
+        # Reshape back after integration
+        integrated = integrated.view(batch_size, num_candidates, n_nodes, embed_dim)
+
         # Generate recreation
-        recreation = self.recreation_head(integrated)  # Shape: [batch_size * num_candidates, grid_size**2, embed_dim]
+        recreation = self.recreation_head(integrated)  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
         # De-normalize the recreation
         recreation_de_normalized = self.temporal_norm.de_normalize(recreation)
 
         # Flatten nodes for scoring
-        flat_integrated = integrated.view(batch_size * self.num_candidates, -1)  # [batch_size * num_candidates, grid_size**2 * embed_dim]
-        scores = self.score_head(flat_integrated).view(batch_size, self.num_candidates)  # Shape: [batch_size, num_candidates]
+        flat_integrated = integrated.view(batch_size * num_candidates,
+                                          -1)  # [batch_size * num_candidates, grid_size**2 * embed_dim]
+        scores = self.score_head(flat_integrated).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
         return embeddings, recreation_de_normalized, scores
 
