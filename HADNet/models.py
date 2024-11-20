@@ -93,13 +93,15 @@ class DialogicIntegrator(nn.Module):
 
 
 class HADNet(nn.Module):
-    def __init__(self,
-                 embed_dim: int = 512,
-                 grid_size: int = 3,
-                 num_candidates: int = 8,
-                 n_levels: int = 3,
-                 bb_depth: int = 2,
-                 bb_num_heads: int = 8):
+    def __init__(
+        self,
+        embed_dim: int = 512,
+        grid_size: int = 3,
+        num_candidates: int = 8,
+        n_levels: int = 3,
+        bb_depth: int = 2,
+        bb_num_heads: int = 8,
+    ):
         super().__init__()
 
         self.embed_dim = embed_dim
@@ -112,17 +114,17 @@ class HADNet(nn.Module):
             grid_size=grid_size,
             num_candidates=num_candidates,
             bb_depth=bb_depth,
-            bb_num_heads=bb_num_heads
+            bb_num_heads=bb_num_heads,
         )
 
         # Holonic assertion-doubt streams
-        self.assertion_stream = nn.ModuleList([
-            Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4, norm_layer=nn.LayerNorm) for _ in range(n_levels)
-        ])
+        self.assertion_stream = nn.ModuleList(
+            [Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4, norm_layer=nn.LayerNorm) for _ in range(n_levels)]
+        )
 
-        self.doubt_stream = nn.ModuleList([
-            Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4, norm_layer=nn.LayerNorm) for _ in range(n_levels)
-        ])
+        self.doubt_stream = nn.ModuleList(
+            [Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4, norm_layer=nn.LayerNorm) for _ in range(n_levels)]
+        )
 
         # Integration
         self.integrator = DialogicIntegrator(embed_dim, n_levels)
@@ -132,15 +134,15 @@ class HADNet(nn.Module):
         self.score_head = nn.Sequential(
             nn.Linear(embed_dim * grid_size * grid_size, embed_dim),
             nn.ReLU(),
-            nn.Linear(embed_dim, 1)
+            nn.Linear(embed_dim, 1),
         )
 
     def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # Input shape: [batch_size, num_candidates, 9, 1, 160, 160]
+        # Input shape: [batch_size, num_candidates, grid_size**2, 1, 160, 160]
         print(f"Input sentences shape: {sentences.shape}")  # Debugging
 
         # Pass through Perception module
-        embeddings = self.perception.forward(sentences)  # Shape: [batch_size * num_candidates, 9, embed_dim]
+        embeddings = self.perception.forward(sentences)  # Shape: [batch_size * num_candidates, grid_size**2, embed_dim]
 
         # Process through assertion-doubt streams
         x_assertion = embeddings
@@ -154,14 +156,13 @@ class HADNet(nn.Module):
         integrated, uncertainty = self.integrator.forward(x_assertion, x_doubt)
 
         # Generate outputs
-        recreation = self.recreation_head(integrated)  # Shape: [batch_size * num_candidates, 9, embed_dim]
+        recreation = self.recreation_head(integrated)  # Shape: [batch_size * num_candidates, grid_size**2, embed_dim]
 
         # Flatten nodes for scoring
-        flat_integrated = integrated.view(-1, self.grid_size ** 2 * self.embed_dim)
+        flat_integrated = integrated.view(-1, self.grid_size**2 * self.embed_dim)
         scores = self.score_head(flat_integrated).view(-1, self.num_candidates)  # Shape: [batch_size, num_candidates]
 
         return embeddings, recreation, scores
-
 
 
 class ResidualBlock(nn.Module):
@@ -249,30 +250,30 @@ Hacked together by / Copyright 2020, Ross Wightman
 
 class Attention(nn.Module):
     def __init__(
-            self,
-            dim_kq,
-            dim_v,
-            num_heads=8,
-            q_bias=False,
-            k_bias=False,
-            v_bias=False,
-            qk_norm=False,
-            attn_drop=0.0,
-            proj_drop=0.0,
-            norm_layer=nn.LayerNorm,
-            restrict_qk=False
+        self,
+        dim_kq,
+        dim_v,
+        num_heads=8,
+        q_bias=False,
+        k_bias=False,
+        v_bias=False,
+        qk_norm=False,
+        attn_drop=0.0,
+        proj_drop=0.0,
+        norm_layer=nn.LayerNorm,
+        restrict_qk=False,
     ):
         super().__init__()
 
-        assert dim_kq % num_heads == 0, 'dim_kq should be divisible by num_heads'
-        assert dim_v % num_heads == 0, 'dim_v should be divisible by num_heads'
+        assert dim_kq % num_heads == 0, "dim_kq should be divisible by num_heads"
+        assert dim_v % num_heads == 0, "dim_v should be divisible by num_heads"
 
         self.dim_kq = dim_kq
         self.dim_v = dim_v
         self.num_heads = num_heads
         self.head_dim_kq = dim_kq // num_heads
         self.head_dim_v = dim_v // num_heads
-        self.scale = self.head_dim_kq ** -0.5
+        self.scale = self.head_dim_kq**-0.5
 
         self.w_qs = nn.Linear(dim_kq, dim_kq, bias=q_bias)
         self.w_ks = self.w_qs if restrict_qk else nn.Linear(dim_kq, dim_kq, bias=k_bias)
@@ -288,9 +289,6 @@ class Attention(nn.Module):
         self.restrict_qk = restrict_qk
 
     def forward(self, x_q, x_k, x_v):
-        # Debugging shapes
-        print(f"x_q.shape: {x_q.shape}, x_k.shape: {x_k.shape}, x_v.shape: {x_v.shape}")
-
         # Extract dimensions
         batch_size, len_q, c = x_q.size()
         len_k = x_k.size(1)
@@ -315,6 +313,7 @@ class Attention(nn.Module):
         return x
 
 
+
 class LayerScale(nn.Module):
     def __init__(self, dim, init_values=1e-5, inplace=False):
         super().__init__()
@@ -326,25 +325,24 @@ class LayerScale(nn.Module):
 
 
 class Block(nn.Module):
-
     def __init__(
-            self,
-            dim_kq,
-            dim_v,
-            num_heads,
-            mlp_ratio=4.,
-            q_bias=False,
-            k_bias=False,
-            v_bias=False,
-            qk_norm=False,
-            proj_drop=0.,
-            attn_drop=0.,
-            init_values=None,
-            drop_path=0.,
-            act_layer=nn.GELU,
-            norm_layer=nn.LayerNorm,
-            mlp_layer=Mlp,
-            restrict_qk=False
+        self,
+        dim_kq,
+        dim_v,
+        num_heads,
+        mlp_ratio=4.0,
+        q_bias=False,
+        k_bias=False,
+        v_bias=False,
+        qk_norm=False,
+        proj_drop=0.0,
+        attn_drop=0.0,
+        init_values=None,
+        drop_path=0.0,
+        act_layer=nn.GELU,
+        norm_layer=nn.LayerNorm,
+        mlp_layer=Mlp,
+        restrict_qk=False,
     ):
         super().__init__()
         self.norm1 = norm_layer(dim_kq)
@@ -362,10 +360,10 @@ class Block(nn.Module):
             attn_drop=attn_drop,
             proj_drop=proj_drop,
             norm_layer=norm_layer,
-            restrict_qk=restrict_qk
+            restrict_qk=restrict_qk,
         )
         self.ls1 = LayerScale(dim_kq, init_values=init_values) if init_values else nn.Identity()
-        self.drop_path1 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.drop_path1 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.mlp = mlp_layer(
             in_features=dim_v,
             hidden_features=int(dim_v * mlp_ratio),
@@ -373,16 +371,28 @@ class Block(nn.Module):
             drop=proj_drop,
         )
         self.ls2 = LayerScale(dim_v, init_values=init_values) if init_values else nn.Identity()
-        self.drop_path2 = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.drop_path2 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
     def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
+        batch_size, num_candidates, grid_nodes, embed_dim = x_q.size()
 
-        x = x_v + self.drop_path1(self.ls1(self.attn.forward(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))))
+        # Flatten batch and candidate dimensions
+        x_q = x_q.view(batch_size * num_candidates, grid_nodes, embed_dim)
+        x_k = x_k.view(batch_size * num_candidates, grid_nodes, embed_dim)
+        x_v = x_v.view(batch_size * num_candidates, grid_nodes, embed_dim)
 
+        # Apply attention
+        x = x_v + self.drop_path1(
+            self.ls1(self.attn.forward(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v)))
+        )
+
+        # Optional MLP layer
         if use_mlp_layer:
             x = self.norm3(x + self.drop_path2(self.ls2(self.mlp(self.norm2(x)))))
-        else:
-            x = self.norm2(x)
+
+        # Reshape back to original dimensions
+        x = x.view(batch_size, num_candidates, grid_nodes, embed_dim)
 
         return x
+
 
