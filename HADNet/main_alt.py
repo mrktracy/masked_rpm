@@ -151,19 +151,23 @@ def main(version, results_folder, model_class, model_params):
 if __name__ == "__main__":
     MODEL_CLASS = ReasoningModule
     MODEL_PARAMS = {
-        "embed_dim": 768,
+        "embed_dim": 512,
         "grid_size": 3,
         "abs_depth": 4,
         "trans_depth": 6,
         "ternary_depth": 3,
         "num_heads": 8,
         "mlp_ratio": 4.0,
-        "proj_drop": 0.1,
-        "attn_drop": 0.1,
-        "drop_path_max": 0.2,
+        "proj_drop": 0,
+        "attn_drop": 0,
+        "drop_path_max": 0,
         "num_symbols_abs": 9,
         "num_symbols_ternary": 6,
         "norm_layer": nn.LayerNorm,
+        "bb_proj_drop": 0,
+        "bb_attn_drop": 0,
+        "bb_drop_path_max": 0,
+        "per_mlp_drop": 0
     }
 
     # Uncomment the following lines to use the HADNet model instead of ReasoningModule

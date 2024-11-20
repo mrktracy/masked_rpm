@@ -14,6 +14,9 @@ class Perception(nn.Module):
                  num_candidates=8,
                  bb_depth=1,
                  bb_num_heads=2,
+                 bb_proj_drop=0.3,
+                 bb_attn_drop=0.3,
+                 bb_drop_path_max=0.5,
                  per_mlp_drop=0):
         super().__init__()
         self.n_nodes = grid_size ** 2
@@ -27,7 +30,9 @@ class Perception(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
 
         # Backbone for feature extraction
-        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads, mlp_drop=per_mlp_drop)
+        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads,
+                                             mlp_drop=per_mlp_drop, proj_drop=proj_drop, attn_drop=attn_drop,
+                                             drop_path_max = drop_path_max)
 
     def forward(self, sentences):
         """
@@ -222,6 +227,10 @@ class ReasoningModule(nn.Module):
         norm_layer=nn.LayerNorm,
         bb_depth: int = 2,
         bb_num_heads: int = 8,
+        bb_proj_drop=0.3,
+        bb_attn_drop=0.3,
+        bb_drop_path_max=0.5,
+        per_mlp_drop=0
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -235,6 +244,10 @@ class ReasoningModule(nn.Module):
             num_candidates=8,  # Default assumed; adapt as needed
             bb_depth=bb_depth,
             bb_num_heads=bb_num_heads,
+            bb_proj_drop=bb_proj_drop,
+            bb_attn_drop=bb_attn_drop,
+            bb_drop_path_max=bb_drop_path_max,
+            per_mlp_drop=per_mlp_drop
         )
 
         # Positional embeddings
@@ -436,7 +449,10 @@ class BackbonePerception(nn.Module):
                  mlp_ratio=4,
                  norm_layer=nn.LayerNorm,
                  depth=4,
-                 mlp_drop=0.3):
+                 mlp_drop=0.3,
+                 proj_drop=0.3,
+                 attn_drop=0.3,
+                 drop_path_max = 0.5):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
@@ -457,8 +473,10 @@ class BackbonePerception(nn.Module):
 
         self.blocks = nn.ModuleList([
             Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
-                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer, proj_drop=0.3, attn_drop=0.3,
-                  drop_path=0.5 * ((i + 1) / self.depth), restrict_qk=False) for i in range(self.depth)])
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
+                  proj_drop=proj_drop, attn_drop=attn_drop,
+                  drop_path=drop_path_max * ((i + 1) / self.depth), restrict_qk=False)
+            for i in range(self.depth)])
 
         self.mlp = nn.Linear(self.out_channels * self.grid_dim**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
