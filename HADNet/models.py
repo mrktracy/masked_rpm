@@ -195,15 +195,12 @@ class HADNet(nn.Module):
         # De-normalize the recreation
         recreation_de_normalized = self.temporal_norm.de_normalize(recreation, embeddings)
 
-        # Reshape recreation to match flattened embeddings
-        recreation_flattened = recreation_de_normalized.view(batch_size * num_candidates, n_nodes, embed_dim)
-
         # Flatten nodes for scoring
         flat_integrated = integrated.view(batch_size * num_candidates,
                                           -1)  # [batch_size * num_candidates, grid_size**2 * embed_dim]
         scores = self.score_head(flat_integrated).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
-        return embeddings, recreation_flattened, scores
+        return embeddings, recreation_de_normalized, scores
 
 
 class ReasoningModule(nn.Module):
