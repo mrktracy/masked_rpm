@@ -142,18 +142,30 @@ class HADNet(nn.Module):
         print(f"Input sentences shape: {sentences.shape}")  # Debugging
 
         # Pass through Perception module
-        embeddings = self.perception.forward(sentences)  # Shape: [batch_size * num_candidates, grid_size**2, embed_dim]
+        embeddings = self.perception.forward(sentences)  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
         # Process through assertion-doubt streams
         x_assertion = embeddings
         x_doubt = embeddings
 
         for assert_block, doubt_block in zip(self.assertion_stream, self.doubt_stream):
-            x_assertion = assert_block(x_assertion, x_assertion, x_assertion)
-            x_doubt = doubt_block(x_doubt, x_doubt, x_doubt)
+            # Flatten batch and candidate dimensions
+            x_assertion_flat = x_assertion.view(-1, self.grid_size ** 2, self.embed_dim)
+            x_doubt_flat = x_doubt.view(-1, self.grid_size ** 2, self.embed_dim)
+
+            # Pass through blocks
+            x_assertion_flat = assert_block(x_assertion_flat, x_assertion_flat, x_assertion_flat)
+            x_doubt_flat = doubt_block(x_doubt_flat, x_doubt_flat, x_doubt_flat)
+
+            # Reshape back to original dimensions
+            x_assertion = x_assertion_flat.view(-1, self.num_candidates, self.grid_size ** 2, self.embed_dim)
+            x_doubt = x_doubt_flat.view(-1, self.num_candidates, self.grid_size ** 2, self.embed_dim)
 
         # Integrate streams
-        integrated, uncertainty = self.integrator.forward(x_assertion, x_doubt)
+        integrated, uncertainty = self.integrator.forward(
+            x_assertion.view(-1, self.grid_size ** 2, self.embed_dim),
+            x_doubt.view(-1, self.grid_size ** 2, self.embed_dim),
+        )
 
         # Generate outputs
         recreation = self.recreation_head(integrated)  # Shape: [batch_size * num_candidates, grid_size**2, embed_dim]
