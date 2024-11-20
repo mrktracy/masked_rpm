@@ -344,9 +344,9 @@ class ReasoningModule(nn.Module):
         ternary_tokens = self.ternary_mlp(embeddings_normalized_reshaped)
         ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens)
 
-        # Ensure proper expansion of symbols for batch dimension
-        self.symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
-        self.symbols_ternary = self.symbols_ternary.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
+        # Temporarily expand the symbols for batch dimension manipulation
+        expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
+        expanded_symbols_ternary = self.symbols_ternary.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
 
         # Process embeddings with abstractor
         abstracted = embeddings_normalized
@@ -355,7 +355,7 @@ class ReasoningModule(nn.Module):
                 abstracted = blk(
                     x_q=abstracted,
                     x_k=abstracted,
-                    x_v=self.symbols_abs,
+                    x_v=expanded_symbols_abs,
                 )
             else:
                 abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=abstracted)
@@ -366,7 +366,7 @@ class ReasoningModule(nn.Module):
                 ternary_tokens_normalized = blk(
                     x_q=ternary_tokens_normalized,
                     x_k=ternary_tokens_normalized,
-                    x_v=self.symbols_ternary,
+                    x_v=expanded_symbols_ternary,
                 )
             else:
                 ternary_tokens_normalized = blk(x_q=ternary_tokens_normalized, x_k=ternary_tokens_normalized, x_v=ternary_tokens_normalized)
