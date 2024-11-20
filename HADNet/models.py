@@ -301,29 +301,44 @@ class Attention(nn.Module):
         self.restrict_qk = restrict_qk
 
     def forward(self, x_q, x_k, x_v):
-        # Extract dimensions
-        batch_size, len_q, c = x_q.size()
-        len_k = x_k.size(1)
-        len_v = x_v.size(1)
+        """
+        Handles inputs with varying dimensions by flattening and reshaping.
+        Args:
+            x_q, x_k, x_v: Query, Key, and Value tensors.
+        Returns:
+            The output tensor after applying attention.
+        """
+        # Flatten additional dimensions before processing
+        original_shape = x_q.shape
+        batch_size = original_shape[0]
+        len_q = original_shape[-2]
+        c = original_shape[-1]
+
+        # Flatten for multi-head attention
+        x_q = x_q.view(-1, len_q, c)
+        x_k = x_k.view(-1, len_q, c)
+        x_v = x_v.view(-1, len_q, c)
 
         # Multi-head attention reshaping
-        q = self.w_qs(x_q).view(batch_size, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)
-        k = self.w_ks(x_k).view(batch_size, len_k, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)
-        v = self.w_vs(x_v).view(batch_size, len_v, self.num_heads, self.head_dim_v).permute(0, 2, 1, 3)
+        q = self.w_qs(x_q).view(-1, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)
+        k = self.w_ks(x_k).view(-1, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)
+        v = self.w_vs(x_v).view(-1, len_q, self.num_heads, self.head_dim_v).permute(0, 2, 1, 3)
 
-        # Compute attention
+        # Compute scaled dot-product attention
         q = q * self.scale
         attn = torch.matmul(q, k.transpose(-2, -1)).softmax(dim=-1)
         attn = self.attn_drop(attn)
         x = torch.matmul(attn, v)
 
-        # Reshape and project back to original dimensions
-        x = x.permute(0, 2, 1, 3).reshape(batch_size, len_q, c)
+        # Reshape and project back
+        x = x.permute(0, 2, 1, 3).reshape(-1, len_q, c)
         x = self.proj(x)
         x = self.proj_drop(x)
 
-        return x
+        # Restore the original batch and candidate dimensions
+        x = x.view(*original_shape[:-1], c)
 
+        return x
 
 
 class LayerScale(nn.Module):
