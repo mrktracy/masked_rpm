@@ -111,14 +111,8 @@ def main(version, results_folder, model_class, model_params):
             elif model_class == ReasoningModule:
                 scores, recreation, embeddings, *_ = outputs
 
-            # Flatten embeddings to match recreation's shape
-            embeddings_flat = embeddings.view(-1, embeddings.size(2), embeddings.size(3))
-
-            # Ensure shapes match before calculating MSE loss
-            assert embeddings_flat.shape == recreation.shape, f"Shape mismatch: {embeddings_flat.shape} vs {recreation.shape}"
-
             # Calculate reconstruction error
-            rec_err = criterion_reconstruction(embeddings_flat, recreation)
+            rec_err = criterion_reconstruction(embeddings, recreation)
             task_err = criterion_task(scores, target_nums)  # target_nums shape: [batch_size]
 
             loss = ALPHA * task_err + (1 - ALPHA) * rec_err

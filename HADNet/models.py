@@ -398,7 +398,7 @@ class ReasoningModule(nn.Module):
 
         # Reconstruct the input from the concatenated outputs
         recreation = self.decoder(reas_bottleneck)  # Shape: [batch_size * num_candidates, grid_size**2 * embed_dim]
-        recreation = recreation.view(batch_size, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
+        recreation = recreation.view(batch_size, num_candidates, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
 
         # Scores from the concatenated outputs
         scores = self.guesser_head(reas_bottleneck).view(batch_size, num_candidates)  # [batch_size, num_candidates]
