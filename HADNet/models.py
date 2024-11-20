@@ -40,7 +40,7 @@ class Perception(nn.Module):
 
         # Reshape for processing by BackbonePerception
         sentences_reshaped = sentences.view(-1, 1, 160, 160)  # Shape: [B * N_c * G^2, 1, 160, 160]
-        features = self.perception(sentences_reshaped)  # Shape: [B * N_c * G^2, embed_dim]
+        features = self.perception.forward(sentences_reshaped)  # Shape: [B * N_c * G^2, embed_dim]
 
         # Reshape back to original context
         features_reshaped = features.view(batch_size, self.num_candidates, self.n_nodes, -1)  # [B, N_c, G^2, embed_dim]
@@ -270,13 +270,13 @@ class ReasoningModule(nn.Module):
 
         # Reconstruction decoder (adjusted to handle concatenated inputs)
         self.decoder = nn.Sequential(
-            nn.Linear(3 * embed_dim, embed_dim),  # Assuming concatenated_for_scoring will have 3 * embed_dim
+            nn.Linear(3 * embed_dim, embed_dim),  # Assuming concatenated will have 3 * embed_dim
             nn.ReLU(),
             nn.Linear(embed_dim, grid_size**2 * embed_dim),
             nn.Sigmoid(),
         )
 
-        # Guesser head (adjusted for the same variable used for scoring)
+        # Guesser head
         self.guesser_head = nn.Sequential(
             nn.Linear(3 * embed_dim, embed_dim),
             nn.ReLU(),
@@ -328,22 +328,18 @@ class ReasoningModule(nn.Module):
         batch_size, num_candidates, grid_nodes, _, height, width = sentences.size()
 
         # Reshape sentences for perception
-        sentences_reshaped = sentences.view(-1, 1, height, width)  # Shape: [batch_size * num_candidates * grid_nodes, 1, 160, 160]
-        embeddings = self.perception(sentences_reshaped)  # Shape: [batch_size * num_candidates * grid_nodes, embed_dim]
-
-        # Reshape embeddings to [batch_size, num_candidates, grid_size**2, embed_dim]
-        embeddings = embeddings.view(batch_size, num_candidates, grid_nodes, -1)
+        embeddings = self.perception.forward(sentences)  # Shape: [batch_size, num_candidates, grid_nodes, embed_dim]
 
         # Add positional embeddings
         pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
         embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
         # Normalize embeddings
-        embeddings_normalized = self.temporal_norm(embeddings)
+        embeddings_normalized = self.temporal_norm.forward(embeddings)
 
         # Apply ternary operation and normalize the ternary tokens
         ternary_tokens = self.ternary_mlp(embeddings_normalized)
-        ternary_tokens_normalized = self.temporal_norm(ternary_tokens)
+        ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens)
 
         # Process embeddings with abstractor
         abstracted = embeddings_normalized
