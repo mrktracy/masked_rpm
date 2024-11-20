@@ -70,7 +70,7 @@ def main(version, results_folder, model_class, model_params):
     EPOCHS = 100
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.0001
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 20
