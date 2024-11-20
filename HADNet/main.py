@@ -103,9 +103,16 @@ def main_HADNet(VERSION, RESULTS_FOLDER):
             # Forward pass
             embeddings, recreation, scores = hadnet_model(sentences)  # scores shape: [batch_size, num_candidates]
 
-            # Compute losses
+            # Flatten embeddings to match recreation's shape
+            embeddings_flat = embeddings.view(-1, embeddings.size(2),
+                                              embeddings.size(3))  # Shape: [batch_size * num_candidates, 9, 512]
+
+            # Ensure shapes match before calculating MSE loss
+            assert embeddings_flat.shape == recreation.shape, f"Shape mismatch: {embeddings_flat.shape} vs {recreation.shape}"
+
+            # Calculate reconstruction error
+            rec_err = criterion_reconstruction(embeddings_flat, recreation)
             task_err = criterion_task(scores, target_nums)  # target_nums shape: [batch_size]
-            rec_err = criterion_reconstruction(embeddings, recreation)
 
             loss = ALPHA * task_err + (1 - ALPHA) * rec_err
 
