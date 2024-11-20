@@ -14,7 +14,7 @@ from models import HADNet, ReasoningModule
 
 
 # Versioning
-version = "Model_v0_itr0"
+version = "HADNet_v0_itr1"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
