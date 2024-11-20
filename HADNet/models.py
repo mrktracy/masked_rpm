@@ -22,7 +22,7 @@ class Perception(nn.Module):
         self.grid_size = grid_size
         self.num_candidates = num_candidates
 
-        # Position embeddings (similar to your AGM implementation)
+        # Position embeddings
         self.pos_embed = nn.Parameter(torch.zeros([self.n_nodes, embed_dim]), requires_grad=False)
         pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
@@ -39,15 +39,15 @@ class Perception(nn.Module):
 
         # Assertion and Doubt streams
         self.assertion_stream = nn.Sequential(
-            Block(512, 512, bb_num_heads, mlp_ratio=4,
-                  norm_layer=nn.LayerNorm, proj_drop=0.3, attn_drop=0.3,
-                  drop_path=0.1) for _ in range(bb_depth)
+            *[Block(512, 512, bb_num_heads, mlp_ratio=4,
+                    norm_layer=nn.LayerNorm, proj_drop=0.3, attn_drop=0.3,
+                    drop_path=0.1) for _ in range(bb_depth)]
         )
 
         self.doubt_stream = nn.Sequential(
-            Block(512, 512, bb_num_heads, mlp_ratio=4,
-                  norm_layer=nn.LayerNorm, proj_drop=0.3, attn_drop=0.3,
-                  drop_path=0.1) for _ in range(bb_depth)
+            *[Block(512, 512, bb_num_heads, mlp_ratio=4,
+                    norm_layer=nn.LayerNorm, proj_drop=0.3, attn_drop=0.3,
+                    drop_path=0.1) for _ in range(bb_depth)]
         )
 
         # Final projection
