@@ -297,56 +297,76 @@ class ReasoningModule(nn.Module):
 
         return result
 
-    def forward(self, embeddings: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Args:
-            embeddings: Input tensor of shape [batch_size, grid_size**2, embed_dim].
+            sentences: Input tensor of shape [batch_size, num_candidates, grid_size**2, 1, 160, 160]
         Returns:
-            embeddings: Processed embeddings.
-            recreation: Reconstructed inputs.
+            embeddings: Raw embeddings from the perception module.
+            recreation: Reconstructed outputs after denormalization.
             scores: Candidate scores.
         """
-        batch_size, grid_nodes, _ = embeddings.size()
+        batch_size, num_candidates, grid_nodes, _, height, width = sentences.size()
+
+        # Reshape sentences for processing in Perception
+        sentences_reshaped = sentences.view(-1, 1, height,
+                                            width)  # Shape: [batch_size * num_candidates * grid_nodes, 1, 160, 160]
+        embeddings = self.perception(sentences_reshaped)  # Shape: [batch_size * num_candidates * grid_nodes, embed_dim]
+
+        # Reshape embeddings to [batch_size, num_candidates, grid_size**2, embed_dim]
+        embeddings = embeddings.view(batch_size, num_candidates, grid_nodes, -1)
 
         # Add positional embeddings
-        pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, -1)
-        embeddings_positional = embeddings + pos_embed
+        pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
+        embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
-        # Temporal normalization
-        embeddings_normalized = self.temporal_norm.forward(embeddings_positional)
+        # Normalize embeddings
+        embeddings_normalized = self.temporal_norm(embeddings)
 
-        # Ternary operation
-        ternary_tokens = self.ternary_mlp(embeddings_normalized)
+        # Flatten embeddings for downstream processing
+        embeddings_flat = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, -1)
 
-        # Abstractor
-        abstracted = embeddings_normalized
+        # Perform ternary operation
+        ternary_tokens = self.ternary_mlp(embeddings_flat)  # Shape: [batch_size * num_candidates, 6, embed_dim]
+
+        # Normalize ternary tokens
+        ternary_normalized = self.temporal_norm(ternary_tokens)
+
+        # Process embeddings with abstractor
+        abstracted = embeddings_flat.clone()
         for blk in self.abstractor:
             abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=abstracted)
-        abstracted_denorm = self.temporal_norm.de_normalize(abstracted, embeddings_positional)
 
-        # Ternary module
-        ternary_processed = ternary_tokens
+        # De-normalize abstracted embeddings
+        abstracted_de_normalized = self.temporal_norm.de_normalize(abstracted, embeddings_flat)
+
+        # Process ternary tokens with abstractor
+        ternary_processed = ternary_normalized.clone()
         for blk in self.ternary_module:
             ternary_processed = blk(x_q=ternary_processed, x_k=ternary_processed, x_v=ternary_processed)
-        ternary_denorm = self.temporal_norm.de_normalize(ternary_processed, embeddings_positional)
 
-        # Transformer
-        transformed = embeddings_normalized
+        # Process embeddings with transformer
+        transformed = embeddings_flat.clone()
         for blk in self.transformer:
             transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
-        transformed_denorm = self.temporal_norm.de_normalize(transformed, embeddings_positional)
 
-        # Reconstruct inputs
-        recreation = self.decoder(transformed_denorm.view(batch_size, -1))
-        recreation = recreation.view(batch_size, grid_nodes, -1)
+        # De-normalize transformed embeddings
+        transformed_de_normalized = self.temporal_norm.de_normalize(transformed, embeddings_flat)
 
-        # Scoring
-        pooled_features = torch.cat([
-            abstracted_denorm.mean(dim=1),
-            ternary_denorm.mean(dim=1),
-            transformed_denorm.mean(dim=1)
-        ], dim=-1)
-        scores = self.score_head(pooled_features).view(batch_size, -1)
+        # Reconstruct the input
+        recreation = self.decoder(
+            transformed_de_normalized.view(batch_size, -1))  # Shape: [batch_size, grid_size**2 * embed_dim]
+        recreation = recreation.view(batch_size, num_candidates, grid_nodes,
+                                     -1)  # Shape: [batch_size, num_candidates, grid_nodes, embed_dim]
+
+        # Pool outputs for scoring
+        abstracted_mean = abstracted_de_normalized.mean(dim=1)  # Shape: [batch_size * num_candidates, embed_dim]
+        ternary_mean = ternary_processed.mean(dim=1)  # Shape: [batch_size * num_candidates, embed_dim]
+        transformed_mean = transformed_de_normalized.mean(dim=1)  # Shape: [batch_size * num_candidates, embed_dim]
+
+        # Concatenate and score
+        concatenated = torch.cat([abstracted_mean, ternary_mean, transformed_mean], dim=-1)
+        scores = self.guesser_head(concatenated).view(batch_size, num_candidates)  # Shape: [batch_size, num_candidates]
 
         return embeddings, recreation, scores
 
