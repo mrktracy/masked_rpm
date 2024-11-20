@@ -303,70 +303,40 @@ class Attention(nn.Module):
         self.restrict_qk = restrict_qk
 
     def forward(self, x_q, x_k, x_v):
-        """
-        Forward pass for the Attention module.
-
-        Args:
-            x_q: Query tensor of shape (batch_size, len_q, dim_kq)
-            x_k: Key tensor of shape (batch_size, len_k, dim_kq)
-            x_v: Value tensor of shape (batch_size, len_v, dim_v)
-
-        Returns:
-            Output tensor of shape (batch_size, len_q, dim_v)
-        """
-        # Debugging input shapes
+        # Diagnostics
         print(f"x_q.shape: {x_q.shape}, x_k.shape: {x_k.shape}, x_v.shape: {x_v.shape}")
 
-        batch_size, len_q, c = x_q.size()
-        len_k = x_k.size(1)
-        len_v = x_v.size(1)
+        batch_size, num_heads, len_q, head_dim = x_q.size()  # Adjust to four dimensions
+        len_k = x_k.size(2)
+        len_v = x_v.size(2)
 
-        # Verify input dimensions
-        assert c == self.dim_kq, f"Expected x_q dim {self.dim_kq}, but got {c}"
-        assert x_k.size(2) == self.dim_kq, f"Expected x_k dim {self.dim_kq}, but got {x_k.size(2)}"
-        assert x_v.size(2) == self.dim_v, f"Expected x_v dim {self.dim_v}, but got {x_v.size(2)}"
-
-        # Pass through the pre-attention projections
-        q = self.w_qs(x_q)  # (batch_size, len_q, dim_kq)
-        k = self.w_ks(x_k)  # (batch_size, len_k, dim_kq)
-        v = self.w_vs(x_v)  # (batch_size, len_v, dim_v)
-
-        # Debugging shapes after linear projections
-        print(
-            f"q.shape after projection: {q.shape}, k.shape after projection: {k.shape}, v.shape after projection: {v.shape}")
-
-        # Reshape and split into heads
-        q = q.view(batch_size, len_q, self.num_heads, self.head_dim_kq).transpose(1,
-                                                                                  2)  # (batch_size, num_heads, len_q, head_dim_kq)
-        k = k.view(batch_size, len_k, self.num_heads, self.head_dim_kq).transpose(1,
-                                                                                  2)  # (batch_size, num_heads, len_k, head_dim_kq)
-        v = v.view(batch_size, len_v, self.num_heads, self.head_dim_v).transpose(1,
-                                                                                 2)  # (batch_size, num_heads, len_v, head_dim_v)
-
-        # Debugging shapes after reshaping into heads
-        print(f"q.shape after splitting into heads: {q.shape}, k.shape: {k.shape}, v.shape: {v.shape}")
-
-        # Scale query
-        q = q * self.scale
+        # Ensure correct dimensionality for queries, keys, and values
+        assert x_q.size(1) == self.num_heads, f"Expected num_heads={self.num_heads}, got {x_q.size(1)}"
+        assert x_k.size(1) == self.num_heads, f"Expected num_heads={self.num_heads}, got {x_k.size(1)}"
+        assert x_v.size(1) == self.num_heads, f"Expected num_heads={self.num_heads}, got {x_v.size(1)}"
 
         # Compute attention scores
-        attn = q @ k.transpose(-2, -1)  # (batch_size, num_heads, len_q, len_k)
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
+        q = self.w_qs(x_q).view(batch_size, num_heads, len_q, head_dim)
+        k = self.w_ks(x_k).view(batch_size, num_heads, len_k, head_dim)
+        v = self.w_vs(x_v).view(batch_size, num_heads, len_v, self.head_dim_v)
 
-        # Debugging attention shape
-        print(f"attn.shape: {attn.shape}")
+        if self.restrict_qk:
+            q, k = self.qk_norm(q), self.qk_norm(k)
+        else:
+            q, k = self.q_norm(q), self.k_norm(k)
 
-        # Compute attention output
-        x = attn @ v  # (batch_size, num_heads, len_q, head_dim_v)
-        x = x.transpose(1, 2).reshape(batch_size, len_q, self.dim_v)  # (batch_size, len_q, dim_v)
+        q = q * self.scale
+        attn = q @ k.transpose(-2, -1)  # Compute attention weights
+        attn = attn.softmax(dim=-1)  # Normalize weights
+        attn = self.attn_drop(attn)  # Apply dropout to attention weights
 
-        # Apply the final projection
+        # Apply attention to values
+        x = attn @ v
+
+        # Reshape back to original dimensions
+        x = x.transpose(1, 2).reshape(batch_size, len_q, self.dim_v)
         x = self.proj(x)
         x = self.proj_drop(x)
-
-        # Debugging output shape
-        print(f"Output shape: {x.shape}")
 
         return x
 
