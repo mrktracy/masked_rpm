@@ -27,35 +27,37 @@ class Perception(nn.Module):
         pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
 
-        # ResNet backbone (similar to your BackbonePerception)
+        # ResNet backbone
         self.encoder = nn.Sequential(
-            ResidualBlock(1, 16),  # N, 16, 160, 160
-            ResidualBlock(16, 32, 2),  # N, 32, 80, 80
-            ResidualBlock(32, 64, 2),  # N, 64, 40, 40
-            ResidualBlock(64, 128, 2),  # N, 128, 20, 20
-            ResidualBlock(128, 256, 2),  # N, 256, 10, 10
-            ResidualBlock(256, 512, 2)  # N, 512, 5, 5
+            ResidualBlock(1, 16),
+            ResidualBlock(16, 32, 2),
+            ResidualBlock(32, 64, 2),
+            ResidualBlock(64, 128, 2),
+            ResidualBlock(128, 256, 2),
+            ResidualBlock(256, 512, 2)
         )
 
         # Final projection
         self.projection = nn.Linear(512 * 25, embed_dim)  # 5x5=25 from final ResNet output
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x.shape: [batch_size * num_candidates, grid_size^2, 1, 160, 160]
-        batch_cand_size = x.size(0)  # Flattened batch * num_candidates
-        grid_size_squared = x.size(1)
+        # Input shape: [batch_size * num_candidates, 9, 1, 160, 160]
+        batch_cand_size, n_nodes, _, height, width = x.shape
+        assert n_nodes == self.n_nodes, f"Unexpected number of nodes: {n_nodes} != {self.n_nodes}"
+        x = x.view(-1, 1, height, width)  # Flatten nodes and candidates for processing
 
-        # Ensure input is reshaped correctly for processing
-        x = x.view(batch_cand_size * grid_size_squared, 1, 160, 160)  # Flatten for ResNet
-        x = self.encoder(x)  # Shape: [batch_cand_size * grid_size^2, 512, 5, 5]
-        x = x.view(batch_cand_size, grid_size_squared, -1)  # Shape: [batch_cand_size, grid_size^2, 512 * 5 * 5]
-        x = self.projection(x)  # Project to embedding dimension
-        x = x.view(batch_cand_size // self.num_candidates, self.num_candidates, self.n_nodes, self.embed_dim)
+        # Extract features
+        x = self.encoder(x)  # Shape: [batch_cand_size * n_nodes, 512, 5, 5]
+        x = x.reshape(batch_cand_size * n_nodes, -1)  # Flatten spatial dimensions
+
+        # Project to embedding dimension
+        x = self.projection(x)
+        x = x.view(batch_cand_size, n_nodes, self.embed_dim)
 
         # Add positional embeddings
-        x = x + self.pos_embed.unsqueeze(0).unsqueeze(0)
-        return x
+        x = x + self.pos_embed.unsqueeze(0)
 
+        return x
 
 
 class DialogicIntegrator(nn.Module):
@@ -77,20 +79,26 @@ class DialogicIntegrator(nn.Module):
         )
 
     def forward(self, assertion: torch.Tensor, doubt: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = assertion
+        # Input shape: [batch_size * num_candidates, grid_size^2, embed_dim]
+        batch_cand_size, n_nodes, embed_dim = assertion.shape
+
         uncertainties = []
+        x_assertion = assertion
+        x_doubt = doubt
 
         for level in self.levels:
             # Estimate uncertainty
-            uncertainty = self.uncertainty_estimator(x)
+            uncertainty = self.uncertainty_estimator(x_assertion)
             uncertainties.append(uncertainty)
 
-            # Integrate assertion and doubt based on uncertainty
-            combined = torch.cat([x, doubt], dim=-1)
+            # Integrate
+            combined = torch.cat([x_assertion, x_doubt], dim=-1)
             integrated = level(combined)
-            x = uncertainty * integrated + (1 - uncertainty) * x
+            x_assertion = uncertainty * integrated + (1 - uncertainty) * x_assertion
 
-        return x, torch.stack(uncertainties, dim=1).mean(dim=1)
+        uncertainties = torch.stack(uncertainties, dim=1).mean(dim=1)  # Average uncertainty
+        return x_assertion, uncertainties
+
 
 
 class HADNet(nn.Module):
@@ -118,13 +126,11 @@ class HADNet(nn.Module):
 
         # Holonic assertion-doubt streams
         self.assertion_stream = nn.ModuleList([
-            Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4,
-                  norm_layer=nn.LayerNorm) for _ in range(n_levels)
+            Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4, norm_layer=nn.LayerNorm) for _ in range(n_levels)
         ])
 
         self.doubt_stream = nn.ModuleList([
-            Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4,
-                  norm_layer=nn.LayerNorm) for _ in range(n_levels)
+            Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4, norm_layer=nn.LayerNorm) for _ in range(n_levels)
         ])
 
         # Integration
@@ -140,8 +146,7 @@ class HADNet(nn.Module):
 
     def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Initial perception
-        embeddings = self.perception(sentences)
-        batch_size = embeddings.size(0)
+        embeddings = self.perception(sentences)  # Shape: [batch_size * num_candidates, grid_size^2, embed_dim]
 
         # Process through assertion-doubt streams
         x_assertion = embeddings
@@ -155,11 +160,11 @@ class HADNet(nn.Module):
         integrated, uncertainty = self.integrator(x_assertion, x_doubt)
 
         # Generate outputs
-        recreation = self.recreation_head(integrated)
+        recreation = self.recreation_head(integrated)  # Shape: [batch_size * num_candidates, grid_size^2, embed_dim]
 
-        # Generate scores
-        flat_integrated = integrated.view(batch_size, self.num_candidates, -1)
-        scores = self.score_head(flat_integrated).squeeze(-1)
+        # Flatten nodes for scoring
+        flat_integrated = integrated.view(-1, self.grid_size ** 2 * self.embed_dim)
+        scores = self.score_head(flat_integrated).squeeze(-1)  # Shape: [batch_size * num_candidates]
 
         return embeddings, recreation, scores
 
@@ -257,8 +262,8 @@ class Attention(nn.Module):
             k_bias=False,
             v_bias=False,
             qk_norm=False,
-            attn_drop=0.,
-            proj_drop=0.,
+            attn_drop=0.0,
+            proj_drop=0.0,
             norm_layer=nn.LayerNorm,
             restrict_qk=False
     ):
@@ -292,34 +297,23 @@ class Attention(nn.Module):
         print(f"x_q.shape: {x_q.shape}, x_k.shape: {x_k.shape}, x_v.shape: {x_v.shape}")
 
         # Extract dimensions
-        batch_size, len_q, len_k, len_v = x_q.size(0), x_q.size(1), x_k.size(1), x_v.size(1)
-        c = x_q.size(-1)
+        batch_size, len_q, c = x_q.size()
+        len_k = x_k.size(1)
+        len_v = x_v.size(1)
 
-        assert c == self.dim_kq, f"Input dimension mismatch: {c} != {self.dim_kq}"
+        # Multi-head attention reshaping
+        q = self.w_qs(x_q).view(batch_size, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)
+        k = self.w_ks(x_k).view(batch_size, len_k, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)
+        v = self.w_vs(x_v).view(batch_size, len_v, self.num_heads, self.head_dim_v).permute(0, 2, 1, 3)
 
-        # Pass through linear layers and reshape for multi-head attention
-        q = self.w_qs(x_q).view(batch_size, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)  # b, n, lq, hq
-        k = self.w_ks(x_k).view(batch_size, len_k, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)  # b, n, lk, hq
-        v = self.w_vs(x_v).view(batch_size, len_v, self.num_heads, self.head_dim_v).permute(0, 2, 1, 3)  # b, n, lv, hv
-
-        # Debugging shapes after linear transformations
-        print(f"q.shape: {q.shape}, k.shape: {k.shape}, v.shape: {v.shape}")
-        assert q.shape[-1] == self.head_dim_kq, f"q last dim mismatch: {q.shape[-1]} != {self.head_dim_kq}"
-        assert v.shape[-1] == self.head_dim_v, f"v last dim mismatch: {v.shape[-1]} != {self.head_dim_v}"
-
-        # Apply scaling to queries
+        # Compute attention
         q = q * self.scale
-
-        # Compute attention scores
-        attn = torch.matmul(q, k.transpose(-2, -1))  # b, n, lq, lk
-        attn = attn.softmax(dim=-1)
+        attn = torch.matmul(q, k.transpose(-2, -1)).softmax(dim=-1)
         attn = self.attn_drop(attn)
-
-        # Compute attention outputs
-        x = torch.matmul(attn, v)  # b, n, lq, hv
+        x = torch.matmul(attn, v)
 
         # Reshape and project back to original dimensions
-        x = x.permute(0, 2, 1, 3).reshape(batch_size, len_q, c)  # b, lq, c
+        x = x.permute(0, 2, 1, 3).reshape(batch_size, len_q, c)
         x = self.proj(x)
         x = self.proj_drop(x)
 
