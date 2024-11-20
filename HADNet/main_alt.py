@@ -13,7 +13,7 @@ from funs import gather_files_pgm
 from models import HADNet, ReasoningModule
 
 # Versioning
-version = "Model_v0_itr2"
+version = "Model_v0_itr3"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -151,11 +151,11 @@ def main(version, results_folder, model_class, model_params):
 if __name__ == "__main__":
     MODEL_CLASS = ReasoningModule
     MODEL_PARAMS = {
-        "embed_dim": 512,
+        "embed_dim": 768,
         "grid_size": 3,
         "abs_depth": 4,
-        "trans_depth": 6,
-        "ternary_depth": 3,
+        "trans_depth": 4,
+        "ternary_depth": 4,
         "num_heads": 8,
         "mlp_ratio": 4.0,
         "proj_drop": 0.1,
