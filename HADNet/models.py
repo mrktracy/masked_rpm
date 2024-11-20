@@ -17,7 +17,7 @@ class Perception(nn.Module):
                  bb_proj_drop=0.3,
                  bb_attn_drop=0.3,
                  bb_drop_path_max=0.5,
-                 per_mlp_drop=0):
+                 bb_mlp_drop=0):
         super().__init__()
         self.n_nodes = grid_size ** 2
         self.embed_dim = embed_dim
@@ -31,8 +31,8 @@ class Perception(nn.Module):
 
         # Backbone for feature extraction
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads,
-                                             mlp_drop=per_mlp_drop, proj_drop=proj_drop, attn_drop=attn_drop,
-                                             drop_path_max = drop_path_max)
+                                             mlp_drop=bb_mlp_drop, proj_drop=bb_proj_drop, attn_drop=bb_attn_drop,
+                                             drop_path_max = bb_drop_path_max)
 
     def forward(self, sentences):
         """
@@ -112,6 +112,10 @@ class HADNet(nn.Module):
         attn_drop: float = 0.0,
         drop_path_max: float = 0.0,
         norm_layer=nn.LayerNorm,
+        bb_proj_drop=0.3,
+        bb_attn_drop=0.3,
+        bb_drop_path_max=0.5,
+        bb_mlp_drop=0
     ):
         super().__init__()
 
@@ -126,6 +130,10 @@ class HADNet(nn.Module):
             num_candidates=num_candidates,
             bb_depth=bb_depth,
             bb_num_heads=bb_num_heads,
+            bb_proj_drop=bb_proj_drop,
+            bb_attn_drop=bb_attn_drop,
+            bb_drop_path_max=bb_drop_path_max,
+            bb_mlp_drop=bb_mlp_drop
         )
 
         # Temporal context normalization
@@ -230,7 +238,7 @@ class ReasoningModule(nn.Module):
         bb_proj_drop=0.3,
         bb_attn_drop=0.3,
         bb_drop_path_max=0.5,
-        per_mlp_drop=0
+        bb_mlp_drop=0
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -247,7 +255,7 @@ class ReasoningModule(nn.Module):
             bb_proj_drop=bb_proj_drop,
             bb_attn_drop=bb_attn_drop,
             bb_drop_path_max=bb_drop_path_max,
-            per_mlp_drop=per_mlp_drop
+            bb_mlp_drop=bb_mlp_drop
         )
 
         # Positional embeddings
