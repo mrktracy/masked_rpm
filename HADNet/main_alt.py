@@ -167,7 +167,7 @@ if __name__ == "__main__":
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
-        "per_mlp_drop": 0
+        "bb_mlp_drop": 0
     }
 
     # Uncomment the following lines to use the HADNet model instead of ReasoningModule
