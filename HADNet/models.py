@@ -349,7 +349,7 @@ class ReasoningModule(nn.Module):
         expanded_symbols_ternary = self.symbols_ternary.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
 
         # Process embeddings with abstractor
-        abstracted = embeddings_normalized
+        abstracted = embeddings_normalized_reshaped.clone()
         for idx, blk in enumerate(self.abstractor):
             if idx == 0:
                 abstracted = blk(
@@ -372,7 +372,7 @@ class ReasoningModule(nn.Module):
                 ternary_tokens_normalized = blk(x_q=ternary_tokens_normalized, x_k=ternary_tokens_normalized, x_v=ternary_tokens_normalized)
 
         # Process embeddings with transformer
-        transformed = embeddings_normalized.clone()
+        transformed = embeddings_normalized_reshaped.clone()
         for blk in self.transformer:
             transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
 
