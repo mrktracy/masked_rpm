@@ -9,53 +9,47 @@ from typing import Tuple
 
 class Perception(nn.Module):
     def __init__(self,
-                 embed_dim: int,
-                 grid_size: int = 3,
-                 num_candidates: int = 8,
-                 bb_depth: int = 2,
-                 bb_num_heads: int = 8):
+                 embed_dim,
+                 grid_size=3,
+                 num_candidates=8,
+                 bb_depth=1,
+                 bb_num_heads=2,
+                 per_mlp_drop=0):
         super().__init__()
         self.n_nodes = grid_size ** 2
         self.embed_dim = embed_dim
         self.grid_size = grid_size
         self.num_candidates = num_candidates
 
-        # Position embeddings
+        # Positional Embeddings
         self.pos_embed = nn.Parameter(torch.zeros([self.n_nodes, embed_dim]), requires_grad=False)
         pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=embed_dim, grid_size=grid_size, cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
 
-        # ResNet backbone
-        self.encoder = nn.Sequential(
-            ResidualBlock(1, 16),
-            ResidualBlock(16, 32, 2),
-            ResidualBlock(32, 64, 2),
-            ResidualBlock(64, 128, 2),
-            ResidualBlock(128, 256, 2),
-            ResidualBlock(256, 512, 2)
-        )
+        # Backbone for feature extraction
+        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads, mlp_drop=per_mlp_drop)
 
-        # Final projection
-        self.projection = nn.Linear(512 * 25, embed_dim)  # 5x5=25 from final ResNet output
+    def forward(self, sentences):
+        """
+        Args:
+            sentences: Tensor of shape [batch_size, num_candidates, grid_size**2, 1, 160, 160]
+        Returns:
+            embeddings_final: Tensor of shape [batch_size, num_candidates, grid_size**2, embed_dim]
+        """
+        batch_size = sentences.size(0)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Input shape: [batch_size, num_candidates, 9, 1, 160, 160]
-        batch_size, num_candidates, n_nodes, _, height, width = x.shape
-        assert n_nodes == self.n_nodes, f"Unexpected number of nodes: {n_nodes} != {self.n_nodes}"
-        x = x.view(-1, 1, height, width)  # Flatten batch and candidates for processing
+        # Reshape for processing by BackbonePerception
+        sentences_reshaped = sentences.view(-1, 1, 160, 160)  # Shape: [B * N_c * G^2, 1, 160, 160]
+        features = self.perception(sentences_reshaped)  # Shape: [B * N_c * G^2, embed_dim]
 
-        # Extract features
-        x = self.encoder(x)  # Shape: [batch_size * num_candidates * 9, 512, 5, 5]
-        x = x.reshape(-1, 512 * 25)  # Flatten spatial dimensions
+        # Reshape back to original context
+        features_reshaped = features.view(batch_size, self.num_candidates, self.n_nodes, -1)  # [B, N_c, G^2, embed_dim]
 
-        # Project to embedding dimension
-        x = self.projection(x)
-        x = x.view(batch_size * num_candidates, n_nodes, self.embed_dim)
+        # Expand and add positional embeddings
+        pos_embed_expanded = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, self.num_candidates, self.n_nodes, -1)
+        embeddings_final = features_reshaped + pos_embed_expanded  # Element-wise addition
 
-        # Add positional embeddings
-        x = x + self.pos_embed.unsqueeze(0)
-
-        return x
+        return embeddings_final
 
 
 class DialogicIntegrator(nn.Module):
