@@ -104,12 +104,7 @@ def main(version, results_folder, model_class, model_params):
             target_nums = target_nums.to(device)  # Shape: [batch_size]
 
             # Forward pass
-            outputs = model(sentences)
-
-            if model_class == HADNet:
-                embeddings, recreation, scores = outputs
-            elif model_class == ReasoningModule:
-                scores, recreation, embeddings, *_ = outputs
+            embeddings, recreation, scores = model(sentences)
 
             # Calculate reconstruction error
             rec_err = criterion_reconstruction(embeddings, recreation)
