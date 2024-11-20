@@ -156,11 +156,14 @@ class HADNet(nn.Module):
             sentences: Input tensor of shape [batch_size, num_candidates, grid_size**2, 1, 160, 160]
         Returns:
             embeddings: Raw embeddings from the perception module.
-            recreation: Recreated outputs after denormalization.
+            recreation: Recreated outputs after denormalization (flattened).
             scores: Candidate scores.
         """
         # Extract batch size and other dimensions
         batch_size = sentences.size(0)
+        num_candidates = sentences.size(1)
+        n_nodes = self.grid_size ** 2
+        embed_dim = self.embed_dim
 
         # Pass through Perception module
         embeddings = self.perception.forward(sentences)  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
@@ -177,7 +180,6 @@ class HADNet(nn.Module):
             x_doubt = doubt_block(x_q=x_doubt, x_k=x_doubt, x_v=x_doubt)
 
         # Reshape before integration
-        batch_size, num_candidates, n_nodes, embed_dim = x_assertion.shape
         x_assertion = x_assertion.view(batch_size * num_candidates, n_nodes, embed_dim)
         x_doubt = x_doubt.view(batch_size * num_candidates, n_nodes, embed_dim)
 
@@ -193,12 +195,15 @@ class HADNet(nn.Module):
         # De-normalize the recreation
         recreation_de_normalized = self.temporal_norm.de_normalize(recreation, embeddings)
 
+        # Reshape recreation to match flattened embeddings
+        recreation_flattened = recreation_de_normalized.view(batch_size * num_candidates, n_nodes, embed_dim)
+
         # Flatten nodes for scoring
         flat_integrated = integrated.view(batch_size * num_candidates,
                                           -1)  # [batch_size * num_candidates, grid_size**2 * embed_dim]
         scores = self.score_head(flat_integrated).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
-        return embeddings, recreation_de_normalized, scores
+        return embeddings, recreation_flattened, scores
 
 
 class ReasoningModule(nn.Module):
@@ -295,17 +300,39 @@ class ReasoningModule(nn.Module):
         abstracted = embeddings_normalized
         for idx, blk in enumerate(self.abstractor):
             if idx == 0:
-                abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=self.symbols_abs.unsqueeze(0).expand(batch_size, -1, -1))
+                abstracted = blk(
+                    x_q=abstracted,
+                    x_k=abstracted,
+                    x_v=self.symbols_abs.unsqueeze(0).expand(batch_size, -1, -1)
+                )
             else:
-                abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=abstracted)
+                abstracted = blk(
+                    x_q=abstracted,
+                    x_k=abstracted,
+                    x_v=abstracted
+                )
+
+        # De-normalize abstractor output
+        abstracted_de_normalized = self.temporal_norm.de_normalize(abstracted, embeddings_normalized)
 
         # Process ternary tokens with abstractor
         ternary_processed = ternary_normalized
         for idx, blk in enumerate(self.ternary_module):
             if idx == 0:
-                ternary_processed = blk(x_q=ternary_processed, x_k=ternary_processed, x_v=self.symbols_ternary.unsqueeze(0).expand(batch_size, -1, -1))
+                ternary_processed = blk(
+                    x_q=ternary_processed,
+                    x_k=ternary_processed,
+                    x_v=self.symbols_ternary.unsqueeze(0).expand(batch_size, -1, -1)
+                )
             else:
-                ternary_processed = blk(x_q=ternary_processed, x_k=ternary_processed, x_v=ternary_processed)
+                ternary_processed = blk(
+                    x_q=ternary_processed,
+                    x_k=ternary_processed,
+                    x_v=ternary_processed
+                )
+
+        # De-normalize ternary tokens
+        ternary_de_normalized = self.temporal_norm.de_normalize(ternary_processed, ternary_normalized)
 
         # Process embeddings with transformer (use a copy of embeddings_normalized)
         transformed = embeddings_normalized.clone()
@@ -313,16 +340,16 @@ class ReasoningModule(nn.Module):
             transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
 
         # De-normalize transformer output
-        transformed = self.temporal_norm.de_normalize(transformed)
+        transformed_de_normalized = self.temporal_norm.de_normalize(transformed, embeddings_normalized)
 
         # Reconstruct the input
-        recreation = self.decoder(transformed.view(batch_size, -1))  # Shape: [batch_size, grid_size**2 * embed_dim]
+        recreation = self.decoder(transformed_de_normalized.view(batch_size, -1))  # Shape: [batch_size, grid_size**2 * embed_dim]
         recreation = recreation.view(batch_size, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
 
         # Pool outputs
-        abstracted_mean = abstracted.mean(dim=1)  # [batch_size, embed_dim]
-        ternary_mean = ternary_processed.mean(dim=1)  # [batch_size, embed_dim]
-        transformed_mean = transformed.mean(dim=1)  # [batch_size, embed_dim]
+        abstracted_mean = abstracted_de_normalized.mean(dim=1)  # [batch_size, embed_dim]
+        ternary_mean = ternary_de_normalized.mean(dim=1)  # [batch_size, embed_dim]
+        transformed_mean = transformed_de_normalized.mean(dim=1)  # [batch_size, embed_dim]
 
         # Concatenate and pass through guesser head
         concatenated = torch.cat([abstracted_mean, ternary_mean, transformed_mean], dim=-1)
