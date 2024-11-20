@@ -13,7 +13,7 @@ from funs import gather_files_pgm
 from models import HADNet, ReasoningModule
 
 # Versioning
-version = "HADNet_v0_itr4"
+version = "Model_v0_itr0"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -182,7 +182,7 @@ if __name__ == "__main__":
         "norm_layer": nn.LayerNorm,
     }
 
-    # main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
+    main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
 
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
