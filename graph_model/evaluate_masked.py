@@ -29,4 +29,6 @@ def evaluate_model_dist(model, dataloader, device, max_batches=None):
             if max_batches is not None and idx + 1 == max_batches:
                 break
 
+    model.train()
+
     return 100*(num_correct / num_samples), None

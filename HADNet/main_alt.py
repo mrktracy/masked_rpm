@@ -13,7 +13,7 @@ from funs import gather_files_pgm
 from models import HADNet, ReasoningModule
 
 # Versioning
-version = "Model_v0_itr1"
+version = "Model_v0_itr2"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -89,6 +89,7 @@ def main(version, results_folder, model_class, model_params):
 
     # Training loop
     for epoch in range(FIRST_EPOCH, FIRST_EPOCH + EPOCHS):
+
         count = 0
         tot_loss = 0
         model.train()
