@@ -191,7 +191,7 @@ class HADNet(nn.Module):
         recreation = self.recreation_head(integrated)  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
         # De-normalize the recreation
-        recreation_de_normalized = self.temporal_norm.de_normalize(recreation)
+        recreation_de_normalized = self.temporal_norm.de_normalize(recreation, embeddings)
 
         # Flatten nodes for scoring
         flat_integrated = integrated.view(batch_size * num_candidates,
