@@ -344,8 +344,9 @@ class ReasoningModule(nn.Module):
 
         # Now apply ternary operation
         ternary_tokens = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
-        ternary_tokens_reshaped = ternary_tokens.view(batch_size, num_candidates, grid_nodes, -1)
-        ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens_reshaped)
+        ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens)
+        ternary_tokens_reshaped = ternary_tokens.view(
+            [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
         # Temporarily expand the symbols for batch dimension manipulation
         expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
@@ -382,7 +383,8 @@ class ReasoningModule(nn.Module):
         # Aggregating the three streams before scoring and recreation
         transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
         abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
-        ternary_tokens_normalized = ternary_tokens_normalized.view([batch_size, self.num_candidates, self.grid_size * 2, -1])
+        ternary_tokens_normalized = ternary_tokens_normalized.view(
+            [batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
         ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens_normalized, ternary_tokens_reshaped)
