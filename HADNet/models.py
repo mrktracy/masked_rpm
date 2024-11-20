@@ -376,15 +376,15 @@ class ReasoningModule(nn.Module):
         for blk in self.transformer:
             transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
 
-        # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
-        ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens_normalized, ternary_tokens)
-        abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
-        transformed = self.temporal_norm.de_normalize(transformed, embeddings)
-
         # Aggregating the three streams before scoring and recreation
         transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
         abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
         ternary_tokens = ternary_tokens.view([batch_size, self.num_candidates, self.grid_size * 2, -1])
+
+        # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
+        ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens_normalized, ternary_tokens)
+        abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
+        transformed = self.temporal_norm.de_normalize(transformed, embeddings)
 
         trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
