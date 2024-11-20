@@ -302,43 +302,85 @@ class Attention(nn.Module):
         self.proj_drop = nn.Dropout(proj_drop)
         self.restrict_qk = restrict_qk
 
-    def forward(self, x_q, x_k, x_v):
-        # Diagnostics
-        print(f"x_q.shape: {x_q.shape}, x_k.shape: {x_k.shape}, x_v.shape: {x_v.shape}")
+    class Attention(nn.Module):
+        def __init__(
+                self,
+                dim_kq,
+                dim_v,
+                num_heads=8,
+                q_bias=False,
+                k_bias=False,
+                v_bias=False,
+                qk_norm=False,
+                attn_drop=0.,
+                proj_drop=0.,
+                norm_layer=nn.LayerNorm,
+                restrict_qk=False
+        ):
+            super().__init__()
 
-        batch_size, num_heads, len_q, head_dim = x_q.size()  # Adjust to four dimensions
-        len_k = x_k.size(2)
-        len_v = x_v.size(2)
+            assert dim_kq % num_heads == 0, 'dim_kq should be divisible by num_heads'
+            assert dim_v % num_heads == 0, 'dim_v should be divisible by num_heads'
 
-        # Ensure correct dimensionality for queries, keys, and values
-        assert x_q.size(1) == self.num_heads, f"Expected num_heads={self.num_heads}, got {x_q.size(1)}"
-        assert x_k.size(1) == self.num_heads, f"Expected num_heads={self.num_heads}, got {x_k.size(1)}"
-        assert x_v.size(1) == self.num_heads, f"Expected num_heads={self.num_heads}, got {x_v.size(1)}"
+            self.dim_kq = dim_kq
+            self.dim_v = dim_v
+            self.num_heads = num_heads
+            self.head_dim_kq = dim_kq // num_heads
+            self.head_dim_v = dim_v // num_heads
+            self.scale = self.head_dim_kq ** -0.5
 
-        # Compute attention scores
-        q = self.w_qs(x_q).view(batch_size, num_heads, len_q, head_dim)
-        k = self.w_ks(x_k).view(batch_size, num_heads, len_k, head_dim)
-        v = self.w_vs(x_v).view(batch_size, num_heads, len_v, self.head_dim_v)
+            self.w_qs = nn.Linear(dim_kq, dim_kq, bias=q_bias)
+            self.w_ks = self.w_qs if restrict_qk else nn.Linear(dim_kq, dim_kq, bias=k_bias)
+            self.w_vs = nn.Linear(dim_v, dim_v, bias=v_bias)
 
-        if self.restrict_qk:
-            q, k = self.qk_norm(q), self.qk_norm(k)
-        else:
-            q, k = self.q_norm(q), self.k_norm(k)
+            self.q_norm = norm_layer(self.head_dim_kq) if qk_norm else nn.Identity()
+            self.k_norm = norm_layer(self.head_dim_kq) if qk_norm else nn.Identity()
+            self.qk_norm = norm_layer(self.head_dim_kq) if qk_norm and restrict_qk else nn.Identity()
 
-        q = q * self.scale
-        attn = q @ k.transpose(-2, -1)  # Compute attention weights
-        attn = attn.softmax(dim=-1)  # Normalize weights
-        attn = self.attn_drop(attn)  # Apply dropout to attention weights
+            self.attn_drop = nn.Dropout(attn_drop)
+            self.proj = nn.Linear(dim_v, dim_v)
+            self.proj_drop = nn.Dropout(proj_drop)
+            self.restrict_qk = restrict_qk
 
-        # Apply attention to values
-        x = attn @ v
+        def forward(self, x_q, x_k, x_v):
+            # Debugging shapes
+            print(f"x_q.shape: {x_q.shape}, x_k.shape: {x_k.shape}, x_v.shape: {x_v.shape}")
 
-        # Reshape back to original dimensions
-        x = x.transpose(1, 2).reshape(batch_size, len_q, self.dim_v)
-        x = self.proj(x)
-        x = self.proj_drop(x)
+            # Extract dimensions
+            batch_size, len_q, c = x_q.size(0), x_q.size(1), x_q.size(-1)
+            len_k = x_k.size(1)
+            len_v = x_v.size(1)
 
-        return x
+            # Pass through linear layers and reshape for multi-head attention
+            q = self.w_qs(x_q).view(batch_size, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1,
+                                                                                                 3)  # b, n, lq, hq
+            k = self.w_ks(x_k).view(batch_size, len_k, self.num_heads, self.head_dim_kq).permute(0, 2, 1,
+                                                                                                 3)  # b, n, lk, hq
+            v = self.w_vs(x_v).view(batch_size, len_v, self.num_heads, self.head_dim_v).permute(0, 2, 1,
+                                                                                                3)  # b, n, lv, hv
+
+            # Debugging shapes after linear transformations
+            print(f"q.shape: {q.shape}, k.shape: {k.shape}, v.shape: {v.shape}")
+            assert q.shape[-1] == self.head_dim_kq, f"q last dim mismatch: {q.shape[-1]} != {self.head_dim_kq}"
+            assert v.shape[-1] == self.head_dim_v, f"v last dim mismatch: {v.shape[-1]} != {self.head_dim_v}"
+
+            # Apply scaling to queries
+            q = q * self.scale
+
+            # Compute attention scores
+            attn = torch.matmul(q, k.transpose(-2, -1))  # b, n, lq, lk
+            attn = attn.softmax(dim=-1)
+            attn = self.attn_drop(attn)
+
+            # Compute attention outputs
+            x = torch.matmul(attn, v)  # b, n, lq, hv
+
+            # Reshape and project back to original dimensions
+            x = x.permute(0, 2, 1, 3).reshape(batch_size, len_q, c)  # b, lq, c
+            x = self.proj(x)
+            x = self.proj_drop(x)
+
+            return x
 
 
 class LayerScale(nn.Module):
