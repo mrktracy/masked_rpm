@@ -305,9 +305,10 @@ class Attention(nn.Module):
         print(f"x_q.shape: {x_q.shape}, x_k.shape: {x_k.shape}, x_v.shape: {x_v.shape}")
 
         # Extract dimensions
-        batch_size, len_q, c = x_q.size(0), x_q.size(1), x_q.size(-1)
-        len_k = x_k.size(1)
-        len_v = x_v.size(1)
+        batch_size, len_q, len_k, len_v = x_q.size(0), x_q.size(1), x_k.size(1), x_v.size(1)
+        c = x_q.size(-1)
+
+        assert c == self.dim_kq, f"Input dimension mismatch: {c} != {self.dim_kq}"
 
         # Pass through linear layers and reshape for multi-head attention
         q = self.w_qs(x_q).view(batch_size, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)  # b, n, lq, hq
@@ -336,7 +337,6 @@ class Attention(nn.Module):
         x = self.proj_drop(x)
 
         return x
-
 
 
 class LayerScale(nn.Module):
