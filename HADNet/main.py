@@ -1,26 +1,24 @@
+import os
+import time
+import logging
+import random
 import numpy as np
 import torch
 from torch import nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ExponentialLR
-from funs import gather_files_pgm
-import time
-import random
+from torch.utils.data import DataLoader
 from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
-from models import HADNet
-import os
-import logging
+from funs import gather_files_pgm
+from models import HADNet, ReasoningModule
+
 
 # Versioning
-version = "HADNet_v0_itr0"
+version = "Model_v0_itr0"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
-
 os.makedirs(results_folder, exist_ok=True)
 logging.basicConfig(filename=logfile, level=logging.INFO, filemode='w')
-
 logging.info("Begin log.\n")
 
 # Set seeds
@@ -29,32 +27,37 @@ random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 
+
 def initialize_weights_he(m):
     if isinstance(m, nn.Linear):
         nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
         if m.bias is not None:
             nn.init.constant_(m.bias, 0)
 
-def main_HADNet(VERSION, RESULTS_FOLDER):
 
-    # Initialize device, model
+def main(version, results_folder, model_class, model_params):
+    """
+    Main training and evaluation loop, agnostic to the model being used.
+
+    Args:
+        version (str): Version string for saving logs and models.
+        results_folder (str): Path to the folder where results will be saved.
+        model_class (type): The class of the model to instantiate.
+        model_params (dict): A dictionary of parameters to pass to the model's constructor.
+    """
+    # Initialize device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    hadnet_model = HADNet(
-        embed_dim=512,
-        grid_size=3,
-        num_candidates=8,
-        n_levels=5,
-        bb_depth=2,
-        bb_num_heads=8
-    ).to(device)
+    # Initialize the model
+    model = model_class(**model_params).to(device)
 
     # Initialize weights
-    hadnet_model.apply(initialize_weights_he)
+    model.apply(initialize_weights_he)
 
-    if num_gpus > 1:  # Use multiple GPUs
-        hadnet_model = nn.DataParallel(hadnet_model)
+    # Handle multiple GPUs
+    if num_gpus > 1:
+        model = nn.DataParallel(model)
 
     ''' Dataset setup '''
     root_dir = '../../i_raven_data_full/'
@@ -79,7 +82,7 @@ def main_HADNet(VERSION, RESULTS_FOLDER):
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    optimizer = torch.optim.Adam(hadnet_model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
     scheduler = ExponentialLR(optimizer, gamma=0.95)
 
     criterion_task = nn.CrossEntropyLoss()
@@ -101,11 +104,10 @@ def main_HADNet(VERSION, RESULTS_FOLDER):
             target_nums = target_nums.to(device)  # Shape: [batch_size]
 
             # Forward pass
-            embeddings, recreation, scores = hadnet_model(sentences)  # scores shape: [batch_size, num_candidates]
+            embeddings, recreation, scores = model(sentences)
 
             # Flatten embeddings to match recreation's shape
-            embeddings_flat = embeddings.view(-1, embeddings.size(2),
-                                              embeddings.size(3))  # Shape: [batch_size * num_candidates, 9, 512]
+            embeddings_flat = embeddings.view(-1, embeddings.size(2), embeddings.size(3))
 
             # Ensure shapes match before calculating MSE loss
             assert embeddings_flat.shape == recreation.shape, f"Shape mismatch: {embeddings_flat.shape} vs {recreation.shape}"
@@ -129,15 +131,15 @@ def main_HADNet(VERSION, RESULTS_FOLDER):
                 logging.info(output)
 
             if (idx + 1) % (len(train_dataloader) // LOGS_PER_EPOCH) == 0:
-                val_loss, _ = evaluation_function(hadnet_model, val_dataloader, device, max_batches=150)
+                val_loss, _ = evaluation_function(model, val_dataloader, device, max_batches=150)
                 output = f"Epoch {epoch + 1} - {idx + 1}/{len(train_dataloader)}. Avg loss: {tot_loss / count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
                 logging.info(output)
 
         if (epoch + 1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../../modelsaves/{VERSION}/hadnet_{VERSION}_ep{epoch + 1}.pth"
+            save_file = f"../../modelsaves/{version}/{model_class.__name__}_{version}_ep{epoch + 1}.pth"
             os.makedirs(os.path.dirname(save_file), exist_ok=True)
             torch.save({
-                'model_state_dict': hadnet_model.state_dict(),
+                'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict()
             }, save_file)
@@ -145,10 +147,40 @@ def main_HADNet(VERSION, RESULTS_FOLDER):
         scheduler.step()
 
     # Final evaluation
-    hadnet_model.eval()
-    val_loss, _ = evaluation_function(hadnet_model, val_dataloader, device)
+    model.eval()
+    val_loss, _ = evaluation_function(model, val_dataloader, device)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
+
 if __name__ == "__main__":
-    main_HADNet(version, results_folder)
+    # Replace `HADNet` with any other model class and adjust parameters accordingly
+    MODEL_CLASS = HADNet
+    MODEL_PARAMS = {
+        "embed_dim": 512,
+        "grid_size": 3,
+        "num_candidates": 8,
+        "n_levels": 5,
+        "bb_depth": 2,
+        "bb_num_heads": 8,
+    }
+
+    # Uncomment the following lines to use the ReasoningModule instead of HADNet
+    # MODEL_CLASS = ReasoningModule
+    # MODEL_PARAMS = {
+    #     "embed_dim": 512,
+    #     "grid_size": 3,
+    #     "abs_depth": 4,
+    #     "trans_depth": 6,
+    #     "ternary_depth": 3,
+    #     "num_heads": 8,
+    #     "mlp_ratio": 4.0,
+    #     "proj_drop": 0.1,
+    #     "attn_drop": 0.1,
+    #     "drop_path_max": 0.2,
+    #     "num_symbols_abs": 9,
+    #     "num_symbols_ternary": 6,
+    #     "norm_layer": nn.LayerNorm,
+    # }
+
+    main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)

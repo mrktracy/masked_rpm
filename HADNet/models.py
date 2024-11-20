@@ -101,6 +101,12 @@ class HADNet(nn.Module):
         n_levels: int = 3,
         bb_depth: int = 2,
         bb_num_heads: int = 8,
+        trans_depth: int = 2,
+        mlp_ratio: float = 4.0,
+        proj_drop: float = 0.0,
+        attn_drop: float = 0.0,
+        drop_path_max: float = 0.0,
+        norm_layer=nn.LayerNorm,
     ):
         super().__init__()
 
@@ -117,14 +123,21 @@ class HADNet(nn.Module):
             bb_num_heads=bb_num_heads,
         )
 
-        # Holonic assertion-doubt streams
-        self.assertion_stream = nn.ModuleList(
-            [Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4, norm_layer=nn.LayerNorm) for _ in range(n_levels)]
-        )
+        # Temporal context normalization
+        self.temporal_norm = TemporalNorm(embed_dim)
 
-        self.doubt_stream = nn.ModuleList(
-            [Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=4, norm_layer=nn.LayerNorm) for _ in range(n_levels)]
-        )
+        # Holonic assertion-doubt streams
+        self.assertion_stream = nn.ModuleList([
+            Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=mlp_ratio,
+                  proj_drop=proj_drop, attn_drop=attn_drop, drop_path=drop_path_max, norm_layer=norm_layer)
+            for _ in range(trans_depth)
+        ])
+
+        self.doubt_stream = nn.ModuleList([
+            Block(embed_dim, embed_dim, bb_num_heads, mlp_ratio=mlp_ratio,
+                  proj_drop=proj_drop, attn_drop=attn_drop, drop_path=drop_path_max, norm_layer=norm_layer)
+            for _ in range(trans_depth)
+        ])
 
         # Integration
         self.integrator = DialogicIntegrator(embed_dim, n_levels)
@@ -138,41 +151,173 @@ class HADNet(nn.Module):
         )
 
     def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # Input shape: [batch_size, num_candidates, grid_size**2, 1, 160, 160]
-        print(f"Input sentences shape: {sentences.shape}")  # Debugging
+        """
+        Args:
+            sentences: Input tensor of shape [batch_size, num_candidates, grid_size**2, 1, 160, 160]
+        Returns:
+            embeddings: Raw embeddings from the perception module.
+            recreation: Recreated outputs after denormalization.
+            scores: Candidate scores.
+        """
+        batch_size = sentences.size(0)
 
         # Pass through Perception module
         embeddings = self.perception.forward(sentences)  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
-        # Process through assertion-doubt streams
-        x_assertion = embeddings
-        x_doubt = embeddings
+        # Temporal normalization for embeddings
+        embeddings_normalized = self.temporal_norm(embeddings)
 
+        # Split normalized embeddings into assertion and doubt streams
+        x_assertion = embeddings_normalized
+        x_doubt = embeddings_normalized
+
+        # Process through assertion and doubt transformer blocks
         for assert_block, doubt_block in zip(self.assertion_stream, self.doubt_stream):
-            # Flatten batch and candidate dimensions
-            x_assertion_flat = x_assertion.view(-1, self.grid_size ** 2, self.embed_dim)
-            x_doubt_flat = x_doubt.view(-1, self.grid_size ** 2, self.embed_dim)
-
-            # Pass through blocks
-            x_assertion_flat = assert_block(x_assertion_flat, x_assertion_flat, x_assertion_flat)
-            x_doubt_flat = doubt_block(x_doubt_flat, x_doubt_flat, x_doubt_flat)
-
-            # Reshape back to original dimensions
-            x_assertion = x_assertion_flat.view(-1, self.num_candidates, self.grid_size ** 2, self.embed_dim)
-            x_doubt = x_doubt_flat.view(-1, self.num_candidates, self.grid_size ** 2, self.embed_dim)
+            x_assertion = assert_block(x_q=x_assertion, x_k=x_assertion, x_v=x_assertion)
+            x_doubt = doubt_block(x_q=x_doubt, x_k=x_doubt, x_v=x_doubt)
 
         # Integrate streams
-        integrated, uncertainty = self.integrator.forward(
-            x_assertion.view(-1, self.grid_size ** 2, self.embed_dim),
-            x_doubt.view(-1, self.grid_size ** 2, self.embed_dim),
-        )
+        integrated, uncertainty = self.integrator.forward(x_assertion, x_doubt)
 
-        # Generate outputs
+        # Generate recreation
         recreation = self.recreation_head(integrated)  # Shape: [batch_size * num_candidates, grid_size**2, embed_dim]
 
+        # De-normalize the recreation
+        recreation_de_normalized = self.temporal_norm.de_normalize(recreation)
+
         # Flatten nodes for scoring
-        flat_integrated = integrated.view(-1, self.grid_size**2 * self.embed_dim)
-        scores = self.score_head(flat_integrated).view(-1, self.num_candidates)  # Shape: [batch_size, num_candidates]
+        flat_integrated = integrated.view(batch_size * self.num_candidates, -1)  # [batch_size * num_candidates, grid_size**2 * embed_dim]
+        scores = self.score_head(flat_integrated).view(batch_size, self.num_candidates)  # Shape: [batch_size, num_candidates]
+
+        return embeddings, recreation_de_normalized, scores
+
+
+class ReasoningModule(nn.Module):
+    def __init__(
+        self,
+        embed_dim: int,
+        grid_size: int,
+        abs_depth: int,
+        trans_depth: int,
+        ternary_depth: int,
+        num_heads: int,
+        mlp_ratio: float = 4.0,
+        proj_drop: float = 0.0,
+        attn_drop: float = 0.0,
+        drop_path_max: float = 0.0,
+        num_symbols_abs: int = 9,
+        num_symbols_ternary: int = 6,
+        norm_layer=nn.LayerNorm,
+    ):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.grid_size = grid_size
+
+        # Learnable symbols for abstractors
+        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim))
+        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
+
+        # Temporal Context Normalization
+        self.temporal_norm = TemporalNorm(embed_dim)
+
+        # Abstractor for embeddings
+        self.abstractor = nn.ModuleList([
+            Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop=proj_drop, attn_drop=attn_drop,
+                  drop_path=drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
+            for i in range(abs_depth)
+        ])
+
+        # Transformer for embeddings
+        self.transformer = nn.ModuleList([
+            Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop=proj_drop, attn_drop=attn_drop,
+                  drop_path=drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
+            for i in range(trans_depth)
+        ])
+
+        # Ternary module (uses abstractor logic)
+        self.ternary_module = nn.ModuleList([
+            Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop=proj_drop, attn_drop=attn_drop,
+                  drop_path=drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
+            for i in range(ternary_depth)
+        ])
+
+        # Reconstruction decoder
+        self.decoder = nn.Sequential(
+            nn.Linear(embed_dim, embed_dim * grid_size**2),
+            nn.ReLU(),
+            nn.Linear(embed_dim * grid_size**2, grid_size**2 * embed_dim),
+            nn.Sigmoid(),
+        )
+
+        # Guesser head for scoring
+        self.guesser_head = nn.Sequential(
+            nn.Linear(3 * embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, 1),
+        )
+
+    def forward(self, embeddings: torch.Tensor, pos_embed: torch.Tensor, ternary_op) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Args:
+            embeddings (torch.Tensor): Shape [batch_size, grid_size**2, embed_dim].
+            pos_embed (torch.Tensor): Positional embeddings [grid_size**2, embed_dim].
+            ternary_op (callable): Function implementing the ternary operation.
+
+        Returns:
+            embeddings (torch.Tensor): The input embeddings after processing.
+            recreation (torch.Tensor): Reconstructed input embeddings.
+            scores (torch.Tensor): Candidate scores [batch_size, num_candidates].
+        """
+        batch_size, grid_nodes, _ = embeddings.size()
+
+        # Add positional encodings
+        embeddings_positional = embeddings + pos_embed.unsqueeze(0)
+
+        # Apply temporal normalization
+        embeddings_normalized = self.temporal_norm(embeddings_positional)
+
+        # Ternary operation (produces 6 tokens for rows and columns)
+        ternary_tokens = ternary_op(embeddings_normalized)
+
+        # Normalize ternary tokens
+        ternary_normalized = self.temporal_norm(ternary_tokens)
+
+        # Process embeddings with abstractor
+        abstracted = embeddings_normalized
+        for idx, blk in enumerate(self.abstractor):
+            if idx == 0:
+                abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=self.symbols_abs.unsqueeze(0).expand(batch_size, -1, -1))
+            else:
+                abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=abstracted)
+
+        # Process ternary tokens with abstractor
+        ternary_processed = ternary_normalized
+        for idx, blk in enumerate(self.ternary_module):
+            if idx == 0:
+                ternary_processed = blk(x_q=ternary_processed, x_k=ternary_processed, x_v=self.symbols_ternary.unsqueeze(0).expand(batch_size, -1, -1))
+            else:
+                ternary_processed = blk(x_q=ternary_processed, x_k=ternary_processed, x_v=ternary_processed)
+
+        # Process embeddings with transformer (use a copy of embeddings_normalized)
+        transformed = embeddings_normalized.clone()
+        for blk in self.transformer:
+            transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
+
+        # De-normalize transformer output
+        transformed = self.temporal_norm.de_normalize(transformed)
+
+        # Reconstruct the input
+        recreation = self.decoder(transformed.view(batch_size, -1))  # Shape: [batch_size, grid_size**2 * embed_dim]
+        recreation = recreation.view(batch_size, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
+
+        # Pool outputs
+        abstracted_mean = abstracted.mean(dim=1)  # [batch_size, embed_dim]
+        ternary_mean = ternary_processed.mean(dim=1)  # [batch_size, embed_dim]
+        transformed_mean = transformed.mean(dim=1)  # [batch_size, embed_dim]
+
+        # Concatenate and pass through guesser head
+        concatenated = torch.cat([abstracted_mean, ternary_mean, transformed_mean], dim=-1)
+        scores = self.guesser_head(concatenated).view(batch_size, -1)  # [batch_size, num_candidates]
 
         return embeddings, recreation, scores
 
@@ -339,6 +484,48 @@ class Attention(nn.Module):
         x = x.view(*original_shape[:-1], c)
 
         return x
+
+
+class TemporalNorm(nn.Module):
+    """
+    Temporal normalization layer normalizing across the temporal (grid/sequence) dimension.
+    """
+    def __init__(self, embed_dim, eps=1e-5):
+        """
+        Args:
+            embed_dim (int): Dimensionality of the embeddings/features.
+            eps (float): A small value to prevent division by zero.
+        """
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(embed_dim))  # Learnable scale
+        self.bias = nn.Parameter(torch.zeros(embed_dim))  # Learnable shift
+        self.eps = eps
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x (Tensor): Input tensor of shape [batch_size, num_candidates, grid_size**2, embed_dim].
+        Returns:
+            Tensor: Normalized tensor with the same shape as input.
+        """
+        mean = x.mean(dim=2, keepdim=True)  # Mean across grid nodes
+        std = x.std(dim=2, keepdim=True) + self.eps  # Standard deviation
+        x_normalized = (x - mean) / std
+        return x_normalized * self.weight + self.bias
+
+    def de_normalize(self, x: torch.Tensor, original: torch.Tensor) -> torch.Tensor:
+        """
+        De-normalizes the input tensor using the stored weight and bias.
+        Args:
+            x (Tensor): Normalized tensor of shape [batch_size, num_candidates, grid_size**2, embed_dim].
+            original (Tensor): Original input tensor used for normalization.
+        Returns:
+            Tensor: De-normalized tensor with the same shape as input.
+        """
+        mean = original.mean(dim=2, keepdim=True)
+        std = original.std(dim=2, keepdim=True) + self.eps
+        return (x - self.bias) / self.weight * std + mean
+
 
 
 class LayerScale(nn.Module):
