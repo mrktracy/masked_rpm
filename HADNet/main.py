@@ -97,12 +97,14 @@ def main_HADNet(VERSION, RESULTS_FOLDER):
 
             optimizer.zero_grad()
 
-            sentences = sentences.to(device)
-            target_nums = target_nums.to(device)
+            sentences = sentences.to(device)  # Shape: [batch_size, num_candidates, 9, 1, 160, 160]
+            target_nums = target_nums.to(device)  # Shape: [batch_size]
 
-            embeddings, recreation, scores = hadnet_model(sentences)
+            # Forward pass
+            embeddings, recreation, scores = hadnet_model(sentences)  # scores shape: [batch_size, num_candidates]
 
-            task_err = criterion_task(scores, target_nums)
+            # Compute losses
+            task_err = criterion_task(scores, target_nums)  # target_nums shape: [batch_size]
             rec_err = criterion_reconstruction(embeddings, recreation)
 
             loss = ALPHA * task_err + (1 - ALPHA) * rec_err

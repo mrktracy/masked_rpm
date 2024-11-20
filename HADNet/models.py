@@ -2,9 +2,7 @@ import pos_embed as pos
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.checkpoint
-# from torch.jit import Final
-from timm.layers import Mlp, DropPath, use_fused_attn
+from timm.layers import Mlp, DropPath
 import logging
 from typing import Tuple
 
@@ -96,7 +94,7 @@ class DialogicIntegrator(nn.Module):
             integrated = level(combined)
             x_assertion = uncertainty * integrated + (1 - uncertainty) * x_assertion
 
-        uncertainties = torch.stack(uncertainties, dim=1).mean(dim=1)  # Shape: [batch_size * num_candidates, 9, 1]
+        uncertainties = torch.stack(uncertainties, dim=1).mean(dim=1)  # Shape: [batch_size * num_candidates, n_nodes, 1]
         return x_assertion, uncertainties
 
 
@@ -166,9 +164,10 @@ class HADNet(nn.Module):
 
         # Flatten nodes for scoring
         flat_integrated = integrated.view(-1, self.grid_size ** 2 * self.embed_dim)
-        scores = self.score_head(flat_integrated).squeeze(-1)  # Shape: [batch_size * num_candidates]
+        scores = self.score_head(flat_integrated).view(-1, self.num_candidates)  # Shape: [batch_size, num_candidates]
 
         return embeddings, recreation, scores
+
 
 
 class ResidualBlock(nn.Module):
