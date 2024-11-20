@@ -386,12 +386,15 @@ class Block(nn.Module):
         self.drop_path2 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
     def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
-        batch_size, num_candidates, grid_nodes, embed_dim = x_q.size()
-
-        # Flatten batch and candidate dimensions
-        x_q = x_q.view(batch_size * num_candidates, grid_nodes, embed_dim)
-        x_k = x_k.view(batch_size * num_candidates, grid_nodes, embed_dim)
-        x_v = x_v.view(batch_size * num_candidates, grid_nodes, embed_dim)
+        # Check if the input is flattened (3D) or not (4D)
+        reshaped = False
+        if len(x_q.shape) == 3:
+            # If 3D, reshape to 4D
+            batch_size, grid_nodes, embed_dim = x_q.size()
+            x_q = x_q.view(batch_size, 1, grid_nodes, embed_dim)
+            x_k = x_k.view(batch_size, 1, grid_nodes, embed_dim)
+            x_v = x_v.view(batch_size, 1, grid_nodes, embed_dim)
+            reshaped = True
 
         # Apply attention
         x = x_v + self.drop_path1(
@@ -402,9 +405,9 @@ class Block(nn.Module):
         if use_mlp_layer:
             x = self.norm3(x + self.drop_path2(self.ls2(self.mlp(self.norm2(x)))))
 
-        # Reshape back to original dimensions
-        x = x.view(batch_size, num_candidates, grid_nodes, embed_dim)
+        # If the input was originally 3D, reshape back to 3D
+        if reshaped:
+            batch_size, _, grid_nodes, embed_dim = x.size()
+            x = x.view(batch_size, grid_nodes, embed_dim)
 
         return x
-
-
