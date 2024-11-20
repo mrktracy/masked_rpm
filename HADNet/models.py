@@ -377,19 +377,19 @@ class ReasoningModule(nn.Module):
         # Aggregating the three streams before scoring and recreation
         transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
         abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
-        ternary_tokens = abstracted.view([batch_size, self.num_candidates, self.grid_size * 2, -1])
+        ternary_tokens = ternary_tokens.view([batch_size, self.num_candidates, self.grid_size * 2, -1])
 
-        z = torch.cat([transformed, abstracted], dim=-1)
+        trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
-        z_reshaped = torch.cat([z.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
+        reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
             batch_size * self.num_candidates, -1)
 
         # Reconstruct the input from the concatenated outputs
-        recreation = self.decoder(z_reshaped)  # Shape: [batch_size * num_candidates, grid_size**2 * embed_dim]
+        recreation = self.decoder(reas_bottleneck)  # Shape: [batch_size * num_candidates, grid_size**2 * embed_dim]
         recreation = recreation.view(batch_size, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
 
         # Scores from the concatenated outputs
-        scores = self.guesser_head(z_reshaped).view(batch_size, num_candidates)  # [batch_size, num_candidates]
+        scores = self.guesser_head(reas_bottleneck).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
         return embeddings, recreation, scores
 
