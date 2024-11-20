@@ -215,6 +215,7 @@ class ReasoningModule(nn.Module):
         trans_depth: int,
         ternary_depth: int,
         num_heads: int,
+        num_candidates: int = 8,
         mlp_ratio: float = 4.0,
         proj_drop: float = 0.0,
         attn_drop: float = 0.0,
@@ -228,6 +229,7 @@ class ReasoningModule(nn.Module):
         super().__init__()
         self.embed_dim = embed_dim
         self.grid_size = grid_size
+        self.num_candidates = num_candidates
 
         # Initialize Perception module
         self.perception = Perception(
