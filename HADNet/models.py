@@ -37,38 +37,25 @@ class Perception(nn.Module):
             ResidualBlock(256, 512, 2)  # N, 512, 5, 5
         )
 
-        # Assertion and Doubt streams
-        self.assertion_stream = nn.Sequential(
-            *[Block(512, 512, bb_num_heads, mlp_ratio=4,
-                    norm_layer=nn.LayerNorm, proj_drop=0.3, attn_drop=0.3,
-                    drop_path=0.1) for _ in range(bb_depth)]
-        )
-
-        self.doubt_stream = nn.Sequential(
-            *[Block(512, 512, bb_num_heads, mlp_ratio=4,
-                    norm_layer=nn.LayerNorm, proj_drop=0.3, attn_drop=0.3,
-                    drop_path=0.1) for _ in range(bb_depth)]
-        )
-
         # Final projection
         self.projection = nn.Linear(512 * 25, embed_dim)  # 5x5=25 from final ResNet output
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        batch_cand_size = x.size(0) * x.size(1)  # batch_size * num_candidates
-        x = x.view(-1, 1, 160, 160)  # Flatten batch and candidates
+        # x.shape: [batch_size * num_candidates, grid_size^2, 1, 160, 160]
+        batch_cand_size = x.size(0)  # Flattened batch * num_candidates
+        grid_size_squared = x.size(1)
 
-        # Extract features
-        x = self.encoder(x)  # Shape: (batch*cand*9, 512, 5, 5)
-        x = x.reshape(batch_cand_size * self.n_nodes, -1)  # Flatten spatial dims
-
-        # Project to embedding dimension
-        x = self.projection(x)
-        x = x.view(-1, self.num_candidates, self.n_nodes, self.embed_dim)
+        # Ensure input is reshaped correctly for processing
+        x = x.view(batch_cand_size * grid_size_squared, 1, 160, 160)  # Flatten for ResNet
+        x = self.encoder(x)  # Shape: [batch_cand_size * grid_size^2, 512, 5, 5]
+        x = x.view(batch_cand_size, grid_size_squared, -1)  # Shape: [batch_cand_size, grid_size^2, 512 * 5 * 5]
+        x = self.projection(x)  # Project to embedding dimension
+        x = x.view(batch_cand_size // self.num_candidates, self.num_candidates, self.n_nodes, self.embed_dim)
 
         # Add positional embeddings
         x = x + self.pos_embed.unsqueeze(0).unsqueeze(0)
-
         return x
+
 
 
 class DialogicIntegrator(nn.Module):
