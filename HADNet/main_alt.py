@@ -13,7 +13,7 @@ from funs import gather_files_pgm
 from models import HADNet, ReasoningModule
 
 # Versioning
-version = "HADNet_v0_itr1"
+version = "Model_v0_itr0"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
