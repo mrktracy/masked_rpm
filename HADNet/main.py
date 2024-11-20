@@ -45,7 +45,7 @@ def main_HADNet(VERSION, RESULTS_FOLDER):
         embed_dim=512,
         grid_size=3,
         num_candidates=8,
-        n_levels=3,
+        n_levels=5,
         bb_depth=2,
         bb_num_heads=8
     ).to(device)
@@ -68,7 +68,7 @@ def main_HADNet(VERSION, RESULTS_FOLDER):
     EPOCHS = 100
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 20
