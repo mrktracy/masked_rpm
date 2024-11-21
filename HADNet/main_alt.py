@@ -152,7 +152,7 @@ def main(version, results_folder, model_class, model_params):
 if __name__ == "__main__":
     MODEL_CLASS = ReasoningModule
     MODEL_PARAMS = {
-        "embed_dim": 768,
+        "embed_dim": 512,
         "grid_size": 3,
         "abs_depth": 4,
         "trans_depth": 6,
@@ -187,8 +187,5 @@ if __name__ == "__main__":
     #     "drop_path_max": 0.0,
     #     "norm_layer": nn.LayerNorm,
     # }
-
-    # main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
-
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
