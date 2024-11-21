@@ -17,7 +17,7 @@ def initialize_weights_he(m):
             nn.init.constant_(m.bias, 0)
 
 
-def train_and_evaluate(parameterization, epochs=3):
+def train_and_evaluate(parameterization, epochs=5):
     """
     Train and evaluate the model for a given number of epochs with specified hyperparameters.
     Args:
