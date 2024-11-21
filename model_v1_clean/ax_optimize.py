@@ -96,7 +96,7 @@ def run_optimization():
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "depth", "type": "choice", "values": [2, 4, 6, 8]},
         ],
-        objective={
+        objectives={
             "name": "val_loss",
             "minimize": True,
         },
