@@ -127,6 +127,12 @@ def run_optimization(version):
         duration = end_time - start_time
         print(f"Trial {trial + 1} duration: {duration}")
 
+    # save best parameters
+    best_parameters, values = ax_client.get_best_parameters()
+    best_val_loss = values.get("val_loss")
+    print(f"Best Trial - Parameters: {best_parameters}, Validation Loss: {best_val_loss}")
+    logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Loss: {best_val_loss}")
+
     # Final save of results
     experiment = ax_client.experiment
     results_df = exp_to_df(experiment)
