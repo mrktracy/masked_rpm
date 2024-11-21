@@ -10,6 +10,7 @@ from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
 from models import ReasoningModule
+import datetime
 
 
 def initialize_weights_he(m):
@@ -78,8 +79,14 @@ def train_and_evaluate(parameterization, epochs=5):
     return val_loss
 
 
-def run_optimization():
-    logging.basicConfig(level=logging.INFO, filename="optimization_log.txt", filemode="w")
+def run_optimization(version):
+
+    results_dir = f"../../tr_results/{version}"
+    os.makedirs(results_dir, exist_ok=True)
+
+    logging.basicConfig(level=logging.INFO,
+                        filename=f"{results_dir}/{version}_ax_log.txt",
+                        filemode="w")
 
     ax_client = AxClient()
     ax_client.create_experiment(
@@ -97,23 +104,35 @@ def run_optimization():
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "depth", "type": "choice", "values": [2, 4, 6, 8]},
         ],
-        objectives={"val_loss": ObjectiveProperties(minimize=False)}
+        objectives={"val_loss": ObjectiveProperties(minimize=False)},
     )
 
-    for _ in range(20):
+    results_path = f"../../tr_results/{version}/ax_results.csv"
+    total_trials = 20
+
+    for trial in range(total_trials):
+        start_time = datetime.datetime.now()
+        print(f"Starting trial {trial + 1} of {total_trials} at {start_time}...")
         try:
             parameters, trial_index = ax_client.get_next_trial()
             val_loss = train_and_evaluate(parameters, epochs=5)
             ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
             logging.info(f"Trial {trial_index} completed with val_loss: {val_loss}")
+            print(f"Trial {trial_index} completed: val_loss = {val_loss}")
         except Exception as e:
             ax_client.log_trial_failure(trial_index=trial_index)
             logging.error(f"Trial {trial_index} failed: {e}")
+            print(f"Trial {trial_index} failed: {e}")
+        end_time = datetime.datetime.now()
+        duration = end_time - start_time
+        print(f"Trial {trial + 1} duration: {duration}")
 
+    # Final save of results
     experiment = ax_client.experiment
     results_df = exp_to_df(experiment)
-    results_df.to_csv(f"../../tr_results/reasoning_module_optimization_results_noAlpha.csv", index=False)
+    results_df.to_csv(results_path, index=False)
 
 
 if __name__ == "__main__":
-    run_optimization()
+    version = "Model_v1_itr0"
+    run_optimization(version)
