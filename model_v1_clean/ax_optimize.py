@@ -40,9 +40,9 @@ def train_and_evaluate(parameterization, epochs=5):
     model_params = {
         "embed_dim": 512,
         "grid_size": 3,
-        "abs_depth": 4,
-        "trans_depth": 6,
-        "ternary_depth": 3,
+        "abs_depth": int(parameterization["depth"]),
+        "trans_depth": int(parameterization["depth"]),
+        "ternary_depth": int(parameterization["depth"]),
         "num_heads": 8,
         "mlp_ratio": 4.0,
         "proj_drop": parameterization["proj_drop"],
@@ -110,6 +110,7 @@ def run_optimization():
             {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "depth", "type": "choice", "values": [2, 4, 6, 8]},  # Added depth parameter
         ],
         objective_name="val_loss",
         minimize=True,
@@ -117,7 +118,7 @@ def run_optimization():
 
     for _ in range(20):  # Run 20 trials
         parameters, trial_index = ax_client.get_next_trial()
-        val_loss = train_and_evaluate(parameters, epochs=3)
+        val_loss = train_and_evaluate(parameters, epochs=5)  # Adjusted to 5 epochs
         ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
 
     # Save the results
