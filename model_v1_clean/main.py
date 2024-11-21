@@ -75,7 +75,7 @@ def main(version, results_folder, model_class, model_params):
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 5
-    ALPHA = 1  # Balancing factor between task and reconstruction losses
+    ALPHA = 0.5  # Balancing factor between task and reconstruction losses
 
     ''' Data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
