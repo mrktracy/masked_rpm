@@ -122,25 +122,24 @@ def run_optimization(version):
 
     for trial in range(total_trials):
         start_time = datetime.datetime.now()
-        print(f"Starting trial {trial + 1} of {total_trials} at {start_time}...")
+        logging.info(f"Starting trial {trial + 1} of {total_trials} at {start_time}...")
         try:
             parameters, trial_index = ax_client.get_next_trial()
             val_loss = train_and_evaluate(parameters, epochs=5)
             ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
             logging.info(f"Trial {trial_index} completed with val_loss: {val_loss}")
-            print(f"Trial {trial_index} completed: val_loss = {val_loss}")
+
         except Exception as e:
             ax_client.log_trial_failure(trial_index=trial_index)
             logging.error(f"Trial {trial_index} failed: {e}")
-            print(f"Trial {trial_index} failed: {e}")
+
         end_time = datetime.datetime.now()
         duration = end_time - start_time
-        print(f"Trial {trial + 1} duration: {duration}")
+        logging.info(f"Trial {trial + 1} duration: {duration}")
 
     # save best parameters
     best_parameters, values = ax_client.get_best_parameters()
     best_val_loss = values.get("val_loss")
-    print(f"Best Trial - Parameters: {best_parameters}, Validation Loss: {best_val_loss}")
     logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Loss: {best_val_loss}")
 
     # Final save of results
