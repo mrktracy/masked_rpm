@@ -11,7 +11,7 @@ from evaluate_masked import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
-from models import HADNet, ReasoningModule
+from models import ReasoningModule
 
 # Versioning
 version = "Model_v0_itr5"
