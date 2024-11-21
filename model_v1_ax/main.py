@@ -8,13 +8,12 @@ from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from evaluate_masked import evaluate_model_dist as evaluation_function
-# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
 from models import ReasoningModule
 
-# Versioning
-version = "Model_v0_itr5"
+# Logging configuration
+version = "Model_v1_itr0"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -29,33 +28,43 @@ torch.manual_seed(seed)
 
 
 def initialize_weights_he(m):
+    """
+    He initialization for Linear layers.
+    """
     if isinstance(m, nn.Linear):
         nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
         if m.bias is not None:
             nn.init.constant_(m.bias, 0)
 
 
-def main(version, results_folder, model_class, model_params):
+def save_validation_loss(val_loss, results_folder):
     """
-    Main training and evaluation loop, agnostic to the model being used.
+    Save validation loss to a file for external use.
+    """
+    val_loss_file = os.path.join(results_folder, "val_loss.txt")
+    with open(val_loss_file, "w") as f:
+        f.write(f"{val_loss:.6f}")
+
+
+def main(version, results_folder, model_class, model_params, hyperparams=None):
+    """
+    Main training and evaluation loop.
 
     Args:
         version (str): Version string for saving logs and models.
         results_folder (str): Path to the folder where results will be saved.
         model_class (type): The class of the model to instantiate.
         model_params (dict): A dictionary of parameters to pass to the model's constructor.
+        hyperparams (dict, optional): Training hyperparameters. Defaults are used if None.
     """
     # Initialize device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_gpus = torch.cuda.device_count()
 
-    # Initialize the model
+    # Initialize model
     model = model_class(**model_params).to(device)
-
-    # Initialize weights
     model.apply(initialize_weights_he)
 
-    # Handle multiple GPUs
     if num_gpus > 1:
         model = nn.DataParallel(model)
 
@@ -68,16 +77,22 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 25
-    FIRST_EPOCH = 0
-    BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
-    LOGS_PER_EPOCH = 15
-    BATCHES_PER_PRINT = 30
-    EPOCHS_PER_SAVE = 5
-    ALPHA = 1  # Balancing factor between task and reconstruction losses
+    defaults = {
+        "epochs": 25,
+        "batch_size": 32,
+        "learning_rate": 1e-4,
+        "alpha": 0.5,  # Task vs. reconstruction loss balance
+        "logs_per_epoch": 15,
+        "batches_per_print": 30,
+        "epochs_per_save": 5,
+    }
+    hyperparams = hyperparams or defaults
+    EPOCHS = hyperparams["epochs"]
+    BATCH_SIZE = hyperparams["batch_size"]
+    LEARNING_RATE = hyperparams["learning_rate"]
+    ALPHA = hyperparams["alpha"]
 
-    ''' Data loaders, optimizer, criterion '''
+    ''' Data loaders, optimizer, and criteria '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
@@ -89,15 +104,12 @@ def main(version, results_folder, model_class, model_params):
     criterion_reconstruction = nn.MSELoss()
 
     # Training loop
-    for epoch in range(FIRST_EPOCH, FIRST_EPOCH + EPOCHS):
-
-        count = 0
-        tot_loss = 0
+    for epoch in range(EPOCHS):
         model.train()
+        total_loss, count = 0, 0
 
         for idx, (sentences, target_nums, _, _) in enumerate(train_dataloader):
-
-            if idx % BATCHES_PER_PRINT == 0:
+            if idx % hyperparams["batches_per_print"] == 0:
                 start_time = time.time()
 
             optimizer.zero_grad()
@@ -106,47 +118,44 @@ def main(version, results_folder, model_class, model_params):
             target_nums = target_nums.to(device)  # Shape: [batch_size]
 
             # Forward pass
-            embeddings, recreation, scores = model(sentences)
+            reconstructed_sentences, scores = model(sentences)
 
-            # Calculate reconstruction error
-            rec_err = criterion_reconstruction(embeddings, recreation)
-            task_err = criterion_task(scores, target_nums)  # target_nums shape: [batch_size]
-
+            # Loss computation
+            rec_err = criterion_reconstruction(sentences, reconstructed_sentences)
+            task_err = criterion_task(scores, target_nums)
             loss = ALPHA * task_err + (1 - ALPHA) * rec_err
 
-            tot_loss += loss.item()
+            total_loss += loss.item()
             count += 1
 
             loss.backward()
             optimizer.step()
 
-            if (idx + 1) % BATCHES_PER_PRINT == 0:
-                end_time = time.time()
-                batch_time = end_time - start_time
-                output = f"{BATCHES_PER_PRINT} batches processed in {batch_time:.2f} seconds. Average training loss: {tot_loss / count}"
-                logging.info(output)
+            if (idx + 1) % hyperparams["batches_per_print"] == 0:
+                elapsed_time = time.time() - start_time
+                avg_loss = total_loss / count
+                logging.info(f"{hyperparams['batches_per_print']} batches in {elapsed_time:.2f}s. Avg loss: {avg_loss:.4f}")
 
-            if (idx + 1) % (len(train_dataloader) // LOGS_PER_EPOCH) == 0:
-                val_loss, _ = evaluation_function(model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch + 1} - {idx + 1}/{len(train_dataloader)}. Avg loss: {tot_loss / count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
-                logging.info(output)
+        # Validation
+        val_loss, _ = evaluation_function(model, val_dataloader, device, max_batches=150)
+        logging.info(f"Epoch {epoch + 1}/{EPOCHS}. Avg loss: {total_loss / count:.4f}. Val loss: {val_loss:.2f}")
+        save_validation_loss(val_loss, results_folder)
 
-        if (epoch + 1) % EPOCHS_PER_SAVE == 0:
-            save_file = f"../../modelsaves/{version}/{model_class.__name__}_{version}_ep{epoch + 1}.pth"
-            os.makedirs(os.path.dirname(save_file), exist_ok=True)
+        if (epoch + 1) % hyperparams["epochs_per_save"] == 0:
+            save_path = f"../../modelsaves/{version}/{model_class.__name__}_{version}_ep{epoch + 1}.pth"
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict()
-            }, save_file)
+                'scheduler_state_dict': scheduler.state_dict(),
+            }, save_path)
 
         scheduler.step()
 
     # Final evaluation
-    model.eval()
     val_loss, _ = evaluation_function(model, val_dataloader, device)
-    output = f"Final evaluation: {val_loss:.2f}\n"
-    logging.info(output)
+    logging.info(f"Final evaluation: {val_loss:.2f}")
+    save_validation_loss(val_loss, results_folder)
 
 
 if __name__ == "__main__":
@@ -168,7 +177,17 @@ if __name__ == "__main__":
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
-        "bb_mlp_drop": 0
+        "bb_mlp_drop": 0,
     }
 
-    main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
+    HYPERPARAMS = {
+        "epochs": 25,
+        "batch_size": 32,
+        "learning_rate": 1e-4,
+        "alpha": 0.5,
+        "logs_per_epoch": 15,
+        "batches_per_print": 30,
+        "epochs_per_save": 5,
+    }
+
+    main(version, results_folder, MODEL_CLASS, MODEL_PARAMS, HYPERPARAMS)
