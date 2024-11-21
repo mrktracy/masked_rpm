@@ -112,7 +112,7 @@ def run_optimization():
 
     experiment = ax_client.experiment
     results_df = exp_to_df(experiment)
-    results_df.to_csv(f"../../tr_results/reasoning_module_optimization_results.csv", index=False)
+    results_df.to_csv(f"../../tr_results/reasoning_module_optimization_results_noAlpha.csv", index=False)
 
 
 if __name__ == "__main__":
