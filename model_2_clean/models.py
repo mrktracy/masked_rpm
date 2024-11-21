@@ -206,7 +206,7 @@
 
             return result.view(batch_size, 6, -1)
 
-        def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
             """
             Args:
                 sentences: Input tensor of shape [batch_size, num_candidates, grid_size**2, 1, 160, 160]
