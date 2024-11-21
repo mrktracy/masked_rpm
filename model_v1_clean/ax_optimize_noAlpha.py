@@ -14,6 +14,7 @@ import datetime
 import random
 import numpy as np
 
+
 def set_seed(seed=42):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -150,4 +151,5 @@ def run_optimization(version):
 
 if __name__ == "__main__":
     version = "Model_v1_itr0"
+    set_seed()
     run_optimization(version)
