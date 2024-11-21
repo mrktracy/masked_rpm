@@ -17,7 +17,8 @@
                      bb_proj_drop=0.3,
                      bb_attn_drop=0.3,
                      bb_drop_path_max=0.5,
-                     bb_mlp_drop=0):
+                     bb_mlp_drop=0,
+                     decoder_mlp_drop=0.5):
             super().__init__()
             self.n_nodes = grid_size ** 2
             self.embed_dim = embed_dim
@@ -32,7 +33,10 @@
             # Backbone for feature extraction
             self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads,
                                                  mlp_drop=bb_mlp_drop, proj_drop=bb_proj_drop, attn_drop=bb_attn_drop,
-                                                 drop_path_max = bb_drop_path_max)
+                                                 drop_path_max=bb_drop_path_max)
+
+            # Decoder for reconstructing sentences
+            self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=decoder_mlp_drop)
 
         def forward(self, sentences):
             """
@@ -40,6 +44,7 @@
                 sentences: Tensor of shape [batch_size, num_candidates, grid_size**2, 1, 160, 160]
             Returns:
                 embeddings_final: Tensor of shape [batch_size, num_candidates, grid_size**2, embed_dim]
+                reconstructed_sentences: Reconstructed tensor of shape [batch_size, num_candidates, grid_size**2, 1, 160, 160]
             """
             batch_size = sentences.size(0)
 
@@ -48,13 +53,45 @@
             features = self.perception.forward(sentences_reshaped)  # Shape: [B * N_c * G^2, embed_dim]
 
             # Reshape back to original context
-            features_reshaped = features.view(batch_size, self.num_candidates, self.n_nodes, -1)  # [B, N_c, G^2, embed_dim]
+            features_reshaped = features.view(batch_size, self.num_candidates, self.n_nodes,
+                                              -1)  # [B, N_c, G^2, embed_dim]
 
             # Expand and add positional embeddings
-            pos_embed_expanded = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, self.num_candidates, self.n_nodes, -1)
+            pos_embed_expanded = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, self.num_candidates,
+                                                                                 self.n_nodes, -1)
             embeddings_final = features_reshaped + pos_embed_expanded  # Element-wise addition
 
-            return embeddings_final
+            # Reconstruct sentences
+            reconstructed_sentences = self.decoder(features)  # Shape: [B * N_c * G^2, 1, 160, 160]
+            reconstructed_sentences = reconstructed_sentences.view(batch_size, self.num_candidates, self.n_nodes, 1,
+                                                                   160, 160)
+
+            return embeddings_final, reconstructed_sentences
+
+
+    class ResNetDecoder(nn.Module):
+        def __init__(self, embed_dim=512, mlp_drop=0.5):
+            super(ResNetDecoder, self).__init__()
+            self.embed_dim = embed_dim
+
+            self.decoder = nn.Sequential(
+                nn.Linear(self.embed_dim, 256 * 10 * 10),
+                nn.Dropout(p=mlp_drop),
+                nn.Unflatten(1, (256, 10, 10)),
+                nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 128, 20, 20
+                nn.ReLU(),
+                nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 64, 40, 40
+                nn.ReLU(),
+                nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 32, 80, 80
+                nn.ReLU(),
+                nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1),  # N, 16, 160, 160
+                nn.ReLU(),
+                nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding=1),  # N, 1, 160, 160
+                nn.Sigmoid()  # to ensure the output is in [0, 1] as image pixel intensities
+            )
+
+        def forward(self, x):
+            return self.decoder(x)
 
 
     class ReasoningModule(nn.Module):
@@ -129,14 +166,6 @@
                 for i in range(trans_depth)
             ])
 
-            # Reconstruction decoder (adjusted to handle concatenated inputs)
-            self.decoder = nn.Sequential(
-                nn.Linear(3 * embed_dim, embed_dim),  # Assuming concatenated will have 3 * embed_dim
-                nn.ReLU(),
-                nn.Linear(embed_dim, grid_size**2 * embed_dim),
-                nn.Sigmoid(),
-            )
-
             # Guesser head
             self.guesser_head = nn.Sequential(
                 nn.Linear(3 * embed_dim, embed_dim),
@@ -188,8 +217,8 @@
             """
             batch_size, num_candidates, grid_nodes, _, height, width = sentences.size()
 
-            # Reshape sentences for perception
-            embeddings = self.perception.forward(sentences)  # Shape: [batch_size, num_candidates, grid_nodes, embed_dim]
+            # Get embeddings and reconstructed sentences from Perception
+            embeddings, reconstructed_sentences = self.perception.forward(sentences)
 
             # Add positional embeddings
             pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
@@ -255,14 +284,10 @@
             reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
                 batch_size * self.num_candidates, -1)
 
-            # Reconstruct the input from the concatenated outputs
-            recreation = self.decoder(reas_bottleneck)  # Shape: [batch_size * num_candidates, grid_size**2 * embed_dim]
-            recreation = recreation.view(batch_size, num_candidates, self.grid_size**2, -1)  # Shape: [batch_size, grid_size**2, embed_dim]
-
             # Scores from the concatenated outputs
             scores = self.guesser_head(reas_bottleneck).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
-            return embeddings, recreation, scores
+            return reconstructed_sentences, scores
 
 
     class ResidualBlock(nn.Module):
