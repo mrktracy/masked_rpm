@@ -1,3 +1,5 @@
+import os
+import logging
 import torch
 from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
@@ -18,15 +20,6 @@ def initialize_weights_he(m):
 
 
 def train_and_evaluate(parameterization, epochs=5):
-    """
-    Train and evaluate the model for a given number of epochs with specified hyperparameters.
-    Args:
-        parameterization (dict): Hyperparameters for training.
-        epochs (int): Number of epochs to train in each trial.
-    Returns:
-        float: Validation loss after the last epoch (to be minimized by Ax).
-    """
-    # Setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
@@ -36,7 +29,6 @@ def train_and_evaluate(parameterization, epochs=5):
     train_dataloader = DataLoader(train_dataset, batch_size=int(parameterization["batch_size"]), shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=int(parameterization["batch_size"]), shuffle=False)
 
-    # Model initialization
     model_params = {
         "embed_dim": 512,
         "grid_size": 3,
@@ -60,13 +52,11 @@ def train_and_evaluate(parameterization, epochs=5):
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    # Optimizer and scheduler
     optimizer = torch.optim.Adam(model.parameters(), lr=parameterization["learning_rate"], weight_decay=1e-4)
     scheduler = ExponentialLR(optimizer, gamma=0.95)
     criterion_task = nn.CrossEntropyLoss()
     criterion_reconstruction = nn.MSELoss()
 
-    # Training loop
     for epoch in range(epochs):
         model.train()
         for sentences, target_nums, _, _ in train_dataloader:
@@ -74,10 +64,7 @@ def train_and_evaluate(parameterization, epochs=5):
             sentences = sentences.to(device)
             target_nums = target_nums.to(device)
 
-            # Forward pass
             reconstructed_sentences, scores = model(sentences)
-
-            # Compute loss
             rec_err = criterion_reconstruction(sentences, reconstructed_sentences)
             task_err = criterion_task(scores, target_nums)
             loss = parameterization["alpha"] * task_err + (1 - parameterization["alpha"]) * rec_err
@@ -86,16 +73,13 @@ def train_and_evaluate(parameterization, epochs=5):
 
         scheduler.step()
 
-    # Validation
     model.eval()
     val_loss, _ = evaluation_function(model, val_dataloader, device)
     return val_loss
 
 
 def run_optimization():
-    """
-    Run Ax optimization loop.
-    """
+    logging.basicConfig(level=logging.INFO, filename="optimization_log.txt", filemode="w")
     ax_client = AxClient()
     ax_client.create_experiment(
         name="reasoning_module_optimization",
@@ -110,18 +94,24 @@ def run_optimization():
             {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "depth", "type": "choice", "values": [2, 4, 6, 8]},  # Added depth parameter
+            {"name": "depth", "type": "choice", "values": [2, 4, 6, 8]},
         ],
-        objective_name="val_loss",
-        minimize=True,
+        objective={
+            "name": "val_loss",
+            "minimize": True,
+        },
     )
 
-    for _ in range(20):  # Run 20 trials
-        parameters, trial_index = ax_client.get_next_trial()
-        val_loss = train_and_evaluate(parameters, epochs=5)  # Adjusted to 5 epochs
-        ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
+    for _ in range(20):
+        try:
+            parameters, trial_index = ax_client.get_next_trial()
+            val_loss = train_and_evaluate(parameters, epochs=5)
+            ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
+            logging.info(f"Trial {trial_index} completed with val_loss: {val_loss}")
+        except Exception as e:
+            ax_client.log_trial_failure(trial_index=trial_index)
+            logging.error(f"Trial {trial_index} failed: {e}")
 
-    # Save the results
     experiment = ax_client.experiment
     results_df = exp_to_df(experiment)
     results_df.to_csv(f"../../tr_results/reasoning_module_optimization_results.csv", index=False)
