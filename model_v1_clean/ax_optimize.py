@@ -4,8 +4,7 @@ import torch
 from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
-from ax import Metric, Objective
-from ax.service.ax_client import AxClient
+from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.service.utils.report_utils import exp_to_df
 from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
@@ -82,8 +81,6 @@ def train_and_evaluate(parameterization, epochs=5):
 def run_optimization():
     logging.basicConfig(level=logging.INFO, filename="optimization_log.txt", filemode="w")
 
-    objective = Objective(metric=Metric(name="val_loss"), minimize=False)
-
     ax_client = AxClient()
     ax_client.create_experiment(
         name="reasoning_module_optimization",
@@ -100,7 +97,7 @@ def run_optimization():
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "depth", "type": "choice", "values": [2, 4, 6, 8]},
         ],
-        objectives=objective
+        objectives={"val_loss": ObjectiveProperties(minimize=False)}
     )
 
     for _ in range(20):
