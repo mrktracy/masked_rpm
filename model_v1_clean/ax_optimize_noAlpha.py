@@ -36,8 +36,8 @@ def train_and_evaluate(parameterization, epochs=5):
 
     train_dataset = rpm_dataset(train_files, device=device)
     val_dataset = rpm_dataset(val_files, device=device)
-    train_dataloader = DataLoader(train_dataset, batch_size=int(parameterization["batch_size"]), shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=int(parameterization["batch_size"]), shuffle=False)
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
     model_params = {
         "embed_dim": 512,
@@ -62,7 +62,7 @@ def train_and_evaluate(parameterization, epochs=5):
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=parameterization["learning_rate"], weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-4)
     scheduler = ExponentialLR(optimizer, gamma=0.95)
     criterion_task = nn.CrossEntropyLoss()
     # criterion_reconstruction = nn.MSELoss()
@@ -102,40 +102,41 @@ def run_optimization(version):
     ax_client.create_experiment(
         name="reasoning_module_optimization",
         parameters=[
-            {"name": "batch_size", "type": "choice", "values": [16, 32, 64]},
-            {"name": "learning_rate", "type": "range", "bounds": [1e-5, 1e-3], "log_scale": True},
+            # {"name": "batch_size", "type": "choice", "values": [16, 32]},
+            # {"name": "learning_rate", "type": "range", "bounds": [1e-5, 1e-3], "log_scale": True},
             # {"name": "alpha", "type": "range", "bounds": [0.0, 1.0]},
-            {"name": "proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "proj_drop", "type": "range", "bounds": [0.0, 0.3]},
+            {"name": "attn_drop", "type": "range", "bounds": [0.0, 0.3]},
+            {"name": "drop_path_max", "type": "range", "bounds": [0.0, 0.3]},
+            {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.3]},
+            {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.3]},
+            {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.3]},
+            {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.3]},
             {"name": "depth", "type": "choice", "values": [2, 4, 6, 8]},
         ],
         objectives={"val_loss": ObjectiveProperties(minimize=False)},
     )
 
     results_path = f"../../tr_results/{version}/ax_results_noAlpha.csv"
-    total_trials = 20
+    total_trials = 100
+    trial_index = 0
 
     for trial in range(total_trials):
         start_time = datetime.datetime.now()
         logging.info(f"Starting trial {trial + 1} of {total_trials} at {start_time}...")
         try:
             parameters, trial_index = ax_client.get_next_trial()
-            val_loss = train_and_evaluate(parameters, epochs=5)
+            val_loss = train_and_evaluate(parameters, epochs=4)
             ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
-            logging.info(f"Trial {trial_index} completed with val_loss: {val_loss}")
+            logging.info(f"Trial {trial_index + 1} completed with val_loss: {val_loss}")
 
         except Exception as e:
             ax_client.log_trial_failure(trial_index=trial_index)
-            logging.error(f"Trial {trial_index} failed: {e}")
+            logging.error(f"Trial {trial_index + 1} failed: {e}")
 
         end_time = datetime.datetime.now()
         duration = end_time - start_time
-        logging.info(f"Trial {trial + 1} duration: {duration}")
+        logging.info(f"Trial {trial + 1} duration: {duration}\n")
 
     # save best parameters
     best_parameters, values = ax_client.get_best_parameters()
