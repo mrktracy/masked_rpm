@@ -128,11 +128,11 @@ def run_optimization(version):
             parameters, trial_index = ax_client.get_next_trial()
             val_loss = train_and_evaluate(parameters, epochs=4)
             ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
-            logging.info(f"Trial {trial_index + 1} completed with val_loss: {val_loss}")
+            logging.info(f"Trial {trial + 1} completed with val_loss: {val_loss}")
 
         except Exception as e:
             ax_client.log_trial_failure(trial_index=trial_index)
-            logging.error(f"Trial {trial_index + 1} failed: {e}")
+            logging.error(f"Trial {trial + 1} failed: {e}")
 
         end_time = datetime.datetime.now()
         duration = end_time - start_time
