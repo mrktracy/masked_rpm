@@ -117,7 +117,7 @@ def run_optimization(version):
     )
 
     results_path = f"../../tr_results/{version}/ax_results.csv"
-    total_trials = 1
+    total_trials = 100
     trial_index = 0
 
     for trial in range(total_trials):
