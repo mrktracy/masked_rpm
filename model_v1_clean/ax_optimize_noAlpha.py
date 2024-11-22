@@ -125,11 +125,17 @@ def run_optimization(version):
         start_time = datetime.datetime.now()
         logging.info(f"Starting trial {trial + 1} of {total_trials} at {start_time}...")
         try:
+            # Get parameters for the trial
             parameters, trial_index = ax_client.get_next_trial()
-            val_loss = train_and_evaluate(parameters, epochs=4)
-            ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
-            logging.info(f"Trial {trial + 1} completed with val_loss: {val_loss}")
+            logging.info(f"Trial {trial + 1} parameters: {parameters}")  # Log the parameters being tried
 
+            # Train and evaluate the model
+            val_loss = train_and_evaluate(parameters, epochs=4)
+            logging.info(f"Trial {trial + 1} validation loss: {val_loss}")  # Log the validation loss
+
+            # Mark the trial as complete in Ax
+            ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
+            logging.info(f"Trial {trial + 1} completed successfully.")
         except Exception as e:
             ax_client.log_trial_failure(trial_index=trial_index)
             logging.error(f"Trial {trial + 1} failed: {e}")
