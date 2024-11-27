@@ -62,7 +62,7 @@ class Perception(nn.Module):
         embeddings_final = features_reshaped + pos_embed_expanded  # Element-wise addition
 
         # Reconstruct sentences
-        reconstructed_sentences = self.decoder(features)  # Shape: [B * N_c * G^2, 1, 160, 160]
+        reconstructed_sentences = self.decoder.forward(features)  # Shape: [B * N_c * G^2, 1, 160, 160]
         reconstructed_sentences = reconstructed_sentences.view(batch_size, self.num_candidates, self.n_nodes, 1,
                                                                160, 160)
 
