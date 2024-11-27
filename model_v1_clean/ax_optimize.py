@@ -29,7 +29,7 @@ def initialize_weights_he(m):
             nn.init.constant_(m.bias, 0)
 
 
-def train_and_evaluate(parameterization, epochs=5):
+def train_and_evaluate(parameterization, epochs=3):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     root_dir = '../../i_raven_data_full/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
@@ -40,16 +40,18 @@ def train_and_evaluate(parameterization, epochs=5):
     val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
     model_params = {
-        "embed_dim": 512,
+        "embed_dim": int(parameterization["embed_dim"]),
         "grid_size": 3,
-        "abs_depth": int(parameterization["depth"]),
-        "trans_depth": int(parameterization["depth"]),
-        "ternary_depth": int(parameterization["depth"]),
-        "num_heads": 8,
+        "abs_depth": int(parameterization["abs_depth"]),
+        "trans_depth": int(parameterization["trans_depth"]),
+        "ternary_depth": int(parameterization["ternary_depth"]),
+        "num_heads": int(parameterization["num_heads"]),
         "mlp_ratio": 4.0,
         "proj_drop": parameterization["proj_drop"],
         "attn_drop": parameterization["attn_drop"],
         "drop_path_max": parameterization["drop_path_max"],
+        "bb_depth": int(parameterization["bb_depth"]),
+        "bb_num_heads": int(parameterization["bb_num_heads"]),
         "bb_proj_drop": parameterization["bb_proj_drop"],
         "bb_attn_drop": parameterization["bb_attn_drop"],
         "bb_drop_path_max": parameterization["bb_drop_path_max"],
@@ -89,7 +91,6 @@ def train_and_evaluate(parameterization, epochs=5):
 
 
 def run_optimization(version):
-
     results_dir = f"../../tr_results/{version}"
     os.makedirs(results_dir, exist_ok=True)
 
@@ -101,23 +102,31 @@ def run_optimization(version):
     ax_client.create_experiment(
         name="reasoning_module_optimization",
         parameters=[
-            # {"name": "batch_size", "type": "choice", "values": [16, 32]},
-            # {"name": "learning_rate", "type": "range", "bounds": [1e-5, 1e-3], "log_scale": True},
             {"name": "alpha", "type": "range", "bounds": [0.0, 1.0]},
+            {"name": "embed_dim", "type": "choice", "values": [256, 512, 768, 1024]},
+
+            # Reasoning module parameters
+            {"name": "abs_depth", "type": "choice", "values": [2, 4, 6, 8]},
+            {"name": "trans_depth", "type": "choice", "values": [2, 4, 6, 8]},
+            {"name": "ternary_depth", "type": "choice", "values": [2, 4, 6, 8]},
+            {"name": "num_heads", "type": "choice", "values": [4, 8, 16]},
             {"name": "proj_drop", "type": "range", "bounds": [0.0, 0.3]},
             {"name": "attn_drop", "type": "range", "bounds": [0.0, 0.3]},
             {"name": "drop_path_max", "type": "range", "bounds": [0.0, 0.3]},
+
+            # Backbone parameters
+            {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
+            {"name": "bb_num_heads", "type": "choice", "values": [4, 8, 16]},
             {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.3]},
             {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.3]},
             {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.3]},
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.3]},
-            {"name": "depth", "type": "choice", "values": [2, 4, 6, 8]},
         ],
         objectives={"val_loss": ObjectiveProperties(minimize=False)},
     )
 
     results_path = f"../../tr_results/{version}/ax_results.csv"
-    total_trials = 100
+    total_trials = 300  # Increased from 100 due to larger search space
     trial_index = 0
 
     for trial in range(total_trials):
