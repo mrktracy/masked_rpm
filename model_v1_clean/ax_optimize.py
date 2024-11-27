@@ -144,8 +144,8 @@ def run_optimization(version):
         logging.info(f"Trial {trial + 1} duration: {duration}\n")
 
     # save best parameters
-    best_parameters, values = ax_client.get_best_parameters()
-    best_val_loss = values.get("val_loss")
+    best_parameters, metrics = ax_client.get_best_parameters()
+    best_val_loss = metrics[0]  # metrics is a tuple with val_loss as first element
     logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Loss: {best_val_loss}")
 
     # Final save of results
@@ -155,6 +155,6 @@ def run_optimization(version):
 
 
 if __name__ == "__main__":
-    version = "Model_v1_itr0"
+    version = "Model_v1_itr1"
     set_seed()
     run_optimization(version)
