@@ -14,7 +14,7 @@ from funs import gather_files_pgm
 from models import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr1"
+version = "Model_v1_itr2"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -75,7 +75,7 @@ def main(version, results_folder, model_class, model_params):
     LOGS_PER_EPOCH = 15
     BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 5
-    ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
+    ALPHA = 1  # Balancing factor between task and reconstruction losses
 
     ''' Data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -106,10 +106,10 @@ def main(version, results_folder, model_class, model_params):
             target_nums = target_nums.to(device)  # Shape: [batch_size]
 
             # Forward pass
-            embeddings, recreation, scores = model(sentences)
+            recreation, scores = model(sentences)
 
             # Calculate reconstruction error
-            rec_err = criterion_reconstruction(embeddings, recreation)
+            rec_err = criterion_reconstruction(sentences, recreation)
             task_err = criterion_task(scores, target_nums)  # target_nums shape: [batch_size]
 
             loss = ALPHA * task_err + (1 - ALPHA) * rec_err
@@ -154,12 +154,12 @@ if __name__ == "__main__":
     MODEL_PARAMS = {
         "embed_dim": 512,
         "grid_size": 3,
-        "abs_depth": 2,
-        "trans_depth": 2,
-        "ternary_depth": 2,
+        "abs_depth": 8,
+        "trans_depth": 8,
+        "ternary_depth": 8,
         "num_heads": 8,
         "mlp_ratio": 4.0,
-        "proj_drop": 0,
+        "proj_drop": 0.038097899234201565,
         "attn_drop": 0.3,
         "drop_path_max": 0.3,
         "num_symbols_abs": 9,
