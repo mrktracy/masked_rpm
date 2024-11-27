@@ -106,10 +106,10 @@ def main(version, results_folder, model_class, model_params):
             target_nums = target_nums.to(device)  # Shape: [batch_size]
 
             # Forward pass
-            embeddings, recreation, scores = model(sentences)
+            recreation, scores = model(sentences)
 
             # Calculate reconstruction error
-            rec_err = criterion_reconstruction(embeddings, recreation)
+            rec_err = criterion_reconstruction(sentences, recreation)
             task_err = criterion_task(scores, target_nums)  # target_nums shape: [batch_size]
 
             loss = ALPHA * task_err + (1 - ALPHA) * rec_err
