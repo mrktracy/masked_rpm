@@ -8,8 +8,8 @@ from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from evaluate_masked import evaluate_model_dist as evaluation_function
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
 from models import ReasoningModule
 
@@ -73,9 +73,9 @@ def main(version, results_folder, model_class, model_params):
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
-    LOGS_PER_EPOCH = 60
+    LOGS_PER_EPOCH = 45
     BATCHES_PER_PRINT = 30
-    EPOCHS_PER_SAVE = 5
+    EPOCHS_PER_SAVE = 1
     ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
 
     ''' Data loaders, optimizer, criterion '''
