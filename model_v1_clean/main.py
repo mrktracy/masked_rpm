@@ -14,7 +14,7 @@ from funs import gather_files_pgm
 from models import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr1"
+version = "Model_v1_itr1_pgmExtr"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -60,7 +60,8 @@ def main(version, results_folder, model_class, model_params):
         model = nn.DataParallel(model)
 
     ''' Dataset setup '''
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
+    root_dir = '../../pgm_data/extrapolation/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     train_dataset = rpm_dataset(train_files, device=device)
@@ -68,11 +69,11 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 25
+    EPOCHS = 5
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
-    LOGS_PER_EPOCH = 45
+    LOGS_PER_EPOCH = 60
     BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 5
     ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
