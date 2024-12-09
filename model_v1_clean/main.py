@@ -145,7 +145,7 @@ def main(version, results_folder, model_class, model_params):
 
     # Final evaluation
     model.eval()
-    val_loss, _ = evaluation_function(model, val_dataloader, device)
+    val_loss, _ = evaluation_function(model, test_dataloader, device)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
