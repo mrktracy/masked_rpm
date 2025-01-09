@@ -11,7 +11,7 @@
 
 #$ -l gpus=4		# number of GPUs
 #$ -l gpu_c=6		# GPU minimum capability
-#$ -l gpu_type=L40	# GPU type
+#$ -l gpu_type=L40S	# GPU type
 
 module load miniconda
 conda activate rpm
