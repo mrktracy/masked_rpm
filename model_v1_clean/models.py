@@ -146,18 +146,18 @@ class ReasoningModule(nn.Module):
         self.temporal_norm = TemporalNorm(embed_dim)
 
         # Learnable symbols for abstractors
-        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim*symbol_factor))
-        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim*symbol_factor))
+        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor))
+        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim * symbol_factor))
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
-            Block(embed_dim, embed_dim*symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
+            Block(embed_dim, embed_dim * symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
             for i in range(abs_depth)
         ])
 
         # Ternary layers
         self.ternary_module = nn.ModuleList([  # Ternary layers
-            Block(embed_dim, embed_dim*symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
+            Block(embed_dim, embed_dim * symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
 
@@ -169,7 +169,7 @@ class ReasoningModule(nn.Module):
 
         # Guesser head
         self.guesser_head = nn.Sequential(
-            nn.Linear(3 * embed_dim, embed_dim),
+            nn.Linear(embed_dim + 2 * embed_dim * symbol_factor, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, 1),
         )
@@ -178,7 +178,9 @@ class ReasoningModule(nn.Module):
         self.phi_mlp = nn.Sequential(
             nn.Linear(3 * embed_dim, 6 * embed_dim),
             nn.ReLU(),
-            nn.Linear(6 * embed_dim, embed_dim),
+            nn.Linear(6 * embed_dim, 3 * embed_dim),
+            nn.ReLU(),
+            nn.Linear(3 * embed_dim, embed_dim)
         )
 
     def ternary_mlp(self, x):
