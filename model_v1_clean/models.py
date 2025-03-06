@@ -444,12 +444,12 @@ class Attention(nn.Module):
         v = self.w_vs(x_v).view(batch_size, len_v, self.num_heads, self.head_dim_v).permute(0, 2, 1, 3)
 
         # Normalize queries and keys (if enabled)
-        if self.restrict_qk:
-            q = self.qk_norm(q * self.scale)
-            k = self.qk_norm(k)
-        else:
-            q = self.q_norm(q * self.scale)
-            k = self.k_norm(k)
+        # if self.restrict_qk:
+        #     q = self.qk_norm(q * self.scale)
+        #     k = self.qk_norm(k)
+        # else:
+        #     q = self.q_norm(q * self.scale)
+        #     k = self.k_norm(k)
 
         # Compute scaled dot-product attention
         attn = torch.matmul(q, k.transpose(-2, -1))  # (batch, num_heads, len_q, len_k)
