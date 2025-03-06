@@ -123,6 +123,7 @@ class ReasoningModule(nn.Module):
         self.embed_dim = embed_dim
         self.grid_size = grid_size
         self.num_candidates = num_candidates
+        self.symbol_factor = symbol_factor
 
         # Initialize Perception module
         self.perception = Perception(
