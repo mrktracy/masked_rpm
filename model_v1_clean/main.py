@@ -172,7 +172,7 @@ if __name__ == "__main__":
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
-        "symbol_factor": 2
+        "symbol_factor": 1
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
