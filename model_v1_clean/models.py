@@ -151,13 +151,15 @@ class ReasoningModule(nn.Module):
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
-            Block(embed_dim, embed_dim * symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
+            Block(embed_dim * (1 if i == 0 else symbol_factor), embed_dim * symbol_factor, num_heads, mlp_ratio,
+                  proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
             for i in range(abs_depth)
         ])
 
         # Ternary layers
         self.ternary_module = nn.ModuleList([  # Ternary layers
-            Block(embed_dim, embed_dim * symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
+            Block(embed_dim * (1 if i == 0 else symbol_factor), embed_dim * symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop,
+                  drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
 
