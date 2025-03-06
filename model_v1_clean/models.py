@@ -286,9 +286,12 @@ class ReasoningModule(nn.Module):
             [batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
-        ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens_normalized, ternary_tokens_reshaped)
-        abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
         transformed = self.temporal_norm.de_normalize(transformed, embeddings)
+
+        if self.symbol_factor == 1: # skip de-normalization when symbol_factor != 1
+            ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens_normalized, ternary_tokens_reshaped)
+            abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
+
 
         trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
