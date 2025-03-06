@@ -14,7 +14,7 @@ from funs import gather_files_pgm
 from models import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr4"
+version = "Model_v1_itr5"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -172,7 +172,7 @@ if __name__ == "__main__":
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
-        "symbol_factor": 1
+        "symbol_factor": 2
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
