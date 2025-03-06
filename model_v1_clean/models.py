@@ -273,7 +273,9 @@ class ReasoningModule(nn.Module):
                     x_v=expanded_symbols_ternary,
                 )
             else:
-                ternary_tokens_normalized = blk(x_q=ternary_tokens_normalized, x_k=ternary_tokens_normalized, x_v=ternary_tokens_normalized)
+                ternary_tokens_normalized = blk(x_q=ternary_tokens_normalized,
+                                                x_k=ternary_tokens_normalized,
+                                                x_v=ternary_tokens_normalized)
 
         # Process embeddings with transformer
         transformed = embeddings_normalized_reshaped.clone()
@@ -292,7 +294,8 @@ class ReasoningModule(nn.Module):
         if self.symbol_factor == 1: # skip de-normalization when symbol_factor != 1
             ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens_normalized, ternary_tokens_reshaped)
             abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
-
+        else:
+            ternary_tokens = ternary_tokens_normalized
 
         trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
