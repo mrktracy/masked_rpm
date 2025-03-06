@@ -459,7 +459,7 @@ class Attention(nn.Module):
         x = torch.matmul(attn, v)  # (batch, num_heads, len_q, head_dim_v)
 
         # Reshape and project back
-        x = x.permute(0, 2, 1, 3).reshape(batch_size, len_q, self.dim_v)
+        x = x.permute(0, 2, 1, 3).reshape(-1, len_q, self.dim_v)
         x = self.proj(x)
         x = self.proj_drop(x)
 
