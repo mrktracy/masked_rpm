@@ -14,7 +14,7 @@ from funs import gather_files_pgm
 from models import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr2"
+version = "Model_v1_itr5"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -61,6 +61,7 @@ def main(version, results_folder, model_class, model_params):
 
     ''' Dataset setup '''
     root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../pgm_data/extrapolation/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     train_dataset = rpm_dataset(train_files, device=device)
@@ -68,14 +69,15 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 25
+    EPOCHS = 20
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
     LOGS_PER_EPOCH = 45
     BATCHES_PER_PRINT = 30
-    EPOCHS_PER_SAVE = 5
-    ALPHA = 1  # Balancing factor between task and reconstruction losses
+    EPOCHS_PER_SAVE = 1
+    ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
+    ALPHA_GROWTH_RATE = 0
 
     ''' Data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -128,7 +130,7 @@ def main(version, results_folder, model_class, model_params):
 
             if (idx + 1) % (len(train_dataloader) // LOGS_PER_EPOCH) == 0:
                 val_loss, _ = evaluation_function(model, val_dataloader, device, max_batches=150)
-                output = f"Epoch {epoch + 1} - {idx + 1}/{len(train_dataloader)}. Avg loss: {tot_loss / count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}\n"
+                output = f"Epoch {epoch + 1} - {idx + 1}/{len(train_dataloader)}. Avg loss: {tot_loss / count:.4f}. lr: {scheduler.get_last_lr()[0]:.6f}. val: {val_loss:.2f}. ALPHA :{ALPHA:.2f}\n"
                 logging.info(output)
 
         if (epoch + 1) % EPOCHS_PER_SAVE == 0:
@@ -140,11 +142,12 @@ def main(version, results_folder, model_class, model_params):
                 'scheduler_state_dict': scheduler.state_dict()
             }, save_file)
 
+        ALPHA = min(ALPHA*(1+ALPHA_GROWTH_RATE), 1)
         scheduler.step()
 
     # Final evaluation
     model.eval()
-    val_loss, _ = evaluation_function(model, val_dataloader, device)
+    val_loss, _ = evaluation_function(model, test_dataloader, device)
     output = f"Final evaluation: {val_loss:.2f}\n"
     logging.info(output)
 
@@ -154,12 +157,12 @@ if __name__ == "__main__":
     MODEL_PARAMS = {
         "embed_dim": 512,
         "grid_size": 3,
-        "abs_depth": 8,
-        "trans_depth": 8,
-        "ternary_depth": 8,
+        "abs_depth": 2,
+        "trans_depth": 2,
+        "ternary_depth": 2,
         "num_heads": 8,
         "mlp_ratio": 4.0,
-        "proj_drop": 0.038097899234201565,
+        "proj_drop": 0,
         "attn_drop": 0.3,
         "drop_path_max": 0.3,
         "num_symbols_abs": 9,
@@ -168,7 +171,8 @@ if __name__ == "__main__":
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
-        "bb_mlp_drop": 0
+        "bb_mlp_drop": 0,
+        "symbol_factor": 2
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
