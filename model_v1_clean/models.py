@@ -243,9 +243,9 @@ class ReasoningModule(nn.Module):
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
 
         # Now apply ternary operation
-        ternary_tokens = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
-        ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens)
-        ternary_tokens_reshaped = ternary_tokens.view(
+        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
+        ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens_unnormalized)
+        ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
         # Temporarily expand the symbols for batch dimension manipulation
@@ -267,15 +267,13 @@ class ReasoningModule(nn.Module):
         # Process ternary tokens
         for idx, blk in enumerate(self.ternary_module):
             if idx == 0:
-                ternary_tokens_normalized = blk(
+                ternary_tokens = blk(
                     x_q=ternary_tokens_normalized,
                     x_k=ternary_tokens_normalized,
                     x_v=expanded_symbols_ternary,
                 )
             else:
-                ternary_tokens_normalized = blk(x_q=ternary_tokens_normalized,
-                                                x_k=ternary_tokens_normalized,
-                                                x_v=ternary_tokens_normalized)
+                ternary_tokens = blk(x_q=ternary_tokens, x_k=ternary_tokens, x_v=ternary_tokens)
 
         # Process embeddings with transformer
         transformed = embeddings_normalized_reshaped.clone()
@@ -285,17 +283,15 @@ class ReasoningModule(nn.Module):
         # Aggregating the three streams before scoring and recreation
         transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
         abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
-        ternary_tokens_normalized = ternary_tokens_normalized.view(
+        ternary_tokens = ternary_tokens.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
         transformed = self.temporal_norm.de_normalize(transformed, embeddings)
 
         if self.symbol_factor == 1: # skip de-normalization when symbol_factor != 1
-            ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens_normalized, ternary_tokens_reshaped)
+            ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
             abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
-        else:
-            ternary_tokens = ternary_tokens_normalized
 
         trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
