@@ -573,28 +573,26 @@ class Block(nn.Module):
         self.dim_v = dim_v
 
     def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
-        # Check if the input is flattened (3D) or not (4D)
-        reshaped = False
-        if len(x_q.shape) == 3:
-            # If 3D, reshape to 4D
-            batch_size, grid_nodes, _ = x_q.size()
-            x_q = x_q.view(batch_size, 1, grid_nodes, self.dim_kq)
-            x_k = x_k.view(batch_size, 1, grid_nodes, self.dim_kq)
-            x_v = x_v.view(batch_size, 1, grid_nodes, self.dim_v)
-            reshaped = True
+        """
+        Handles self-attention inside the Block.
+        Args:
+            x_q, x_k, x_v: Query, Key, and Value tensors.
+            use_mlp_layer (bool): Whether to apply the MLP layer.
+        Returns:
+            Tensor after self-attention and optional MLP layer.
+        """
+        batch_candidates, grid_nodes, _ = x_q.shape  # This is batch_size * num_candidates
 
         # Apply attention
-        x = x_v + self.drop_path1(
-            self.ls1(self.attn.forward(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v)))
-        )
+        attn_output = self.attn.forward(self.norm1(x_q), self.norm1(x_k), self.norm1_v(x_v))
+
+        # Ensure output shape matches x_v before summation
+        assert attn_output.shape == x_v.shape, f"Shape mismatch: attn_output={attn_output.shape}, x_v={x_v.shape}"
+        x = x_v + self.drop_path1(self.ls1(attn_output))
 
         # Optional MLP layer
         if use_mlp_layer:
             x = self.norm3(x + self.drop_path2(self.ls2(self.mlp(self.norm2(x)))))
 
-        # If the input was originally 3D, reshape back to 3D
-        if reshaped:
-            batch_size, _, grid_nodes, _ = x.size()
-            x = x.view(batch_size, grid_nodes, -1)
+        return x  # Shape: (batch_size * num_candidates, grid_nodes, dim_v)
 
-        return x
