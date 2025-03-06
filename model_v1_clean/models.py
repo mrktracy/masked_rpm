@@ -430,7 +430,7 @@ class Attention(nn.Module):
             The output tensor after applying attention.
         """
         batch_size, _, len_q, _ = x_q.shape
-        len_k, len_v = x_k.shape[1], x_v.shape[1]  # Allowing len_q ≠ len_k
+        len_k, len_v = x_k.shape[-2], x_v.shape[-2]  # Allowing len_q ≠ len_k
 
         # Multi-head attention reshaping
         q = self.w_qs(x_q).view(batch_size, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)
