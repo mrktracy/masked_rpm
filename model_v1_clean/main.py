@@ -77,7 +77,7 @@ def main(version, results_folder, model_class, model_params):
     BATCHES_PER_PRINT = 30
     EPOCHS_PER_SAVE = 1
     ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
-    ALPHA_GROWTH_RATE = 0.2
+    ALPHA_GROWTH_RATE = 0
 
     ''' Data loaders, optimizer, criterion '''
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -171,7 +171,8 @@ if __name__ == "__main__":
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
-        "bb_mlp_drop": 0
+        "bb_mlp_drop": 0,
+        "symbol_factor": 2
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)

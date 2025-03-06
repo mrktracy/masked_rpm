@@ -116,7 +116,8 @@ class ReasoningModule(nn.Module):
         bb_proj_drop=0.3,
         bb_attn_drop=0.3,
         bb_drop_path_max=0.5,
-        bb_mlp_drop=0
+        bb_mlp_drop=0,
+        symbol_factor=1
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -145,18 +146,18 @@ class ReasoningModule(nn.Module):
         self.temporal_norm = TemporalNorm(embed_dim)
 
         # Learnable symbols for abstractors
-        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim))
-        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
+        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim*symbol_factor))
+        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim*symbol_factor))
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
-            Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
+            Block(embed_dim, embed_dim*symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
             for i in range(abs_depth)
         ])
 
         # Ternary layers
         self.ternary_module = nn.ModuleList([  # Ternary layers
-            Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
+            Block(embed_dim, embed_dim*symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
 
@@ -175,9 +176,9 @@ class ReasoningModule(nn.Module):
 
         # Ternary operation MLP
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * embed_dim, 4 * embed_dim),
+            nn.Linear(3 * embed_dim, 6 * embed_dim),
             nn.ReLU(),
-            nn.Linear(4 * embed_dim, embed_dim),
+            nn.Linear(6 * embed_dim, embed_dim),
         )
 
     def ternary_mlp(self, x):
