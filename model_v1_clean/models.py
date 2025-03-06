@@ -435,8 +435,9 @@ class Attention(nn.Module):
         Returns:
             The output tensor after applying attention.
         """
-        batch_size, _, len_q, _ = x_q.shape
-        len_k, len_v = x_k.shape[-2], x_v.shape[-2]  # Allowing len_q ≠ len_k
+        original_shape = x_v.shape
+        batch_size = original_shape[0]
+        len_q, len_k, len_v = x_q.shape[-2], x_k.shape[-2], x_v.shape[-2]
 
         # Multi-head attention reshaping
         q = self.w_qs(x_q).view(batch_size, len_q, self.num_heads, self.head_dim_kq).permute(0, 2, 1, 3)
@@ -444,12 +445,12 @@ class Attention(nn.Module):
         v = self.w_vs(x_v).view(batch_size, len_v, self.num_heads, self.head_dim_v).permute(0, 2, 1, 3)
 
         # Normalize queries and keys (if enabled)
-        # if self.restrict_qk:
-        #     q = self.qk_norm(q * self.scale)
-        #     k = self.qk_norm(k)
-        # else:
-        #     q = self.q_norm(q * self.scale)
-        #     k = self.k_norm(k)
+        if self.restrict_qk:
+            q = self.qk_norm(q * self.scale)
+            k = self.qk_norm(k)
+        else:
+            q = self.q_norm(q * self.scale)
+            k = self.k_norm(k)
 
         # Compute scaled dot-product attention
         attn = torch.matmul(q, k.transpose(-2, -1))  # (batch, num_heads, len_q, len_k)
@@ -461,6 +462,9 @@ class Attention(nn.Module):
         x = x.permute(0, 2, 1, 3).reshape(batch_size, len_q, self.dim_v)
         x = self.proj(x)
         x = self.proj_drop(x)
+
+        # Restore the original batch and candidate dimensions
+        x = x.view(*original_shape[:-1], self.dim_v)
 
         return x
 
