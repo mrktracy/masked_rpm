@@ -562,16 +562,18 @@ class Block(nn.Module):
         )
         self.ls2 = LayerScale(dim_v, init_values=init_values) if init_values else nn.Identity()
         self.drop_path2 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+        self.dim_kq = dim_kq
+        self.dim_v = dim_v
 
     def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
         # Check if the input is flattened (3D) or not (4D)
         reshaped = False
         if len(x_q.shape) == 3:
             # If 3D, reshape to 4D
-            batch_size, grid_nodes, embed_dim = x_q.size()
-            x_q = x_q.view(batch_size, 1, grid_nodes, embed_dim)
-            x_k = x_k.view(batch_size, 1, grid_nodes, embed_dim)
-            x_v = x_v.view(batch_size, 1, grid_nodes, embed_dim)
+            batch_size, grid_nodes, _ = x_q.size()
+            x_q = x_q.view(batch_size, 1, grid_nodes, self.dim_kq)
+            x_k = x_k.view(batch_size, 1, grid_nodes, self.dim_kq)
+            x_v = x_v.view(batch_size, 1, grid_nodes, self.dim_v)
             reshaped = True
 
         # Apply attention
