@@ -94,6 +94,93 @@ class ResNetDecoder(nn.Module):
         return self.decoder(x)
 
 
+class TransformerWithCLS(nn.Module):
+    def __init__(
+        self,
+        embed_dim,
+        num_heads=8,
+        depth=4,
+        mlp_ratio=4.0,
+        q_bias=False,
+        k_bias=False,
+        v_bias=False,
+        qk_norm=False,
+        proj_drop=0.0,
+        attn_drop=0.0,
+        init_values=None,
+        drop_path=0.0,
+        act_layer=nn.GELU,
+        norm_layer=nn.LayerNorm,
+        mlp_layer=Mlp,
+        restrict_qk=False
+    ):
+        super().__init__()
+
+        self.embed_dim = embed_dim
+
+        # CLS Token
+        self.cls_token = nn.Parameter(torch.randn(1, 1, embed_dim))
+
+        # 3 Row/Column Embeddings + 1 CLS Token Embedding
+        self.pos_embed = nn.Parameter(torch.randn(1, 4, embed_dim))
+
+        # Transformer Blocks using your `Block` class
+        self.blocks = nn.ModuleList([
+            Block(
+                dim_kq=embed_dim,
+                dim_v=embed_dim,
+                num_heads=num_heads,
+                mlp_ratio=mlp_ratio,
+                q_bias=q_bias,
+                k_bias=k_bias,
+                v_bias=v_bias,
+                qk_norm=qk_norm,
+                proj_drop=proj_drop,
+                attn_drop=attn_drop,
+                init_values=init_values,
+                drop_path=drop_path * ((i + 1) / depth),
+                act_layer=act_layer,
+                norm_layer=norm_layer,
+                mlp_layer=mlp_layer,
+                restrict_qk=restrict_qk
+            ) for i in range(depth)
+        ])
+
+        # Final projection layer to align with Phi_MLP
+        self.mlp_head = nn.Sequential(
+            nn.LayerNorm(embed_dim),
+            nn.Linear(embed_dim, embed_dim)
+        )
+
+    def forward(self, x1, x2, x3):
+        """
+        Args:
+            x1, x2, x3: Three input embeddings of shape [batch_size * num_rows_cols, embed_dim]
+        Returns:
+            Tensor of shape [batch_size, num_rows_cols, embed_dim] (unified abstracted embedding)
+        """
+        batch_size_num_rows_cols = x1.size(0)  # Combined batch dim for parallel processing
+
+        # Combine inputs by treating x1, x2, x3 as distinct parallel elements
+        x = torch.stack([x1, x2, x3], dim=1)  # Shape: [batch_size * num_rows_cols, 3, embed_dim]
+
+        # Add CLS token for unified embedding
+        cls_tokens = self.cls_token.expand(batch_size_num_rows_cols, -1, -1)
+        x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
+
+        # Add 4 positional embeddings (3 row/column + 1 CLS token)
+        x = x + self.pos_embed[:, :x.size(1)]
+
+        # Transformer Blocks (using your `Block` class)
+        for blk in self.blocks:
+            x = blk(x_q=x, x_k=x, x_v=x)
+
+        # Extract CLS token output for the abstracted embedding
+        cls_output = x[:, 0]  # Shape: [batch_size * num_rows_cols, embed_dim]
+
+        return self.mlp_head(cls_output)
+
+
 class ReasoningModule(nn.Module):
     def __init__(
         self,
@@ -192,6 +279,26 @@ class ReasoningModule(nn.Module):
         #     nn.Linear(4 * embed_dim, embed_dim)
         # )
 
+        # Ternary operation Transformer
+        self.phi_transformer = TransformerWithCLS(
+            embed_dim=embed_dim,
+            num_heads=num_heads,
+            depth=2,
+            mlp_ratio=mlp_ratio,
+            q_bias=False,
+            k_bias=False,
+            v_bias=False,
+            qk_norm=False,
+            proj_drop=proj_drop,
+            attn_drop=attn_drop,
+            init_values=None,
+            drop_path=drop_path_max,
+            act_layer=nn.GELU,
+            norm_layer=norm_layer,
+            mlp_layer=Mlp,
+            restrict_qk=False
+        )
+
     def ternary_mlp(self, x):
         """
         Perform the ternary operation Φ_MLP(x1, x2, x3) for rows and columns across the sequence.
@@ -215,6 +322,30 @@ class ReasoningModule(nn.Module):
 
         # Apply the MLP
         result = self.phi_mlp(x)  # Shape: (batch_size * 6, embed_dim)
+
+        return result.view(batch_size, 6, -1)
+
+    def ternary_trans(self, x):
+        """
+        Perform the ternary operation Φ_MLP(x1, x2, x3) for rows and columns across the sequence.
+        Input x is of shape (batch_size, 9, embed_dim)
+        """
+        batch_size = x.size(0)
+
+        slice_idx = torch.tensor([0, 3, 6, 0, 1, 2])
+        increment = torch.tensor([1, 1, 1, 3, 3, 3])
+
+        # Extract x1, x2, x3 for all sliding windows
+        x1 = x[:, slice_idx, :]  # Shape: (batch_size, 6, embed_dim)
+        x2 = x[:, slice_idx + increment, :]  # Shape: (batch_size, 6, embed_dim)
+        x3 = x[:, slice_idx + 2 * increment, :]  # Shape: (batch_size, 6, embed_dim)
+
+        x1 = x1.reshape(batch_size * 6, -1)
+        x2 = x2.reshape(batch_size * 6, -1)
+        x3 = x3.reshape(batch_size * 6, -1)
+
+        # Apply the MLP
+        result = self.phi_transformer.forward(x1, x2, x3)  # Shape of each: (batch_size, 6, embed_dim)
 
         return result.view(batch_size, 6, -1)
 
@@ -243,7 +374,8 @@ class ReasoningModule(nn.Module):
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
 
         # Now apply ternary operation
-        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
+        # ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
+        ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
         ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens_unnormalized)
         ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
