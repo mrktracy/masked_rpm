@@ -178,19 +178,19 @@ class ReasoningModule(nn.Module):
         )
 
         # Ternary operation MLP
-        # self.phi_mlp = nn.Sequential(
-        #     nn.Linear(3 * embed_dim, 6 * embed_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(6 * embed_dim, 3 * embed_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(3 * embed_dim, embed_dim)
-        # )
-
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * embed_dim, 4 * embed_dim),
+            nn.Linear(3 * embed_dim, 6 * embed_dim),
             nn.ReLU(),
-            nn.Linear(4 * embed_dim, embed_dim)
+            nn.Linear(6 * embed_dim, 3 * embed_dim),
+            nn.ReLU(),
+            nn.Linear(3 * embed_dim, embed_dim)
         )
+
+        # self.phi_mlp = nn.Sequential(
+        #     nn.Linear(3 * embed_dim, 4 * embed_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(4 * embed_dim, embed_dim)
+        # )
 
     def ternary_mlp(self, x):
         """
