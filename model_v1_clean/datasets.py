@@ -51,7 +51,7 @@ class RPMFullSentences_evalByType(Dataset):
         return length
 
 
-class RPMFullSentencesRaw_dataAug2(Dataset):
+class RPMFullSentencesRaw_dataAug_wRowSwap(Dataset):
     def __init__(self, files, device):
         self.files = files
         self.device = device

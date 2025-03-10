@@ -265,6 +265,7 @@ class ReasoningModule(nn.Module):
         )
 
         # Ternary operation MLP
+        # over-powered
         # self.phi_mlp = nn.Sequential(
         #     nn.Linear(3 * embed_dim, 6 * embed_dim),
         #     nn.ReLU(),
@@ -273,10 +274,18 @@ class ReasoningModule(nn.Module):
         #     nn.Linear(3 * embed_dim, embed_dim)
         # )
 
+        # original
+        # self.phi_mlp = nn.Sequential(
+        #     nn.Linear(3 * embed_dim, 4 * embed_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(4 * embed_dim, embed_dim)
+        # )
+
+        # under-powered
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * embed_dim, 4 * embed_dim),
+            nn.Linear(3 * embed_dim, embed_dim),
             nn.ReLU(),
-            nn.Linear(4 * embed_dim, embed_dim)
+            nn.Linear(embed_dim, embed_dim)
         )
 
         # Ternary operation Transformer
