@@ -265,34 +265,34 @@ class ReasoningModule(nn.Module):
         )
 
         # Ternary operation MLP
-        self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * embed_dim, 6 * embed_dim),
-            nn.ReLU(),
-            nn.Linear(6 * embed_dim, 3 * embed_dim),
-            nn.ReLU(),
-            nn.Linear(3 * embed_dim, embed_dim)
-        )
-
         # self.phi_mlp = nn.Sequential(
-        #     nn.Linear(3 * embed_dim, 4 * embed_dim),
+        #     nn.Linear(3 * embed_dim, 6 * embed_dim),
         #     nn.ReLU(),
-        #     nn.Linear(4 * embed_dim, embed_dim)
+        #     nn.Linear(6 * embed_dim, 3 * embed_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(3 * embed_dim, embed_dim)
         # )
+
+        self.phi_mlp = nn.Sequential(
+            nn.Linear(3 * embed_dim, 4 * embed_dim),
+            nn.ReLU(),
+            nn.Linear(4 * embed_dim, embed_dim)
+        )
 
         # Ternary operation Transformer
         self.phi_transformer = TransformerWithCLS(
             embed_dim=embed_dim,
-            num_heads=num_heads,
+            num_heads=4,
             depth=2,
             mlp_ratio=mlp_ratio,
             q_bias=False,
             k_bias=False,
             v_bias=False,
             qk_norm=False,
-            proj_drop=proj_drop,
-            attn_drop=attn_drop,
+            proj_drop=0,
+            attn_drop=0,
             init_values=None,
-            drop_path=drop_path_max,
+            drop_path=0,
             act_layer=nn.GELU,
             norm_layer=norm_layer,
             mlp_layer=Mlp,
@@ -374,8 +374,8 @@ class ReasoningModule(nn.Module):
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
 
         # Now apply ternary operation
-        # ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
-        ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
+        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
+        # ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
         ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens_unnormalized)
         ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
