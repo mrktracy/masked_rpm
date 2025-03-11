@@ -281,18 +281,18 @@ class ReasoningModule(nn.Module):
         # )
 
         # original
-        self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * embed_dim, 4 * embed_dim),
-            nn.ReLU(),
-            nn.Linear(4 * embed_dim, embed_dim)
-        )
-
-        # # under-powered
         # self.phi_mlp = nn.Sequential(
-        #     nn.Linear(3 * embed_dim, embed_dim),
-        #     nn.GELU(),
-        #     nn.Linear(embed_dim, embed_dim)
+        #     nn.Linear(3 * embed_dim, 4 * embed_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(4 * embed_dim, embed_dim)
         # )
+
+        # under-powered
+        self.phi_mlp = nn.Sequential(
+            nn.Linear(3 * embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim)
+        )
 
         # Ternary operation Transformer
         self.phi_transformer = TransformerWithCLS(
