@@ -238,7 +238,7 @@ class ReasoningModule(nn.Module):
 
         # Learnable symbols for abstractors
         self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor_abs))
-        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim * symbol_factor_abs))
+        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim * symbol_factor_tern))
 
         # Learnable position embeddings for ternary row and column embeddings
         self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
@@ -443,9 +443,11 @@ class ReasoningModule(nn.Module):
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
         transformed = self.temporal_norm.de_normalize(transformed, embeddings)
 
-        if self.symbol_factor == 1: # skip de-normalization when symbol_factor != 1
-            ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
+        if self.symbol_factor_abs == 1: # skip de-normalization when symbol_factor_abs != 1
             abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
+
+        if self.symbol_factor_tern == 1: # skip de-normalization when symbol_factor_tern != 1
+            ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
 
         trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
