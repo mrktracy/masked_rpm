@@ -284,7 +284,7 @@ class ReasoningModule(nn.Module):
         # under-powered
         self.phi_mlp = nn.Sequential(
             nn.Linear(3 * embed_dim, embed_dim),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(embed_dim, embed_dim)
         )
 
