@@ -204,13 +204,16 @@ class ReasoningModule(nn.Module):
         bb_attn_drop=0.3,
         bb_drop_path_max=0.5,
         bb_mlp_drop=0,
-        symbol_factor=1
+        symbol_factor_abs=1,
+        symbol_factor_tern=1
     ):
         super().__init__()
         self.embed_dim = embed_dim
         self.grid_size = grid_size
         self.num_candidates = num_candidates
-        self.symbol_factor = symbol_factor
+        self.symbol_factor_abs = symbol_factor_abs
+        self.symbol_factor_tern = symbol_factor_tern
+        self.num_symbols_ternary = num_symbols_ternary
 
         # Initialize Perception module
         self.perception = Perception(
@@ -234,19 +237,22 @@ class ReasoningModule(nn.Module):
         self.temporal_norm = TemporalNorm(embed_dim)
 
         # Learnable symbols for abstractors
-        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor))
-        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim * symbol_factor))
+        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor_abs))
+        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim + embed_dim * symbol_factor_abs))
+
+        # Learnable position embeddings for ternary row and column embeddings
+        self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_abs, embed_dim))
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
-            Block(embed_dim * (1 if i == 0 else symbol_factor), embed_dim * symbol_factor, num_heads, mlp_ratio,
+            Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, num_heads, mlp_ratio,
                   proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
             for i in range(abs_depth)
         ])
 
         # Ternary layers
         self.ternary_module = nn.ModuleList([  # Ternary layers
-            Block(embed_dim * (1 if i == 0 else symbol_factor), embed_dim * symbol_factor, num_heads, mlp_ratio, proj_drop, attn_drop,
+            Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, num_heads, mlp_ratio, proj_drop, attn_drop,
                   drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
@@ -259,7 +265,7 @@ class ReasoningModule(nn.Module):
 
         # Guesser head
         self.guesser_head = nn.Sequential(
-            nn.Linear(embed_dim + 2 * embed_dim * symbol_factor, embed_dim),
+            nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, 1),
         )
@@ -275,18 +281,18 @@ class ReasoningModule(nn.Module):
         # )
 
         # original
-        # self.phi_mlp = nn.Sequential(
-        #     nn.Linear(3 * embed_dim, 4 * embed_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(4 * embed_dim, embed_dim)
-        # )
-
-        # under-powered
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * embed_dim, embed_dim),
-            nn.GELU(),
-            nn.Linear(embed_dim, embed_dim)
+            nn.Linear(3 * embed_dim, 4 * embed_dim),
+            nn.ReLU(),
+            nn.Linear(4 * embed_dim, embed_dim)
         )
+
+        # # under-powered
+        # self.phi_mlp = nn.Sequential(
+        #     nn.Linear(3 * embed_dim, embed_dim),
+        #     nn.GELU(),
+        #     nn.Linear(embed_dim, embed_dim)
+        # )
 
         # Ternary operation Transformer
         self.phi_transformer = TransformerWithCLS(
@@ -372,22 +378,29 @@ class ReasoningModule(nn.Module):
         # Get embeddings and reconstructed sentences from Perception
         embeddings, reconstructed_sentences = self.perception.forward(sentences)
 
-        # Add positional embeddings
-        pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
-        embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
-
         # Normalize embeddings
         embeddings_normalized = self.temporal_norm.forward(embeddings)
 
-        # Reshape embeddings_normalized to ensure correct dimensionality before passing to ternary_mlp
+        # Add positional embeddings
+        pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
+        embeddings_normalized = embeddings_normalized + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
+
+        # Reshape embeddings_normalized to ensure correct dimensionality before passing to ternary_mlp and beyond
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
 
-        # Now apply ternary operation
-        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
-        # ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, grid_nodes, embed_dim]
+        # Apply ternary operation to obtain row/column embeddings
+        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
+        # ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
+
+        # Temporal context normalization of new row/column embeddings
         ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens_unnormalized)
         ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
+
+        # add positional encodings
+        pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
+                                                                 self.num_symbols_ternary, -1)
+        ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
 
         # Temporarily expand the symbols for batch dimension manipulation
         expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
