@@ -397,7 +397,7 @@ class ReasoningModule(nn.Module):
         ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
-        # add positional encodings
+        # add positional encodings to ternary tokens
         pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
                                                                  self.num_symbols_ternary, -1)
         ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern

@@ -389,8 +389,8 @@ class ReasoningModule(nn.Module):
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
 
         # Apply ternary operation to obtain row/column embeddings
-        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
-        # ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
+        # ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
+        ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
 
         # Temporal context normalization of new row/column embeddings
         ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens_unnormalized)
