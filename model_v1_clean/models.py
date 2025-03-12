@@ -237,7 +237,12 @@ class ReasoningModule(nn.Module):
         self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim * symbol_factor_tern))
 
         # Learnable position embeddings for ternary row and column embeddings
-        self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
+        # self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
+
+        # Fixed 2D sinusoidal embeddings for the ternary row/column embeddings
+        self.pos_embed_tern = nn.Parameter(torch.zeros([num_symbols_ternary, embed_dim]), requires_grad=False)
+        pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
+        self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
