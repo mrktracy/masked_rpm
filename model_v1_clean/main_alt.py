@@ -8,13 +8,14 @@ from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from evaluate_masked import evaluate_model_dist as evaluation_function
+# from datasets import RPMFullSentencesRaw_dataAug_wRowSwap as rpm_dataset
 from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
-from models import ReasoningModule
+from models_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr5"
+version = "Model_v1_itr10"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -75,7 +76,7 @@ def main(version, results_folder, model_class, model_params):
     LEARNING_RATE = 0.0001
     LOGS_PER_EPOCH = 45
     BATCHES_PER_PRINT = 30
-    EPOCHS_PER_SAVE = 1
+    EPOCHS_PER_SAVE = 5
     ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
     ALPHA_GROWTH_RATE = 0
 
@@ -172,7 +173,8 @@ if __name__ == "__main__":
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
-        "symbol_factor": 2
+        "symbol_factor_abs": 1,
+        "symbol_factor_tern": 1
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
