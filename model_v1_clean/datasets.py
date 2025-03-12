@@ -96,6 +96,40 @@ class RPMFullSentencesRaw_dataAug_wRowSwap(Dataset):
         return length
 
 
+class RPMFullSentencesRaw_dataAug_noOuterRot(Dataset):
+    def __init__(self, files, device):
+        self.files = files
+        self.device = device
+
+    def __getitem__(self, idx):
+
+        fileidx = idx // 4
+        inner_rot = idx % 4 # inner rotation
+
+        filename = self.files[fileidx]
+        data = np.load(filename)
+        image = data['image'].reshape(16, 160, 160)
+        imagetensor = torch.from_numpy(image).float() / 255  # convert context panels to tensor
+        imagetensor = imagetensor.unsqueeze(1).to(self.device) # shape (16, 1, 160, 160)
+
+        imagetensor = torch.rot90(imagetensor, k=inner_rot, dims=[-2, -1]) # rotate inner
+        target_num = data['target'].item()
+
+        context = imagetensor[0:8, :, :, :] # size (8, 1, 160, 160)
+        candidates = imagetensor[8:, :, :, :] # size (8, 1, 160, 160)
+
+        context_expanded = context.unsqueeze(0).expand(8,-1,-1,-1,-1)
+
+        # Concatenate context and candidates along the second dimension
+        sentences = torch.cat([context_expanded, candidates.unsqueeze(1)], dim = 1)
+
+        return sentences, target_num, 0, 0
+
+    def __len__(self):
+        length = len(self.files) * 4
+        return length
+
+
 # Dataset for training and evaluation, corresponding to model v17
 class RPMFullSentencesRaw_dataAug(Dataset):
     def __init__(self, files, device):
