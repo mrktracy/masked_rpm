@@ -47,3 +47,28 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
 
     emb = np.concatenate([emb_sin, emb_cos], axis=1)  # (M, D)
     return emb
+
+
+def get_1d_sincos_pos_embed(embed_dim, sequence_length):
+    """
+    Generate 1D sinusoidal positional encodings for a sequence of tokens.
+
+    Args:
+        embed_dim (int): Dimension of the embedding vector.
+        sequence_length (int): Number of tokens in the sequence.
+
+    Returns:
+        np.ndarray: Positional encodings of shape (sequence_length, embed_dim)
+    """
+    assert embed_dim % 2 == 0, "Embedding dimension must be even for sinusoidal encoding."
+
+    positions = np.arange(sequence_length)[:, np.newaxis]  # Shape: (sequence_length, 1)
+    omega = np.arange(embed_dim // 2)[np.newaxis, :] / (embed_dim / 2.)
+    omega = 1. / (10000**omega)  # Shape: (1, embed_dim // 2)
+
+    pos_enc = np.concatenate([
+        np.sin(positions * omega),  # (sequence_length, embed_dim // 2)
+        np.cos(positions * omega)   # (sequence_length, embed_dim // 2)
+    ], axis=1)  # Shape: (sequence_length, embed_dim)
+
+    return pos_enc
