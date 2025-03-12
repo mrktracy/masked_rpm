@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def get_1d_sincos_pos_embed(embed_dim, sequence_length):
+def get_1d_sincos_pos_embed(embed_dim, sequence_length, cls_token=True):
     """
     Generate 1D sinusoidal positional encodings for a sequence of tokens.
 
@@ -22,6 +22,9 @@ def get_1d_sincos_pos_embed(embed_dim, sequence_length):
         np.sin(positions * omega),  # (sequence_length, embed_dim // 2)
         np.cos(positions * omega)   # (sequence_length, embed_dim // 2)
     ], axis=1)  # Shape: (sequence_length, embed_dim)
+
+    if cls_token:
+        pos_enc = np.concatenate([np.zeros([1, embed_dim]), pos_enc], axis=0)
 
     return pos_enc
 

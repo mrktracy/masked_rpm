@@ -122,7 +122,7 @@ class TransformerWithCLS(nn.Module):
         self.cls_token = nn.Parameter(torch.randn(1, 1, embed_dim))
 
         # Sinusoidal Positional Embedding for 3 rows/columns + 1 CLS token
-        pos_embed_data = pos.get_1d_sincos_pos_embed(embed_dim, 4)  # 4 entries: 3 for ternary, 1 for CLS
+        pos_embed_data = pos.get_1d_sincos_pos_embed(embed_dim, sequence_length=3, cls_token=True)  # 4 entries: 3 for ternary, 1 for CLS
         self.pos_embed = nn.Parameter(torch.tensor(pos_embed_data, dtype=torch.float32), requires_grad=False)
 
         # Transformer Blocks using your `Block` class
