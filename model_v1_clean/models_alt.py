@@ -146,12 +146,6 @@ class TransformerWithCLS(nn.Module):
             ) for i in range(depth)
         ])
 
-        # Final projection layer to align with Phi_MLP
-        self.mlp_head = nn.Sequential(
-            nn.LayerNorm(embed_dim),
-            nn.Linear(embed_dim, embed_dim)
-        )
-
     def forward(self, x1, x2, x3):
         """
         Args:
@@ -168,17 +162,18 @@ class TransformerWithCLS(nn.Module):
         cls_tokens = self.cls_token.expand(batch_size_num_rows_cols, -1, -1)
         x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
 
-        # Add 4 positional embeddings (3 row/column + 1 CLS token)
-        x = x + self.pos_embed[:, :x.size(1)]
+        # Add 4 positional embeddings (3 row/column + 1 CLS token) expand among zeroth dimension
+        pos_embed = self.pos_embed.expand(batch_size_num_rows_cols, 4, -1)
+        x = x + pos_embed
 
         # Transformer Blocks (using your `Block` class)
         for blk in self.blocks:
             x = blk(x_q=x, x_k=x, x_v=x)
 
         # Extract CLS token output for the abstracted embedding
-        cls_output = x[:, 0]  # Shape: [batch_size * num_rows_cols, embed_dim]
+        cls_output = x[:, 0, :].view(batch_size_num_rows_cols, -1)  # Shape: [batch_size * num_rows_cols, embed_dim]
 
-        return self.mlp_head(cls_output)
+        return cls_output
 
 
 class ReasoningModule(nn.Module):
