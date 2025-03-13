@@ -72,7 +72,7 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 20
+    EPOCHS = 80
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
