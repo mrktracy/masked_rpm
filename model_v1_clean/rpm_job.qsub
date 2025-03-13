@@ -13,8 +13,6 @@
 #$ -l gpu_c=6		# GPU minimum capability
 #$ -l gpu_type=A100	# GPU type
 
-#$ -q neuro-autonomy@scc-210.scc.bu
-
 module load miniconda
 conda activate rpm
 python main.py
