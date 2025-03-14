@@ -14,7 +14,7 @@ from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot_wRowSwap as rpm_dataset
 # from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
-from models import ReasoningModule
+from models_alt import ReasoningModule
 
 # Versioning
 version = "Model_v1_itr14"
