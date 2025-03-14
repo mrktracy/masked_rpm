@@ -235,7 +235,7 @@ class ReasoningModule(nn.Module):
         # Learnable symbols for abstractors
         self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor_abs))
         self.symbols_ternary_rows = nn.Parameter(torch.randn(grid_size, embed_dim * symbol_factor_tern))
-        self.symbols_ternary_rows = nn.Parameter(torch.randn(grid_size, embed_dim * symbol_factor_tern))
+        self.symbols_ternary_cols = nn.Parameter(torch.randn(grid_size, embed_dim * symbol_factor_tern))
 
         # Learnable position embeddings for ternary row and column embeddings
         # self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
