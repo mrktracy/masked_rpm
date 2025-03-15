@@ -240,9 +240,9 @@ class ReasoningModule(nn.Module):
         # self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
 
         # Fixed 2D sinusoidal embeddings for the ternary row/column embeddings
-        self.pos_embed_tern = nn.Parameter(torch.zeros([num_symbols_ternary, embed_dim]), requires_grad=False)
-        pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
-        self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
+        # self.pos_embed_tern = nn.Parameter(torch.zeros([num_symbols_ternary, embed_dim]), requires_grad=False)
+        # pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
+        # self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
@@ -399,9 +399,9 @@ class ReasoningModule(nn.Module):
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
         # add positional encodings to ternary tokens
-        pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
-                                                                 self.num_symbols_ternary, -1)
-        ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
+        # pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
+        #                                                          self.num_symbols_ternary, -1)
+        # ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
 
         # Temporarily expand the symbols for batch dimension manipulation
         expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
