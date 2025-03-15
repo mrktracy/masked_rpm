@@ -231,11 +231,11 @@ class ReasoningModule(nn.Module):
 
         # Temporal normalization
         self.temporal_norm = TemporalNorm(embed_dim)
+        self.temporal_norm_tern = TemporalNorm(embed_dim)
 
         # Learnable symbols for abstractors
         self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor_abs))
-        self.symbols_ternary_rows = nn.Parameter(torch.randn(grid_size, embed_dim * symbol_factor_tern))
-        self.symbols_ternary_cols = nn.Parameter(torch.randn(grid_size, embed_dim * symbol_factor_tern))
+        self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim * symbol_factor_tern))
 
         # Learnable position embeddings for ternary row and column embeddings
         # self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
@@ -245,12 +245,6 @@ class ReasoningModule(nn.Module):
         # pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
         # self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
 
-        # Fixed 1D sinusoidal positional encodings for rows and for cols
-        self.pos_embed_tern = nn.Parameter(torch.zeros([grid_size, embed_dim]), requires_grad=False)
-        pos_embed_data_tern = pos.get_1d_sincos_pos_embed(embed_dim=embed_dim, sequence_length=grid_size,
-                                                          cls_token=False)
-        self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
-
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
             Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, num_heads, mlp_ratio,
@@ -258,17 +252,9 @@ class ReasoningModule(nn.Module):
             for i in range(abs_depth)
         ])
 
-        # Ternary layers for rows
-        self.ternary_module_rows = nn.ModuleList([  # Ternary layers
+        # Ternary layers
+        self.ternary_module = nn.ModuleList([  # Ternary layers
             Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, num_heads, mlp_ratio, proj_drop, attn_drop,
-                  drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
-            for i in range(ternary_depth)
-        ])
-
-        # Ternary layers for columns
-        self.ternary_module_cols = nn.ModuleList([  # Ternary layers
-            Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, num_heads,
-                  mlp_ratio, proj_drop, attn_drop,
                   drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
@@ -281,7 +267,7 @@ class ReasoningModule(nn.Module):
 
         # Guesser head
         self.guesser_head = nn.Sequential(
-            nn.Linear(embed_dim + embed_dim * symbol_factor_abs + 2 * embed_dim * symbol_factor_tern, embed_dim),
+            nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, 1),
         )
@@ -405,33 +391,22 @@ class ReasoningModule(nn.Module):
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
 
         # Apply ternary operation to obtain row/column embeddings
+        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
         # ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
-        ternary_tokens_unnorm = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
-
-        # separate rows and columns
-        ternary_tokens_unnorm_rows = ternary_tokens_unnorm[:, :3, :]
-        ternary_tokens_unnorm_cols = ternary_tokens_unnorm[:, 3:, :]
 
         # Temporal context normalization of new row/column embeddings
-        ternary_tokens_norm_rows = self.temporal_norm.forward(ternary_tokens_unnorm_rows)
-        ternary_tokens_norm_cols = self.temporal_norm.forward(ternary_tokens_unnorm_cols)
-
-        # reshape for later de-normalization
-        ternary_tokens_unnorm_reshaped_rows = ternary_tokens_unnorm_rows.view(
-            [batch_size, self.num_candidates, self.grid_size, -1]) # for use later in de-normalizing
-        ternary_tokens_unnorm_reshaped_cols = ternary_tokens_unnorm_cols.view(
-            [batch_size, self.num_candidates, self.grid_size, -1])  # for use later in de-normalizing
+        ternary_tokens_normalized = self.temporal_norm_tern.forward(ternary_tokens_unnormalized)
+        ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
+            [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
         # add positional encodings to ternary tokens
-        pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
-                                                                 self.grid_size, -1)
-        ternary_tokens_norm_rows = ternary_tokens_norm_rows + pos_embed_tern
-        ternary_tokens_norm_cols = ternary_tokens_norm_cols + pos_embed_tern
+        # pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
+        #                                                          self.num_symbols_ternary, -1)
+        # ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
 
         # Temporarily expand the symbols for batch dimension manipulation
         expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
-        expanded_symbols_ternary_rows = self.symbols_ternary_rows.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
-        expanded_symbols_ternary_cols = self.symbols_ternary_cols.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
+        expanded_symbols_ternary = self.symbols_ternary.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
 
         # Process embeddings with abstractor
         abstracted = embeddings_normalized_reshaped.clone()
@@ -446,25 +421,15 @@ class ReasoningModule(nn.Module):
                 abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=abstracted)
 
         # Process ternary tokens
-        for idx, blk in enumerate(self.ternary_module_rows):
+        for idx, blk in enumerate(self.ternary_module):
             if idx == 0:
-                ternary_tokens_rows = blk(
-                    x_q=ternary_tokens_norm_rows,
-                    x_k=ternary_tokens_norm_rows,
-                    x_v=expanded_symbols_ternary_rows,
+                ternary_tokens = blk(
+                    x_q=ternary_tokens_normalized,
+                    x_k=ternary_tokens_normalized,
+                    x_v=expanded_symbols_ternary,
                 )
             else:
-                ternary_tokens_rows = blk(x_q=ternary_tokens_rows, x_k=ternary_tokens_rows, x_v=ternary_tokens_rows)
-
-        for idx, blk in enumerate(self.ternary_module_cols):
-            if idx == 0:
-                ternary_tokens_cols = blk(
-                    x_q=ternary_tokens_norm_cols,
-                    x_k=ternary_tokens_norm_cols,
-                    x_v=expanded_symbols_ternary_cols,
-                )
-            else:
-                ternary_tokens_cols = blk(x_q=ternary_tokens_cols, x_k=ternary_tokens_cols, x_v=ternary_tokens_cols)
+                ternary_tokens = blk(x_q=ternary_tokens, x_k=ternary_tokens, x_v=ternary_tokens)
 
         # Process embeddings with transformer
         transformed = embeddings_normalized_reshaped.clone()
@@ -474,9 +439,8 @@ class ReasoningModule(nn.Module):
         # Aggregating the three streams before scoring and recreation
         transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
         abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
-
-        ternary_tokens_rows = ternary_tokens_rows.view([batch_size, self.num_candidates, self.grid_size, -1])
-        ternary_tokens_cols = ternary_tokens_cols.view([batch_size, self.num_candidates, self.grid_size, -1])
+        ternary_tokens = ternary_tokens.view(
+            [batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
         transformed = self.temporal_norm.de_normalize(transformed, embeddings)
@@ -485,16 +449,11 @@ class ReasoningModule(nn.Module):
             abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
 
         if self.symbol_factor_tern == 1: # skip de-normalization when symbol_factor_tern != 1
-            ternary_tokens_rows = self.temporal_norm.de_normalize(ternary_tokens_rows, ternary_tokens_unnorm_reshaped_rows)
-            ternary_tokens_cols = self.temporal_norm.de_normalize(ternary_tokens_cols, ternary_tokens_unnorm_reshaped_cols)
+            ternary_tokens = self.temporal_norm_tern.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
 
-        # take the mean across sequence dimension and concatenate along feature dimension
-        trans_abs = torch.cat([transformed.mean(dim=-2), abstracted.mean(dim=-2)], dim=-1)
+        trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
-        # take the mean across sequence dimension and concatenate along feature dimension
-        ternary_tokens = torch.cat([ternary_tokens_rows.mean(dim=-2), ternary_tokens_cols.mean(dim=-2)], dim=-1)
-
-        reas_bottleneck = torch.cat([trans_abs, ternary_tokens], dim=-1).view(
+        reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
             batch_size * self.num_candidates, -1)
 
         # Scores from the concatenated outputs

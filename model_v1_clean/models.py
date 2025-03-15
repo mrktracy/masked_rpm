@@ -231,6 +231,7 @@ class ReasoningModule(nn.Module):
 
         # Temporal normalization
         self.temporal_norm = TemporalNorm(embed_dim)
+        self.temporal_norm_tern = TemporalNorm(embed_dim)
 
         # Learnable symbols for abstractors
         self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor_abs))
@@ -394,7 +395,7 @@ class ReasoningModule(nn.Module):
         # ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
 
         # Temporal context normalization of new row/column embeddings
-        ternary_tokens_normalized = self.temporal_norm.forward(ternary_tokens_unnormalized)
+        ternary_tokens_normalized = self.temporal_norm_tern.forward(ternary_tokens_unnormalized)
         ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
@@ -448,7 +449,7 @@ class ReasoningModule(nn.Module):
             abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
 
         if self.symbol_factor_tern == 1: # skip de-normalization when symbol_factor_tern != 1
-            ternary_tokens = self.temporal_norm.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
+            ternary_tokens = self.temporal_norm_tern.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
 
         trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
