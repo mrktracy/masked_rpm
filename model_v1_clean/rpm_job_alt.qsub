@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #$ -P noc-lab           # project name
-#$ -N Model_v1_itr14        # job name
+#$ -N Model_v1_itr16        # job name
 
 #$ -l h_rt=240:00:00     # hard time limit of 240 hours
 #$ -m bea                # send email when finished or aborted

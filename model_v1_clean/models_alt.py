@@ -259,15 +259,15 @@ class ReasoningModule(nn.Module):
             for i in range(ternary_depth)
         ])
 
-        # Transformer layers
-        self.transformer = nn.ModuleList([  # Transformer layers
-            Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
-            for i in range(trans_depth)
-        ])
+        # # Transformer layers
+        # self.transformer = nn.ModuleList([  # Transformer layers
+        #     Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
+        #     for i in range(trans_depth)
+        # ])
 
         # Guesser head
         self.guesser_head = nn.Sequential(
-            nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
+            nn.Linear(embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, 1),
         )
@@ -432,18 +432,18 @@ class ReasoningModule(nn.Module):
                 ternary_tokens = blk(x_q=ternary_tokens, x_k=ternary_tokens, x_v=ternary_tokens)
 
         # Process embeddings with transformer
-        transformed = embeddings_normalized_reshaped.clone()
-        for blk in self.transformer:
-            transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
+        # transformed = embeddings_normalized_reshaped.clone()
+        # for blk in self.transformer:
+        #     transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
 
         # Aggregating the three streams before scoring and recreation
-        transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
+        # transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
         abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
         ternary_tokens = ternary_tokens.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
-        transformed = self.temporal_norm.de_normalize(transformed, embeddings)
+        # transformed = self.temporal_norm.de_normalize(transformed, embeddings)
 
         if self.symbol_factor_abs == 1: # skip de-normalization when symbol_factor_abs != 1
             abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
@@ -451,9 +451,13 @@ class ReasoningModule(nn.Module):
         if self.symbol_factor_tern == 1: # skip de-normalization when symbol_factor_tern != 1
             ternary_tokens = self.temporal_norm_tern.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
 
-        trans_abs = torch.cat([transformed, abstracted], dim=-1)
+        # trans_abs = torch.cat([transformed, abstracted], dim=-1)
+        # trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
-        reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
+        # reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
+        #     batch_size * self.num_candidates, -1)
+
+        reas_bottleneck = torch.cat([abstracted.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
             batch_size * self.num_candidates, -1)
 
         # Scores from the concatenated outputs
