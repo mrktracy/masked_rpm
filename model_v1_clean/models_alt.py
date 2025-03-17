@@ -241,9 +241,9 @@ class ReasoningModule(nn.Module):
         # self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
 
         # Fixed 2D sinusoidal embeddings for the ternary row/column embeddings
-        # self.pos_embed_tern = nn.Parameter(torch.zeros([num_symbols_ternary, embed_dim]), requires_grad=False)
-        # pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
-        # self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
+        self.pos_embed_tern = nn.Parameter(torch.zeros([num_symbols_ternary, embed_dim]), requires_grad=False)
+        pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
+        self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
@@ -259,15 +259,15 @@ class ReasoningModule(nn.Module):
             for i in range(ternary_depth)
         ])
 
-        # # Transformer layers
-        # self.transformer = nn.ModuleList([  # Transformer layers
-        #     Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
-        #     for i in range(trans_depth)
-        # ])
+        # Transformer layers
+        self.transformer = nn.ModuleList([  # Transformer layers
+            Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
+            for i in range(trans_depth)
+        ])
 
         # Guesser head
         self.guesser_head = nn.Sequential(
-            nn.Linear(embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
+            nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, 1),
         )
@@ -283,18 +283,18 @@ class ReasoningModule(nn.Module):
         # )
 
         # original
-        # self.phi_mlp = nn.Sequential(
-        #     nn.Linear(3 * embed_dim, 4 * embed_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(4 * embed_dim, embed_dim)
-        # )
+        self.phi_mlp = nn.Sequential(
+            nn.Linear(3 * embed_dim, 4 * embed_dim),
+            nn.ReLU(),
+            nn.Linear(4 * embed_dim, embed_dim)
+        )
 
         # under-powered
-        self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * embed_dim, embed_dim),
-            nn.ReLU(),
-            nn.Linear(embed_dim, embed_dim)
-        )
+        # self.phi_mlp = nn.Sequential(
+        #     nn.Linear(3 * embed_dim, embed_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(embed_dim, embed_dim)
+        # )
 
         # Ternary operation Transformer
         self.phi_transformer = TransformerWithCLS(
@@ -400,9 +400,9 @@ class ReasoningModule(nn.Module):
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
         # add positional encodings to ternary tokens
-        # pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
-        #                                                          self.num_symbols_ternary, -1)
-        # ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
+        pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
+                                                                 self.num_symbols_ternary, -1)
+        ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
 
         # Temporarily expand the symbols for batch dimension manipulation
         expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
@@ -432,18 +432,18 @@ class ReasoningModule(nn.Module):
                 ternary_tokens = blk(x_q=ternary_tokens, x_k=ternary_tokens, x_v=ternary_tokens)
 
         # Process embeddings with transformer
-        # transformed = embeddings_normalized_reshaped.clone()
-        # for blk in self.transformer:
-        #     transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
+        transformed = embeddings_normalized_reshaped.clone()
+        for blk in self.transformer:
+            transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
 
         # Aggregating the three streams before scoring and recreation
-        # transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
+        transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
         abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
         ternary_tokens = ternary_tokens.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
-        # transformed = self.temporal_norm.de_normalize(transformed, embeddings)
+        transformed = self.temporal_norm.de_normalize(transformed, embeddings)
 
         if self.symbol_factor_abs == 1: # skip de-normalization when symbol_factor_abs != 1
             abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
@@ -451,13 +451,9 @@ class ReasoningModule(nn.Module):
         if self.symbol_factor_tern == 1: # skip de-normalization when symbol_factor_tern != 1
             ternary_tokens = self.temporal_norm_tern.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
 
-        # trans_abs = torch.cat([transformed, abstracted], dim=-1)
-        # trans_abs = torch.cat([transformed, abstracted], dim=-1)
+        trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
-        # reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
-        #     batch_size * self.num_candidates, -1)
-
-        reas_bottleneck = torch.cat([abstracted.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
+        reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
             batch_size * self.num_candidates, -1)
 
         # Scores from the concatenated outputs
