@@ -380,12 +380,16 @@ class ReasoningModule(nn.Module):
         # Get embeddings and reconstructed sentences from Perception
         embeddings, reconstructed_sentences = self.perception.forward(sentences)
 
+        # Add positional embeddings before normalization
+        pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
+        embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
+
         # Normalize embeddings
         embeddings_normalized = self.temporal_norm.forward(embeddings)
 
-        # Add positional embeddings
-        pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
-        embeddings_normalized = embeddings_normalized + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
+        # # Add positional embeddings after normalization
+        # pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
+        # embeddings_normalized = embeddings_normalized + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
         # Reshape embeddings_normalized to ensure correct dimensionality before passing to ternary_mlp and beyond
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
