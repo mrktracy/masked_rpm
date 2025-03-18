@@ -267,6 +267,7 @@ class ReasoningModule(nn.Module):
 
         # Guesser head
         self.guesser_head = nn.Sequential(
+            nn.LayerNorm(),
             nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, 1),
