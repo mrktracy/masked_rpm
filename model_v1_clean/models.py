@@ -267,10 +267,11 @@ class ReasoningModule(nn.Module):
 
         # Guesser head
         self.guesser_head = nn.Sequential(
-            nn.LayerNorm(),
+            nn.LayerNorm(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern,
+                         eps=1e-5, elementwise_affine=True),
             nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
             nn.ReLU(),
-            nn.Linear(embed_dim, 1),
+            nn.Linear(embed_dim, 1)
         )
 
         # Ternary operation MLP
