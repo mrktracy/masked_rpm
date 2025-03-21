@@ -165,6 +165,6 @@ def run_optimization(version):
 
 
 if __name__ == "__main__":
-    version = "Model_v1_itr1"
+    version = "Model_v1_itr20"
     set_seed()
     run_optimization(version)
