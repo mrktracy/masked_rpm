@@ -241,9 +241,9 @@ class ReasoningModule(nn.Module):
         # self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
 
         # Fixed 2D sinusoidal embeddings for the ternary row/column embeddings
-        self.pos_embed_tern = nn.Parameter(torch.zeros([num_symbols_ternary, embed_dim]), requires_grad=False)
-        pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
-        self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
+        # self.pos_embed_tern = nn.Parameter(torch.zeros([num_symbols_ternary, embed_dim]), requires_grad=False)
+        # pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
+        # self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
@@ -267,9 +267,11 @@ class ReasoningModule(nn.Module):
 
         # Guesser head
         self.guesser_head = nn.Sequential(
+            nn.LayerNorm(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern,
+                         eps=1e-5, elementwise_affine=True),
             nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
             nn.ReLU(),
-            nn.Linear(embed_dim, 1),
+            nn.Linear(embed_dim, 1)
         )
 
         # Ternary operation MLP
@@ -380,12 +382,16 @@ class ReasoningModule(nn.Module):
         # Get embeddings and reconstructed sentences from Perception
         embeddings, reconstructed_sentences = self.perception.forward(sentences)
 
+        # Add positional embeddings before normalization
+        pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
+        embeddings = embeddings + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
+
         # Normalize embeddings
         embeddings_normalized = self.temporal_norm.forward(embeddings)
 
-        # Add positional embeddings
-        pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
-        embeddings_normalized = embeddings_normalized + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
+        # # Add positional embeddings after normalization
+        # pos_embed = self.pos_embed.unsqueeze(0).unsqueeze(0).expand(batch_size, num_candidates, grid_nodes, -1)
+        # embeddings_normalized = embeddings_normalized + pos_embed  # Shape: [batch_size, num_candidates, grid_size**2, embed_dim]
 
         # Reshape embeddings_normalized to ensure correct dimensionality before passing to ternary_mlp and beyond
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
@@ -400,9 +406,9 @@ class ReasoningModule(nn.Module):
             [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
         # add positional encodings to ternary tokens
-        pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
-                                                                 self.num_symbols_ternary, -1)
-        ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
+        # pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
+        #                                                          self.num_symbols_ternary, -1)
+        # ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
 
         # Temporarily expand the symbols for batch dimension manipulation
         expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
@@ -508,6 +514,9 @@ class BackbonePerception(nn.Module):
         self.mlp_ratio = mlp_ratio
         self.grid_dim = grid_dim
 
+        # CLS Token
+        self.cls_token = nn.Parameter(torch.randn(1, 1, out_channels))
+
         self.encoder = nn.Sequential(  # from N, 1, 160, 160
             ResidualBlock(1, 16),  # N, 16, 160, 160
             ResidualBlock(16, 32, 2),  # N, 32, 80, 80
@@ -524,7 +533,7 @@ class BackbonePerception(nn.Module):
                   drop_path=drop_path_max * ((i + 1) / self.depth), restrict_qk=False)
             for i in range(self.depth)])
 
-        self.mlp = nn.Linear(self.out_channels * self.grid_dim**2, self.embed_dim)
+        self.mlp = nn.Linear(self.out_channels, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
 
     def forward(self, x):
@@ -535,10 +544,13 @@ class BackbonePerception(nn.Module):
 
         x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
 
+        cls_tokens = self.cls_token.expand(batch_dim, -1, -1)
+        x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
+
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        x = x.reshape(batch_dim, self.out_channels * self.grid_dim**2)
+        x = x[:, 0, :]
 
         x = self.dropout(self.mlp(x))
 
