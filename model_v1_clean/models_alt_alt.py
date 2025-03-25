@@ -456,11 +456,11 @@ class ReasoningModule(nn.Module):
         for blk in self.transformer:
             transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
 
-        # Aggregating the three streams before scoring and recreation
-        transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
-        abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
-        ternary_tokens = ternary_tokens.view(
-            [batch_size, self.num_candidates, self.grid_size * 2, -1])
+        # Aggregating the three streams before scoring
+        # transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
+        # abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
+        # ternary_tokens = ternary_tokens.view(
+        #     [batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
         # transformed = self.temporal_norm.de_normalize(transformed, embeddings)
@@ -476,7 +476,7 @@ class ReasoningModule(nn.Module):
         # reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
         #     batch_size * self.num_candidates, -1)
 
-        reas_bottleneck = torch.cat([transformed[:,0,:], abstracted[:, 0, :], ternary_tokens[:, 0, :]])
+        reas_bottleneck = torch.cat([transformed[:,0,:], abstracted[:, 0, :], ternary_tokens[:, 0, :]], dim=-1)
 
         # Scores from the concatenated outputs
         scores = self.guesser_head(reas_bottleneck).view(batch_size, num_candidates)  # [batch_size, num_candidates]
