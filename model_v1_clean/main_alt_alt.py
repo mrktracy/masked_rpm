@@ -17,7 +17,7 @@ from funs import gather_files_pgm
 from models_alt_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr15"
+version = "Model_v1_itr23"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -78,7 +78,7 @@ def main(version, results_folder, model_class, model_params):
     LEARNING_RATE = 0.0001
     LOGS_PER_EPOCH = 90
     BATCHES_PER_PRINT = 20
-    EPOCHS_PER_SAVE = 4
+    EPOCHS_PER_SAVE = 5
     ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
     ALPHA_GROWTH_RATE = 0
 
@@ -171,6 +171,8 @@ if __name__ == "__main__":
         "num_symbols_abs": 9,
         "num_symbols_ternary": 6,
         "norm_layer": nn.LayerNorm,
+        "bb_depth": 2,
+        "bb_num_heads": 8,
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
