@@ -168,8 +168,8 @@ if __name__ == "__main__":
         "proj_drop": 0,
         "attn_drop": 0.3,
         "drop_path_max": 0.3,
-        "num_symbols_abs": 10,
-        "num_symbols_ternary": 7,
+        "num_symbols_abs": 10, # add one for CLS token
+        "num_symbols_ternary": 7, # add one for CLS token
         "norm_layer": nn.LayerNorm,
         "bb_depth": 2,
         "bb_num_heads": 8,
