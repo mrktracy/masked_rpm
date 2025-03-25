@@ -407,8 +407,8 @@ class ReasoningModule(nn.Module):
 
         # Temporal context normalization of new row/column embeddings
         ternary_tokens_normalized = self.temporal_norm_tern.forward(ternary_tokens_unnormalized)
-        # ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
-        #     [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
+        ternary_tokens_unnorm_reshaped = ternary_tokens_unnormalized.view(
+            [batch_size, self.num_candidates, self.grid_size * 2, -1]) # for use later in de-normalizing
 
         # add positional encodings to ternary tokens
         # pos_embed_tern = self.pos_embed_tern.unsqueeze(0).expand(batch_size * num_candidates,
@@ -476,7 +476,25 @@ class ReasoningModule(nn.Module):
         # reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
         #     batch_size * self.num_candidates, -1)
 
-        reas_bottleneck = torch.cat([transformed[:,0,:], abstracted[:, 0, :], ternary_tokens[:, 0, :]], dim=-1)
+        # de-normalize CLS tokens
+        transformed_cls = transformed[:, 0, :].view(batch_size, num_candidates, 1, -1)
+        abstracted_cls = abstracted[:, 0, :].view(batch_size, num_candidates, 1, -1)
+        ternary_tokens_cls = ternary_tokens[:, 0, :].view(batch_size, num_candidates, 1, -1)
+
+        transformed_cls = self.temporal_norm.de_normalize(transformed_cls, embeddings)
+
+        if self.symbol_factor_abs == 1: # skip de-normalization when symbol_factor_abs != 1
+            abstracted_cls = self.temporal_norm.de_normalize(abstracted_cls, embeddings)
+
+        if self.symbol_factor_tern == 1: # skip de-normalization when symbol_factor_tern != 1
+            ternary_tokens_cls = self.temporal_norm_tern.de_normalize(ternary_tokens_cls, ternary_tokens_unnorm_reshaped)
+
+        # reshape before concatenation
+        transformed_cls = transformed_cls.view(batch_size * num_candidates, -1)
+        abstracted_cls = abstracted_cls.view(batch_size * num_candidates, -1)
+        ternary_tokens_cls = ternary_tokens_cls.view(batch_size * num_candidates, -1)
+
+        reas_bottleneck = torch.cat([transformed_cls, abstracted_cls, ternary_tokens_cls], dim=-1)
 
         # Scores from the concatenated outputs
         scores = self.guesser_head(reas_bottleneck).view(batch_size, num_candidates)  # [batch_size, num_candidates]
@@ -572,6 +590,48 @@ class BackbonePerception(nn.Module):
 
         return x
 
+
+class TemporalNorm(nn.Module):
+    """
+    Temporal normalization layer normalizing across the temporal (grid/sequence) dimension.
+    """
+    def __init__(self, embed_dim, eps=1e-5):
+        """
+        Args:
+            embed_dim (int): Dimensionality of the embeddings/features.
+            eps (float): A small value to prevent division by zero.
+        """
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(embed_dim))  # Learnable scale
+        self.bias = nn.Parameter(torch.zeros(embed_dim))  # Learnable shift
+        self.eps = eps
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x (Tensor): Input tensor of shape [batch_size, num_candidates, grid_size**2, embed_dim].
+        Returns:
+            Tensor: Normalized tensor with the same shape as input.
+        """
+        mean = x.mean(dim=2, keepdim=True)  # Mean across grid nodes
+        std = x.std(dim=2, keepdim=True) + self.eps  # Standard deviation
+        x_normalized = (x - mean) / std
+        return x_normalized * self.weight + self.bias
+
+    def de_normalize(self, x: torch.Tensor, original: torch.Tensor) -> torch.Tensor:
+        """
+        De-normalizes the input tensor using the stored weight and bias.
+        Args:
+            x (Tensor): Normalized tensor of shape [batch_size, num_candidates, grid_size**2, embed_dim].
+            original (Tensor): Original input tensor used for normalization.
+        Returns:
+            Tensor: De-normalized tensor with the same shape as input.
+        """
+        mean = original.mean(dim=2, keepdim=True)
+        std = original.std(dim=2, keepdim=True) + self.eps
+        return (x - self.bias) / self.weight * std + mean
+
+
 """ Modification of "Vision Transformer (ViT) in PyTorch"
 https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py
 A PyTorch implement of Vision Transformers as described in:
@@ -658,48 +718,6 @@ class Attention(nn.Module):
         x = x.view(*original_shape[:-1], self.dim_v)
 
         return x
-
-
-class TemporalNorm(nn.Module):
-    """
-    Temporal normalization layer normalizing across the temporal (grid/sequence) dimension.
-    """
-    def __init__(self, embed_dim, eps=1e-5):
-        """
-        Args:
-            embed_dim (int): Dimensionality of the embeddings/features.
-            eps (float): A small value to prevent division by zero.
-        """
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(embed_dim))  # Learnable scale
-        self.bias = nn.Parameter(torch.zeros(embed_dim))  # Learnable shift
-        self.eps = eps
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x (Tensor): Input tensor of shape [batch_size, num_candidates, grid_size**2, embed_dim].
-        Returns:
-            Tensor: Normalized tensor with the same shape as input.
-        """
-        mean = x.mean(dim=2, keepdim=True)  # Mean across grid nodes
-        std = x.std(dim=2, keepdim=True) + self.eps  # Standard deviation
-        x_normalized = (x - mean) / std
-        return x_normalized * self.weight + self.bias
-
-    def de_normalize(self, x: torch.Tensor, original: torch.Tensor) -> torch.Tensor:
-        """
-        De-normalizes the input tensor using the stored weight and bias.
-        Args:
-            x (Tensor): Normalized tensor of shape [batch_size, num_candidates, grid_size**2, embed_dim].
-            original (Tensor): Original input tensor used for normalization.
-        Returns:
-            Tensor: De-normalized tensor with the same shape as input.
-        """
-        mean = original.mean(dim=2, keepdim=True)
-        std = original.std(dim=2, keepdim=True) + self.eps
-        return (x - self.bias) / self.weight * std + mean
-
 
 
 class LayerScale(nn.Module):
