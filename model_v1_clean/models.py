@@ -72,6 +72,106 @@ class Perception(nn.Module):
         return embeddings_final, reconstructed_sentences
 
 
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
+
+    def forward(self, x):
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        out = self.relu(out)
+        return out
+
+
+class BackbonePerception(nn.Module):
+    def __init__(self,
+                 embed_dim,
+                 out_channels=512,
+                 grid_dim=5,
+                 num_heads=32,
+                 mlp_ratio=4,
+                 norm_layer=nn.LayerNorm,
+                 depth=4,
+                 mlp_drop=0.3,
+                 proj_drop=0.3,
+                 attn_drop=0.3,
+                 drop_path_max = 0.5,
+                 use_bb_pos_enc=False):
+        super(BackbonePerception, self).__init__()
+
+        self.embed_dim = embed_dim
+        self.out_channels = out_channels
+        self.depth = depth
+        self.num_heads = num_heads
+        self.mlp_ratio = mlp_ratio
+        self.grid_dim = grid_dim
+        self.use_bb_pos_enc = use_bb_pos_enc
+
+        # CLS Token
+        self.cls_token = nn.Parameter(torch.randn(1, 1, out_channels))
+
+        self.encoder = nn.Sequential(  # from N, 1, 160, 160
+            ResidualBlock(1, 16),  # N, 16, 160, 160
+            ResidualBlock(16, 32, 2),  # N, 32, 80, 80
+            ResidualBlock(32, 64, 2),  # N, 64, 40, 40
+            ResidualBlock(64, 128, 2),  # N, 128, 20, 20
+            ResidualBlock(128, 256, 2),  # N, 256, 10, 10
+            ResidualBlock(256, 512, 2)  # N, 512, 5, 5
+        )
+
+        if use_bb_pos_enc:
+            self.pos_embed = nn.Parameter(torch.zeros([grid_dim ** 2 + 1, out_channels]), requires_grad=False)
+            pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=out_channels, grid_size=grid_dim, cls_token=True)
+            self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
+
+        self.blocks = nn.ModuleList([
+            Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
+                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
+                  proj_drop=proj_drop, attn_drop=attn_drop,
+                  drop_path=drop_path_max * ((i + 1) / self.depth), restrict_qk=False)
+            for i in range(self.depth)])
+
+        self.mlp = nn.Linear(self.out_channels, self.embed_dim)
+        self.dropout = nn.Dropout(p=mlp_drop)
+
+    def forward(self, x):
+
+        batch_dim = x.size(0)
+
+        x = self.encoder(x)
+
+        x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
+
+        cls_tokens = self.cls_token.expand(batch_dim, -1, -1)
+        x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
+
+        if self.use_bb_pos_enc:
+            pos_embed = self.pos_embed.unsqueeze(0).expand(batch_dim, -1, self.out_channels)
+            x = x + pos_embed
+
+        for block in self.blocks:
+            x = block(x_q=x, x_k=x, x_v=x)
+
+        x = x[:, 0, :]
+
+        x = self.dropout(self.mlp(x))
+
+        return x
+
+
 class ResNetDecoder(nn.Module):
     def __init__(self, embed_dim=512, mlp_drop=0.5):
         super(ResNetDecoder, self).__init__()
@@ -95,89 +195,6 @@ class ResNetDecoder(nn.Module):
 
     def forward(self, x):
         return self.decoder(x)
-
-
-class TransformerWithCLS(nn.Module):
-    def __init__(
-        self,
-        embed_dim,
-        num_heads=8,
-        depth=4,
-        mlp_ratio=4.0,
-        q_bias=False,
-        k_bias=False,
-        v_bias=False,
-        qk_norm=False,
-        proj_drop=0.0,
-        attn_drop=0.0,
-        init_values=None,
-        drop_path=0.0,
-        act_layer=nn.GELU,
-        norm_layer=nn.LayerNorm,
-        mlp_layer=Mlp,
-        restrict_qk=False
-    ):
-        super().__init__()
-
-        self.embed_dim = embed_dim
-
-        # CLS Token
-        self.cls_token = nn.Parameter(torch.randn(1, 1, embed_dim))
-
-        # Sinusoidal Positional Embedding for 3 rows/columns + 1 CLS token
-        pos_embed_data = pos.get_1d_sincos_pos_embed(embed_dim, sequence_length=3, cls_token=True)  # 4 entries: 3 for ternary, 1 for CLS
-        self.pos_embed = nn.Parameter(torch.tensor(pos_embed_data, dtype=torch.float32), requires_grad=False)
-
-        # Transformer Blocks using your `Block` class
-        self.blocks = nn.ModuleList([
-            Block(
-                dim_kq=embed_dim,
-                dim_v=embed_dim,
-                num_heads=num_heads,
-                mlp_ratio=mlp_ratio,
-                q_bias=q_bias,
-                k_bias=k_bias,
-                v_bias=v_bias,
-                qk_norm=qk_norm,
-                proj_drop=proj_drop,
-                attn_drop=attn_drop,
-                init_values=init_values,
-                drop_path=drop_path * ((i + 1) / depth),
-                act_layer=act_layer,
-                norm_layer=norm_layer,
-                mlp_layer=mlp_layer,
-                restrict_qk=restrict_qk
-            ) for i in range(depth)
-        ])
-
-    def forward(self, x1, x2, x3):
-        """
-        Args:
-            x1, x2, x3: Three input embeddings of shape [batch_size * num_rows_cols, embed_dim]
-        Returns:
-            Tensor of shape [batch_size, num_rows_cols, embed_dim] (unified abstracted embedding)
-        """
-        batch_size_num_rows_cols = x1.size(0)  # Combined batch dim for parallel processing
-
-        # Combine inputs by treating x1, x2, x3 as distinct parallel elements
-        x = torch.stack([x1, x2, x3], dim=1)  # Shape: [batch_size * num_rows_cols, 3, embed_dim]
-
-        # Add CLS token for unified embedding
-        cls_tokens = self.cls_token.expand(batch_size_num_rows_cols, -1, -1)
-        x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
-
-        # Add sinusoidal positional embeddings (no repeat needed, direct expansion)
-        pos_embed_expanded = self.pos_embed.unsqueeze(0).expand(batch_size_num_rows_cols, -1, -1)
-        x = x + pos_embed_expanded
-
-        # Transformer Blocks (using your `Block` class)
-        for blk in self.blocks:
-            x = blk(x_q=x, x_k=x, x_v=x)
-
-        # Extract CLS token output for the abstracted embedding
-        cls_output = x[:, 0, :].view(batch_size_num_rows_cols, -1)  # Shape: [batch_size * num_rows_cols, embed_dim]
-
-        return cls_output
 
 
 class ReasoningModule(nn.Module):
@@ -266,14 +283,16 @@ class ReasoningModule(nn.Module):
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
-            Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, abs_num_heads, abs_mlp_ratio,
-                  abs_proj_drop, abs_attn_drop, abs_drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
+            Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, abs_num_heads,
+                  abs_mlp_ratio, abs_proj_drop, abs_attn_drop, abs_drop_path_max * ((i + 1) / abs_depth),
+                  norm_layer=norm_layer)
             for i in range(abs_depth)
         ])
 
         # Ternary layers
         self.ternary_module = nn.ModuleList([  # Ternary layers
-            Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, tern_num_heads, tern_mlp_ratio, tern_proj_drop, tern_attn_drop,
+            Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, tern_num_heads,
+                  tern_mlp_ratio, tern_proj_drop, tern_attn_drop,
                   tern_drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
@@ -317,26 +336,6 @@ class ReasoningModule(nn.Module):
         #     nn.Linear(embed_dim, embed_dim)
         # )
 
-        # Ternary operation Transformer
-        self.phi_transformer = TransformerWithCLS(
-            embed_dim=embed_dim,
-            num_heads=4,
-            depth=2,
-            mlp_ratio=mlp_ratio,
-            q_bias=False,
-            k_bias=False,
-            v_bias=False,
-            qk_norm=False,
-            proj_drop=0,
-            attn_drop=0,
-            init_values=None,
-            drop_path=0,
-            act_layer=nn.GELU,
-            norm_layer=norm_layer,
-            mlp_layer=Mlp,
-            restrict_qk=False
-        )
-
     def ternary_mlp(self, x):
         """
         Perform the ternary operation Φ_MLP(x1, x2, x3) for rows and columns across the sequence.
@@ -360,30 +359,6 @@ class ReasoningModule(nn.Module):
 
         # Apply the MLP
         result = self.phi_mlp(x)  # Shape: (batch_size * 6, embed_dim)
-
-        return result.view(batch_size, 6, -1)
-
-    def ternary_trans(self, x):
-        """
-        Perform the ternary operation Φ_MLP(x1, x2, x3) for rows and columns across the sequence.
-        Input x is of shape (batch_size, 9, embed_dim)
-        """
-        batch_size = x.size(0)
-
-        slice_idx = torch.tensor([0, 3, 6, 0, 1, 2])
-        increment = torch.tensor([1, 1, 1, 3, 3, 3])
-
-        # Extract x1, x2, x3 for all sliding windows
-        x1 = x[:, slice_idx, :]  # Shape: (batch_size, 6, embed_dim)
-        x2 = x[:, slice_idx + increment, :]  # Shape: (batch_size, 6, embed_dim)
-        x3 = x[:, slice_idx + 2 * increment, :]  # Shape: (batch_size, 6, embed_dim)
-
-        x1 = x1.reshape(batch_size * 6, -1)
-        x2 = x2.reshape(batch_size * 6, -1)
-        x3 = x3.reshape(batch_size * 6, -1)
-
-        # Apply the MLP
-        result = self.phi_transformer.forward(x1, x2, x3)  # Shape of each: (batch_size, 6, embed_dim)
 
         return result.view(batch_size, 6, -1)
 
@@ -417,7 +392,6 @@ class ReasoningModule(nn.Module):
 
         # Apply ternary operation to obtain row/column embeddings
         ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
-        # ternary_tokens_unnormalized = self.ternary_trans(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
 
         # Temporal context normalization of new row/column embeddings
         ternary_tokens_normalized = self.temporal_norm_tern.forward(ternary_tokens_unnormalized)
@@ -486,105 +460,6 @@ class ReasoningModule(nn.Module):
 
         return reconstructed_sentences, scores
 
-
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_channels != out_channels:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
-            )
-
-    def forward(self, x):
-        out = self.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        out += self.shortcut(x)
-        out = self.relu(out)
-        return out
-
-
-class BackbonePerception(nn.Module):
-    def __init__(self,
-                 embed_dim,
-                 out_channels=512,
-                 grid_dim=5,
-                 num_heads=32,
-                 mlp_ratio=4,
-                 norm_layer=nn.LayerNorm,
-                 depth=4,
-                 mlp_drop=0.3,
-                 proj_drop=0.3,
-                 attn_drop=0.3,
-                 drop_path_max = 0.5,
-                 use_bb_pos_enc=False):
-        super(BackbonePerception, self).__init__()
-
-        self.embed_dim = embed_dim
-        self.out_channels = out_channels
-        self.depth = depth
-        self.num_heads = num_heads
-        self.mlp_ratio = mlp_ratio
-        self.grid_dim = grid_dim
-        self.use_bb_pos_enc = use_bb_pos_enc
-
-        # CLS Token
-        self.cls_token = nn.Parameter(torch.randn(1, 1, out_channels))
-
-        self.encoder = nn.Sequential(  # from N, 1, 160, 160
-            ResidualBlock(1, 16),  # N, 16, 160, 160
-            ResidualBlock(16, 32, 2),  # N, 32, 80, 80
-            ResidualBlock(32, 64, 2),  # N, 64, 40, 40
-            ResidualBlock(64, 128, 2),  # N, 128, 20, 20
-            ResidualBlock(128, 256, 2),  # N, 256, 10, 10
-            ResidualBlock(256, 512, 2)  # N, 512, 5, 5
-        )
-
-        if use_bb_pos_enc:
-            self.pos_embed = nn.Parameter(torch.zeros([grid_dim ** 2, out_channels]), requires_grad=False)
-            pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=out_channels, grid_size=grid_dim, cls_token=True)
-            self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
-
-        self.blocks = nn.ModuleList([
-            Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
-                  q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
-                  proj_drop=proj_drop, attn_drop=attn_drop,
-                  drop_path=drop_path_max * ((i + 1) / self.depth), restrict_qk=False)
-            for i in range(self.depth)])
-
-        self.mlp = nn.Linear(self.out_channels, self.embed_dim)
-        self.dropout = nn.Dropout(p=mlp_drop)
-
-    def forward(self, x):
-
-        batch_dim = x.size(0)
-
-        x = self.encoder(x)
-
-        x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
-
-        cls_tokens = self.cls_token.expand(batch_dim, -1, -1)
-        x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
-
-        if self.use_bb_pos_enc:
-            pos_embed = self.pos_embed.unsqueeze(0).expand(batch_dim, -1, self.out_channels)
-            x = x + pos_embed
-
-        for block in self.blocks:
-            x = block(x_q=x, x_k=x, x_v=x)
-
-        x = x[:, 0, :]
-
-        x = self.dropout(self.mlp(x))
-
-        return x
 
 """ Modification of "Vision Transformer (ViT) in PyTorch"
 https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py
