@@ -45,17 +45,31 @@ def train_and_evaluate(parameterization, epochs=3):
         "abs_depth": int(parameterization["abs_depth"]),
         "trans_depth": int(parameterization["trans_depth"]),
         "ternary_depth": int(parameterization["ternary_depth"]),
-        "num_heads": int(parameterization["num_heads"]),
-        "mlp_ratio": int(parameterization["mlp_ratio"]),
-        "proj_drop": parameterization["proj_drop"],
-        "attn_drop": parameterization["attn_drop"],
-        "drop_path_max": parameterization["drop_path_max"],
+        "abs_num_heads": int(parameterization["abs_num_heads"]),
+        "trans_num_heads": int(parameterization["trans_num_heads"]),
+        "tern_num_heads": int(parameterization["tern_num_heads"]),
+        "abs_mlp_ratio": int(parameterization["abs_mlp_ratio"]),
+        "trans_mlp_ratio": int(parameterization["trans_mlp_ratio"]),
+        "tern_mlp_ratio": int(parameterization["tern_mlp_ratio"]),
+        "phi_mlp_hidden_dim": int(parameterization["phi_mlp_hidden_dim"]),
+        "abs_proj_drop": parameterization["abs_proj_drop"],
+        "trans_proj_drop": parameterization["trans_proj_drop"],
+        "tern_proj_drop": parameterization["tern_proj_drop"],
+        "abs_attn_drop": parameterization["abs_attn_drop"],
+        "trans_attn_drop": parameterization["trans_attn_drop"],
+        "tern_attn_drop": parameterization["tern_attn_drop"],
+        "abs_drop_path_max": parameterization["abs_drop_path_max"],
+        "trans_drop_path_max": parameterization["trans_drop_path_max"],
+        "tern_drop_path_max": parameterization["tern_drop_path_max"],
         "bb_depth": int(parameterization["bb_depth"]),
         "bb_num_heads": int(parameterization["bb_num_heads"]),
+        "bb_mlp_ratio": int(parameterization["bb_mlp_ratio"]),
         "bb_proj_drop": parameterization["bb_proj_drop"],
         "bb_attn_drop": parameterization["bb_attn_drop"],
         "bb_drop_path_max": parameterization["bb_drop_path_max"],
         "bb_mlp_drop": parameterization["bb_mlp_drop"],
+        "decoder_mlp_drop": parameterization["decoder_mlp_drop"],
+        "use_bb_pos_enc": parameterization["use_bb_pos_enc"]
     }
 
     model = ReasoningModule(**model_params).to(device)
@@ -86,8 +100,8 @@ def train_and_evaluate(parameterization, epochs=3):
         scheduler.step()
 
     model.eval()
-    val_loss, _ = evaluation_function(model, val_dataloader, device)
-    return val_loss
+    val_acc, _ = evaluation_function(model, val_dataloader, device)
+    return val_acc
 
 
 def run_optimization(version):
@@ -106,28 +120,42 @@ def run_optimization(version):
             {"name": "embed_dim", "type": "choice", "values": [256, 512, 768, 1024]},
 
             # Reasoning module parameters
-            {"name": "abs_depth", "type": "choice", "values": [1, 2, 4, 6, 8]},
-            {"name": "trans_depth", "type": "choice", "values": [1, 2, 4, 6, 8]},
-            {"name": "ternary_depth", "type": "choice", "values": [1, 2, 4, 6, 8]},
-            {"name": "num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-            {"name": "proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "mlp_ratio", "type": "choice", "values": [2, 4, 6]},
+            {"name": "abs_depth", "type": "choice", "values": [1, 2, 3, 4]},
+            {"name": "trans_depth", "type": "choice", "values": [1, 2, 3, 4]},
+            {"name": "ternary_depth", "type": "choice", "values": [1, 2, 3, 4]},
+            {"name": "abs_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+            {"name": "trans_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+            {"name": "tern_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+            {"name": "abs_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "trans_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "abs_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "trans_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "tern_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "abs_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "trans_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "abs_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
+            {"name": "trans_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
+            {"name": "tern_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
+            {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [2, 4, 6]},
 
             # Backbone parameters
             {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
             {"name": "bb_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+            {"name": "bb_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "use_bb_pos_enc", "type": "choice", "values": [True, False]}
         ],
-        objectives={"val_loss": ObjectiveProperties(minimize=False)},
+        objectives={"val_acc": ObjectiveProperties(minimize=False)},
     )
 
     results_path = f"../../tr_results/{version}/ax_results.csv"
-    total_trials = 300  # Increased from 100 due to larger search space
+    total_trials = 120
     trial_index = 0
 
     for trial in range(total_trials):
@@ -139,11 +167,11 @@ def run_optimization(version):
             logging.info(f"Trial {trial + 1} parameters: {parameters}")  # Log the parameters being tried
 
             # Train and evaluate the model
-            val_loss = train_and_evaluate(parameters, epochs=4)
-            logging.info(f"Trial {trial + 1} validation loss: {val_loss}")  # Log the validation loss
+            val_acc = train_and_evaluate(parameters, epochs=4)
+            logging.info(f"Trial {trial + 1} validation accuracy: {val_acc}")  # Log the validation accuracy
 
             # Mark the trial as complete in Ax
-            ax_client.complete_trial(trial_index=trial_index, raw_data=val_loss)
+            ax_client.complete_trial(trial_index=trial_index, raw_data=val_acc)
             logging.info(f"Trial {trial + 1} completed successfully.")
         except Exception as e:
             ax_client.log_trial_failure(trial_index=trial_index)
@@ -155,8 +183,8 @@ def run_optimization(version):
 
     # save best parameters
     best_parameters, metrics = ax_client.get_best_parameters()
-    best_val_loss = metrics[0]  # metrics is a tuple with val_loss as first element
-    logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Loss: {best_val_loss}")
+    best_val_acc = metrics[0]  # metrics is a tuple with val_acc as first element
+    logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Accuracy: {best_val_acc}")
 
     # Final save of results
     experiment = ax_client.experiment
@@ -165,6 +193,6 @@ def run_optimization(version):
 
 
 if __name__ == "__main__":
-    version = "Model_v1_itr20"
+    version = "Model_v1_itr22"
     set_seed()
     run_optimization(version)

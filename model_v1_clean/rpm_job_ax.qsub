@@ -1,9 +1,9 @@
 #!/bin/bash -l
 
 #$ -P noc-lab           # project name
-#$ -N ax_optimize_v1_itr20    # job name
+#$ -N ax_optimize_v1_itr22    # job name
 
-#$ -l h_rt=240:00:00    # hard time limit of 10 days
+#$ -l h_rt=300:00:00    # hard time limit of 300 hours
 #$ -m bea               # send email when finished or aborted
 #$ -j y                 # merge error and output files into one
 

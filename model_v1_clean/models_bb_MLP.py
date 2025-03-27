@@ -14,13 +14,11 @@ class Perception(nn.Module):
                  num_candidates=8,
                  bb_depth=1,
                  bb_num_heads=2,
-                 bb_mlp_ratio=4,
                  bb_proj_drop=0.3,
                  bb_attn_drop=0.3,
                  bb_drop_path_max=0.5,
                  bb_mlp_drop=0,
-                 decoder_mlp_drop=0.5,
-                 use_bb_pos_enc=False):
+                 decoder_mlp_drop=0.5):
         super().__init__()
         self.n_nodes = grid_size ** 2
         self.embed_dim = embed_dim
@@ -34,9 +32,8 @@ class Perception(nn.Module):
 
         # Backbone for feature extraction
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads,
-                                             mlp_ratio=bb_mlp_ratio, mlp_drop=bb_mlp_drop, proj_drop=bb_proj_drop,
-                                             attn_drop=bb_attn_drop, drop_path_max=bb_drop_path_max,
-                                             use_bb_pos_enc=use_bb_pos_enc)
+                                             mlp_drop=bb_mlp_drop, proj_drop=bb_proj_drop, attn_drop=bb_attn_drop,
+                                             drop_path_max=bb_drop_path_max)
 
         # Decoder for reconstructing sentences
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=decoder_mlp_drop)
@@ -188,35 +185,21 @@ class ReasoningModule(nn.Module):
         abs_depth: int,
         trans_depth: int,
         ternary_depth: int,
-        abs_num_heads: int,
-        trans_num_heads: int,
-        tern_num_heads: int,
+        num_heads: int,
         num_candidates: int = 8,
-        abs_mlp_ratio: float = 4.0,
-        trans_mlp_ratio: float = 4.0,
-        tern_mlp_ratio: float = 4.0,
-        phi_mlp_hidden_dim: int = 4,
-        abs_proj_drop: float = 0.0,
-        trans_proj_drop: float = 0.0,
-        tern_proj_drop: float = 0.0,
-        abs_attn_drop: float = 0.0,
-        trans_attn_drop: float = 0.0,
-        tern_attn_drop: float = 0.0,
-        abs_drop_path_max: float = 0.0,
-        trans_drop_path_max: float = 0.0,
-        tern_drop_path_max: float = 0.0,
+        mlp_ratio: float = 4.0,
+        proj_drop: float = 0.0,
+        attn_drop: float = 0.0,
+        drop_path_max: float = 0.0,
         num_symbols_abs: int = 9,
         num_symbols_ternary: int = 6,
         norm_layer=nn.LayerNorm,
         bb_depth: int = 2,
         bb_num_heads: int = 8,
-        bb_mlp_ratio: int = 4,
         bb_proj_drop=0.3,
         bb_attn_drop=0.3,
         bb_drop_path_max=0.5,
         bb_mlp_drop=0,
-        decoder_mlp_drop=0.5,
-        use_bb_pos_enc=False,
         symbol_factor_abs=1,
         symbol_factor_tern=1
     ):
@@ -235,13 +218,10 @@ class ReasoningModule(nn.Module):
             num_candidates=8,  # Default assumed; adapt as needed
             bb_depth=bb_depth,
             bb_num_heads=bb_num_heads,
-            bb_mlp_ratio=bb_mlp_ratio,
             bb_proj_drop=bb_proj_drop,
             bb_attn_drop=bb_attn_drop,
             bb_drop_path_max=bb_drop_path_max,
-            bb_mlp_drop=bb_mlp_drop,
-            decoder_mlp_drop=decoder_mlp_drop,
-            use_bb_pos_enc=use_bb_pos_enc
+            bb_mlp_drop=bb_mlp_drop
         )
 
         # Positional embeddings
@@ -257,6 +237,7 @@ class ReasoningModule(nn.Module):
         self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor_abs))
         self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim * symbol_factor_tern))
 
+        # Learnable position embeddings for ternary row and column embeddings
         # self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
 
         # Fixed 2D sinusoidal embeddings for the ternary row/column embeddings
@@ -266,21 +247,21 @@ class ReasoningModule(nn.Module):
 
         # Abstractor layers
         self.abstractor = nn.ModuleList([  # Abstractor layers
-            Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, abs_num_heads, abs_mlp_ratio,
-                  abs_proj_drop, abs_attn_drop, abs_drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
+            Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, num_heads, mlp_ratio,
+                  proj_drop, attn_drop, drop_path_max * ((i + 1) / abs_depth), norm_layer=norm_layer)
             for i in range(abs_depth)
         ])
 
         # Ternary layers
         self.ternary_module = nn.ModuleList([  # Ternary layers
-            Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, tern_num_heads, tern_mlp_ratio, tern_proj_drop, tern_attn_drop,
-                  tern_drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
+            Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, num_heads, mlp_ratio, proj_drop, attn_drop,
+                  drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
             for i in range(ternary_depth)
         ])
 
         # Transformer layers
         self.transformer = nn.ModuleList([  # Transformer layers
-            Block(embed_dim, embed_dim, trans_num_heads, trans_mlp_ratio, trans_proj_drop, trans_attn_drop, trans_drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
+            Block(embed_dim, embed_dim, num_heads, mlp_ratio, proj_drop, attn_drop, drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
             for i in range(trans_depth)
         ])
 
@@ -305,9 +286,9 @@ class ReasoningModule(nn.Module):
 
         # original
         self.phi_mlp = nn.Sequential(
-            nn.Linear(3 * embed_dim, phi_mlp_hidden_dim * embed_dim),
+            nn.Linear(3 * embed_dim, 4 * embed_dim),
             nn.ReLU(),
-            nn.Linear(phi_mlp_hidden_dim * embed_dim, embed_dim)
+            nn.Linear(4 * embed_dim, embed_dim)
         )
 
         # under-powered
@@ -523,8 +504,7 @@ class BackbonePerception(nn.Module):
                  mlp_drop=0.3,
                  proj_drop=0.3,
                  attn_drop=0.3,
-                 drop_path_max = 0.5,
-                 use_bb_pos_enc=False):
+                 drop_path_max = 0.5):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
@@ -533,10 +513,6 @@ class BackbonePerception(nn.Module):
         self.num_heads = num_heads
         self.mlp_ratio = mlp_ratio
         self.grid_dim = grid_dim
-        self.use_bb_pos_enc = use_bb_pos_enc
-
-        # CLS Token
-        self.cls_token = nn.Parameter(torch.randn(1, 1, out_channels))
 
         self.encoder = nn.Sequential(  # from N, 1, 160, 160
             ResidualBlock(1, 16),  # N, 16, 160, 160
@@ -547,11 +523,6 @@ class BackbonePerception(nn.Module):
             ResidualBlock(256, 512, 2)  # N, 512, 5, 5
         )
 
-        if use_bb_pos_enc:
-            self.pos_embed = nn.Parameter(torch.zeros([grid_dim ** 2, out_channels]), requires_grad=False)
-            pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=out_channels, grid_size=grid_dim, cls_token=True)
-            self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
-
         self.blocks = nn.ModuleList([
             Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
                   q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
@@ -559,7 +530,7 @@ class BackbonePerception(nn.Module):
                   drop_path=drop_path_max * ((i + 1) / self.depth), restrict_qk=False)
             for i in range(self.depth)])
 
-        self.mlp = nn.Linear(self.out_channels, self.embed_dim)
+        self.mlp = nn.Linear(self.out_channels * self.grid_dim**2, self.embed_dim)
         self.dropout = nn.Dropout(p=mlp_drop)
 
     def forward(self, x):
@@ -570,17 +541,10 @@ class BackbonePerception(nn.Module):
 
         x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
 
-        cls_tokens = self.cls_token.expand(batch_dim, -1, -1)
-        x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
-
-        if self.use_bb_pos_enc:
-            pos_embed = self.pos_embed.unsqueeze(0).expand(batch_dim, -1, self.out_channels)
-            x = x + pos_embed
-
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        x = x[:, 0, :]
+        x = x.reshape(batch_dim, self.out_channels * self.grid_dim**2)
 
         x = self.dropout(self.mlp(x))
 

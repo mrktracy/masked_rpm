@@ -14,10 +14,10 @@ from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot_wRowSwap as rpm_dataset
 # from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
-from models import ReasoningModule
+from models_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr21"
+version = "Model_v1_itr22"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -160,25 +160,38 @@ if __name__ == "__main__":
     MODEL_PARAMS = {
         "embed_dim": 512,
         "grid_size": 3,
-        "abs_depth": 1,
-        "trans_depth": 1,
-        "ternary_depth": 1,
-        "num_heads": 4,
-        "mlp_ratio": 4.0,
-        "proj_drop": 0,
-        "attn_drop": 0.3,
-        "drop_path_max": 0.3,
+        "abs_depth": 2,
+        "trans_depth": 2,
+        "ternary_depth": 2,
+        "abs_num_heads": 8,
+        "trans_num_heads": 8,
+        "tern_num_heads": 8,
+        "abs_mlp_ratio": 4.0,
+        "trans_mlp_ratio": 4.0,
+        "tern_mlp_ratio": 4.0,
+        "abs_proj_drop": 0,
+        "trans_proj_drop": 0,
+        "tern_proj_drop": 0,
+        "abs_attn_drop": 0.3,
+        "trans_attn_drop": 0.3,
+        "tern_attn_drop": 0.3,
+        "abs_drop_path_max": 0.3,
+        "trans_drop_path_max": 0.3,
+        "tern_drop_path_max": 0.3,
         "num_symbols_abs": 9,
         "num_symbols_ternary": 6,
         "norm_layer": nn.LayerNorm,
-        "bb_depth": 1,
-        "bb_num_heads": 4,
+        "bb_depth": 2,
+        "bb_num_heads": 8,
+        "bb_mlp_ratio": 4,
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
+        "decoder_mlp_drop": 0.5,
         "symbol_factor_abs": 1,
-        "symbol_factor_tern": 1
+        "symbol_factor_tern": 1,
+        "use_bb_pos_enc": False
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
