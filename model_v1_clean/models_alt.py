@@ -222,7 +222,7 @@ class ReasoningModule(nn.Module):
         # abs_drop_path_max: float = 0.0,
         # trans_drop_path_max: float = 0.0,
         tern_drop_path_max: float = 0.0,
-        num_symbols_abs: int = 9,
+        # num_symbols_abs: int = 9,
         num_symbols_ternary: int = 6,
         norm_layer=nn.LayerNorm,
         bb_depth: int = 2,
@@ -234,7 +234,7 @@ class ReasoningModule(nn.Module):
         bb_mlp_drop=0,
         decoder_mlp_drop=0.5,
         use_bb_pos_enc=False,
-        symbol_factor_abs=1,
+        # symbol_factor_abs=1,
         symbol_factor_tern=1
     ):
         super().__init__()
