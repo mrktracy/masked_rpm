@@ -50,7 +50,7 @@ def train_and_evaluate(parameterization, epochs=3):
         "tern_num_heads": int(parameterization["tern_num_heads"]),
         # "abs_mlp_ratio": int(parameterization["abs_mlp_ratio"]),
         # "trans_mlp_ratio": int(parameterization["trans_mlp_ratio"]),
-        "tern_mlp_ratio": int(parameterization["tern_mlp_ratio"]),
+        "tern_mlp_ratio": 4,
         "phi_mlp_hidden_dim": int(parameterization["phi_mlp_hidden_dim"]),
         # "abs_proj_drop": parameterization["abs_proj_drop"],
         # "trans_proj_drop": parameterization["trans_proj_drop"],
@@ -115,10 +115,10 @@ def run_optimization(version):
 
     ax_client = AxClient()
     ax_client.create_experiment(
-        name="reasoning_module_optimization",
+        name=f"reasoning_module_optimization_{version}",
         parameters=[
             {"name": "alpha", "type": "range", "bounds": [0.0, 1.0]},
-            {"name": "embed_dim", "type": "choice", "values": [256, 512, 768, 1024]},
+            {"name": "embed_dim", "type": "choice", "values": [256, 512, 768]},
             {"name": "learning_rate", "type": "range", "bounds": [5e-5, 3e-4], "log_scale": True},
 
             # Reasoning module parameters
@@ -139,7 +139,6 @@ def run_optimization(version):
             {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             # {"name": "abs_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             # {"name": "trans_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
-            {"name": "tern_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [2, 4, 6]},
             {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2, 3]},
 
@@ -177,21 +176,15 @@ def run_optimization(version):
             ax_client.complete_trial(trial_index=trial_index, raw_data=val_acc)
             logging.info(f"Trial {trial + 1} completed successfully.")
 
-            # Save Ax state after each trial
-            try:
-                ax_client.save_to_json_file(filepath=f"{results_dir}/ax_state.json")
-            except Exception as save_err:
-                logging.error(f"Failed to save Ax state: {save_err}")
-
         except Exception as e:
             ax_client.log_trial_failure(trial_index=trial_index)
             logging.error(f"Trial {trial + 1} failed: {e}")
 
-            # Save Ax state after each trial
-            try:
-                ax_client.save_to_json_file(filepath=f"{results_dir}/ax_state.json")
-            except Exception as save_err:
-                logging.error(f"Failed to save Ax state: {save_err}")
+        # Save Ax state after each trial
+        try:
+            ax_client.save_to_json_file(filepath=f"{results_dir}/ax_state.json")
+        except Exception as save_err:
+            logging.error(f"Failed to save Ax state: {save_err}")
 
         end_time = datetime.datetime.now()
         duration = end_time - start_time
@@ -199,7 +192,7 @@ def run_optimization(version):
 
     # save best parameters
     best_parameters, metrics = ax_client.get_best_parameters()
-    best_val_acc = metrics[0]  # metrics is a tuple with val_acc as first element
+    best_val_acc = metrics.get("val_acc", {}).get("value", None)
     logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Accuracy: {best_val_acc}")
 
     # Final save of results
