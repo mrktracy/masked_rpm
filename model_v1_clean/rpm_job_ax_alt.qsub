@@ -1,0 +1,25 @@
+#!/bin/bash -l
+
+#$ -P noc-lab           # project name
+#$ -N ax_optimize_v1_itr24    # job name
+
+#$ -l h_rt=300:00:00    # hard time limit of 300 hours
+#$ -m bea               # send email when finished or aborted
+#$ -j y                 # merge error and output files into one
+
+#$ -l mem_per_core=6G   # memory requirements per CPU core
+
+#$ -l gpus=1            # number of GPUs
+#$ -l gpu_c=6           # GPU minimum capability
+#$ -l gpu_type=A100     # GPU type
+
+module load miniconda
+conda activate rpm
+
+# Ensure ax-platform is installed in the environment
+if ! python -c "import ax.service.ax_client" &> /dev/null; then
+    echo "Installing ax-platform in the environment..."
+    pip install --no-cache-dir ax-platform
+fi
+
+python ax_optimize_alt.py
