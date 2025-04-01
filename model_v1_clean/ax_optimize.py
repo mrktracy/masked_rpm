@@ -65,8 +65,8 @@ def train_and_evaluate(parameterization, epochs=3):
         "trans_drop_path_max": parameterization["trans_drop_path_max"],
         "tern_drop_path_max": parameterization["tern_drop_path_max"],
 
-        "tern_symbol_factor": parameterization["tern_symbol_factor"],
-        "abs_symbol_factor": parameterization["abs_symbol_factor"],
+        "symbol_factor_tern": parameterization["symbol_factor_tern"],
+        "symbol_factor_abs": parameterization["symbol_factor_abs"],
 
         "bb_depth": int(parameterization["bb_depth"]),
         "bb_num_heads": int(parameterization["bb_num_heads"]),
@@ -147,8 +147,8 @@ def run_optimization(version):
             {"name": "trans_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
 
-            {"name": "tern_symbol_factor", "type": "choice", "values": [1, 2]},
-            {"name": "abs_symbol_factor", "type": "choice", "values": [1, 2]},
+            {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2]},
+            {"name": "symbol_factor_abs", "type": "choice", "values": [1, 2]},
 
             # Backbone parameters
             {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
