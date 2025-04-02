@@ -71,7 +71,7 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
 
         "bb_depth": int(parameterization["bb_depth"]),
         "bb_num_heads": int(parameterization["bb_num_heads"]),
-        "bb_mlp_ratio": int(parameterization["bb_mlp_ratio"]),
+        "bb_mlp_ratio": 4,
         "bb_proj_drop": parameterization["bb_proj_drop"],
         "bb_attn_drop": parameterization["bb_attn_drop"],
         "bb_drop_path_max": parameterization["bb_drop_path_max"],
@@ -165,7 +165,7 @@ def run_optimization(version):
             # Backbone parameters
             {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
             {"name": "bb_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-            {"name": "bb_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
+            # {"name": "bb_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
