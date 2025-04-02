@@ -180,7 +180,7 @@ def run_optimization(version):
             logging.info(f"Trial {trial + 1} parameters: {parameters}")  # Log the parameters being tried
 
             # Train and evaluate the model
-            val_acc = train_and_evaluate(parameters, epochs=1, use_max_batches=True, max_batches=4000)
+            val_acc = train_and_evaluate(parameters, epochs=1, use_max_batches=True, max_batches=2500)
             logging.info(f"Trial {trial + 1} validation accuracy: {val_acc}")  # Log the validation accuracy
 
             # Mark the trial as complete in Ax
