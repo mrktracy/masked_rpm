@@ -29,9 +29,10 @@ def initialize_weights_he(m):
             nn.init.constant_(m.bias, 0)
 
 
-def train_and_evaluate(parameterization, epochs=3):
+def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_batches=3000):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
+    root_dir = '../../pgm_data/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     train_dataset = rpm_dataset(train_files, device=device)
@@ -84,9 +85,13 @@ def train_and_evaluate(parameterization, epochs=3):
     criterion_task = nn.CrossEntropyLoss()
     criterion_reconstruction = nn.MSELoss()
 
+    batch_count = 0
     for epoch in range(epochs):
         model.train()
         for sentences, target_nums, _, _ in train_dataloader:
+            if use_max_batches and batch_count >= max_batches:
+                break
+
             optimizer.zero_grad()
             sentences = sentences.to(device)
             target_nums = target_nums.to(device)
@@ -97,6 +102,12 @@ def train_and_evaluate(parameterization, epochs=3):
             loss = parameterization["alpha"] * task_err + (1 - parameterization["alpha"]) * rec_err
             loss.backward()
             optimizer.step()
+
+            if use_max_batches:
+                batch_count += 1
+
+        if use_max_batches and batch_count >= max_batches:
+            break
 
         scheduler.step()
 
@@ -169,7 +180,7 @@ def run_optimization(version):
             logging.info(f"Trial {trial + 1} parameters: {parameters}")  # Log the parameters being tried
 
             # Train and evaluate the model
-            val_acc = train_and_evaluate(parameters, epochs=4)
+            val_acc = train_and_evaluate(parameters, epochs=1, use_max_batches=True, max_batches=4000)
             logging.info(f"Trial {trial + 1} validation accuracy: {val_acc}")  # Log the validation accuracy
 
             # Mark the trial as complete in Ax
