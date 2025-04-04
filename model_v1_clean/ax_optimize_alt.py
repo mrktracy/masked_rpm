@@ -62,7 +62,7 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
         # "abs_drop_path_max": parameterization["abs_drop_path_max"],
         # "trans_drop_path_max": parameterization["trans_drop_path_max"],
         "tern_drop_path_max": parameterization["tern_drop_path_max"],
-        "symbol_factor_tern": parameterization["symbol_factor_tern"],
+        "symbol_factor_tern": 1,
         "bb_depth": int(parameterization["bb_depth"]),
         "bb_num_heads": int(parameterization["bb_num_heads"]),
         "bb_mlp_ratio": 4,
@@ -71,7 +71,7 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
         "bb_drop_path_max": parameterization["bb_drop_path_max"],
         "bb_mlp_drop": parameterization["bb_mlp_drop"],
         "decoder_mlp_drop": parameterization["decoder_mlp_drop"],
-        "use_bb_pos_enc": parameterization["use_bb_pos_enc"]
+        "use_bb_pos_enc": True
     }
 
     model = ReasoningModule(**model_params).to(device)
@@ -129,16 +129,16 @@ def run_optimization(version):
         name=f"reasoning_module_optimization_{version}",
         parameters=[
             {"name": "alpha", "type": "range", "bounds": [0.0, 1.0]},
-            {"name": "embed_dim", "type": "choice", "values": [256, 512, 768]},
-            {"name": "learning_rate", "type": "range", "bounds": [5e-5, 3e-4], "log_scale": True},
+            {"name": "embed_dim", "type": "choice", "values": [768, 1024]},
+            {"name": "learning_rate", "type": "range", "bounds": [1e-6, 5e-4], "log_scale": True},
 
             # Reasoning module parameters
             # {"name": "abs_depth", "type": "choice", "values": [1, 2, 3, 4]},
             # {"name": "trans_depth", "type": "choice", "values": [1, 2, 3, 4]},
-            {"name": "ternary_depth", "type": "choice", "values": [1, 2, 3, 4, 5, 6]},
+            {"name": "ternary_depth", "type": "choice", "values": [6, 7, 8, 9]},
             # {"name": "abs_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
             # {"name": "trans_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-            {"name": "tern_num_heads", "type": "choice", "values": [2, 4, 8, 16, 32]},
+            {"name": "tern_num_heads", "type": "choice", "values": [32, 48, 64]},
             # {"name": "abs_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             # {"name": "trans_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
@@ -151,18 +151,18 @@ def run_optimization(version):
             # {"name": "abs_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             # {"name": "trans_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [2, 4, 6]},
-            {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2, 3]},
+            # {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2, 3]},
 
             # Backbone parameters
             {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
-            {"name": "bb_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+            {"name": "bb_num_heads", "type": "choice", "values": [8, 16, 32, 48]},
             # {"name": "bb_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "use_bb_pos_enc", "type": "choice", "values": [True, False]}
+            # {"name": "use_bb_pos_enc", "type": "choice", "values": [True]}
         ],
         objectives={"val_acc": ObjectiveProperties(minimize=False)},
     )
@@ -213,6 +213,6 @@ def run_optimization(version):
 
 
 if __name__ == "__main__":
-    version = "Model_v1_itr24"
+    version = "Model_v1_itr25"
     set_seed()
     run_optimization(version)
