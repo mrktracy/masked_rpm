@@ -138,7 +138,7 @@ def run_optimization(version):
             {"name": "ternary_depth", "type": "choice", "values": [6, 7, 8, 9]},
             # {"name": "abs_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
             # {"name": "trans_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-            {"name": "tern_num_heads", "type": "choice", "values": [32, 48, 64]},
+            {"name": "tern_num_heads", "type": "choice", "values": [32, 64, 128]},
             # {"name": "abs_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             # {"name": "trans_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
@@ -150,12 +150,12 @@ def run_optimization(version):
             {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             # {"name": "abs_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             # {"name": "trans_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
-            {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [2, 4, 6]},
+            {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [4, 6, 8]},
             # {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2, 3]},
 
             # Backbone parameters
             {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
-            {"name": "bb_num_heads", "type": "choice", "values": [8, 16, 32, 48]},
+            {"name": "bb_num_heads", "type": "choice", "values": [8, 16, 32, 64]},
             # {"name": "bb_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
