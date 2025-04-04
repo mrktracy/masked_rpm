@@ -77,7 +77,7 @@ def main(version, results_folder, model_class, model_params):
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 5e-5
-    LOGS_PER_EPOCH = 300
+    LOGS_PER_EPOCH = 1500
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
     ALPHA = 0.23488335791979137  # Balancing factor between task and reconstruction losses
