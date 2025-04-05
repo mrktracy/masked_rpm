@@ -9,15 +9,15 @@ from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from evaluate_masked import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug_wRowSwap as rpm_dataset
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot_wRowSwap as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
 from models_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr24_pgmNeut"
+version = "Model_v1_itr24_pgmNeut_noDA"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -77,7 +77,7 @@ def main(version, results_folder, model_class, model_params):
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 5e-5
-    LOGS_PER_EPOCH = 1500
+    LOGS_PER_EPOCH = 120
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
     ALPHA = 0.23488335791979137  # Balancing factor between task and reconstruction losses
