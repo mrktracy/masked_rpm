@@ -177,7 +177,8 @@ def run_optimization(version):
     total_trials = 120
     trial_index = 0
 
-    first_trial = len(ax_client.experiment.trials) # if restarting, pick up where you left off
+    # first_trial = len(ax_client.experiment.trials) # if restarting, pick up where you left off
+    first_trial = 50 # if restarting, pick up where you left off
 
     for trial in range(first_trial, total_trials):
         start_time = datetime.datetime.now()
