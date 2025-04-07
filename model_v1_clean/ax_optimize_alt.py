@@ -6,6 +6,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.service.utils.report_utils import exp_to_df
+from ax.storage.json_store.load import load_experiment
 from evaluate_masked import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
@@ -124,8 +125,8 @@ def run_optimization(version):
                         filename=f"{results_dir}/{version}_ax_log.txt",
                         filemode="a") # in append mode if picking up from a saved ax_state
 
-    ax_client = AxClient()
-    ax_client.load_from_json_file("../../tr_results/Model_v1_itr24/ax_state.json")
+    ax_client = AxClient.load(filepath=f"{results_dir}/ax_state.json")
+    # ax_client.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
 
     # ax_client.create_experiment(
     #     name=f"reasoning_module_optimization_{version}",
@@ -173,9 +174,9 @@ def run_optimization(version):
     total_trials = 120
     trial_index = 0
 
-    start_trial = len(ax_client.experiment.trials) # if loading ax_state, pick up where you left off
+    first_trial = len(ax_client.experiment.trials) # if restarting, pick up where you left off
 
-    for trial in range(start_trial, total_trials):
+    for trial in range(first_trial, total_trials):
         start_time = datetime.datetime.now()
         logging.info(f"Starting trial {trial + 1} of {total_trials} at {start_time}...")
         try:
