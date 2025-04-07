@@ -127,7 +127,7 @@ def run_optimization(version):
 
     ax_client = AxClient()
     ax_client.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
-    ax_client.load_experiment(f"reasoning_module_optimization_{version}")
+    # ax_client.load_experiment(f"reasoning_module_optimization_{version}")
 
     # ax_client.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
 
