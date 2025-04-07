@@ -125,8 +125,7 @@ def run_optimization(version):
                         filename=f"{results_dir}/{version}_ax_log.txt",
                         filemode="a") # in append mode if picking up from a saved ax_state
 
-    ax_client = AxClient()
-    ax_client.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
+    ax_client = AxClient.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
     # ax_client.load_experiment(f"reasoning_module_optimization_{version}")
 
     # ax_client.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
@@ -177,8 +176,8 @@ def run_optimization(version):
     total_trials = 120
     trial_index = 0
 
-    # first_trial = len(ax_client.experiment.trials) # if restarting, pick up where you left off
-    first_trial = 50 # if restarting, pick up where you left off
+    first_trial = len(ax_client.experiment.trials) # if restarting, pick up where you left off
+    # first_trial = 50 # if restarting, pick up where you left off
 
     for trial in range(first_trial, total_trials):
         start_time = datetime.datetime.now()
