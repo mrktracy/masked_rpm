@@ -126,6 +126,7 @@ def run_optimization(version):
 
     ax_client = AxClient()
     ax_client.load_from_json_file("../../tr_results/Model_v1_itr24/ax_state.json")
+    ax_client.load_experiment()
 
     # ax_client.create_experiment(
     #     name=f"reasoning_module_optimization_{version}",
