@@ -126,6 +126,7 @@ def run_optimization(version):
                         filemode="a") # in append mode if picking up from a saved ax_state
 
     ax_client = AxClient.load(filepath=f"{results_dir}/ax_state.json")
+    ax_client.load_experiment(f"reasoning_module_optimization_{version}")
     # ax_client.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
 
     # ax_client.create_experiment(
