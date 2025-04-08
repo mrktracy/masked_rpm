@@ -9,15 +9,15 @@ from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from evaluate_masked import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug_wRowSwap as rpm_dataset
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot_wRowSwap as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
 from models_alt_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr23"
+version = "Model_v1_itr30_pgmNeut_noDA"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -63,8 +63,9 @@ def main(version, results_folder, model_class, model_params):
         model = nn.DataParallel(model)
 
     ''' Dataset setup '''
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
     # root_dir = '../../pgm_data/extrapolation/'
+    root_dir = '../../pgm_data/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     train_dataset = rpm_dataset(train_files, device=device)
@@ -72,14 +73,15 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 20
+    EPOCHS = 10
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
-    LOGS_PER_EPOCH = 90
+    LEARNING_RATE = 1e-4
+    # LEARNING_RATE = 1e-4
+    LOGS_PER_EPOCH = 120
     BATCHES_PER_PRINT = 20
-    EPOCHS_PER_SAVE = 5
-    ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
+    EPOCHS_PER_SAVE = 1
+    ALPHA = 0.05  # Balancing factor between task and reconstruction losses
     ALPHA_GROWTH_RATE = 0
 
     ''' Data loaders, optimizer, criterion '''
@@ -158,27 +160,41 @@ def main(version, results_folder, model_class, model_params):
 if __name__ == "__main__":
     MODEL_CLASS = ReasoningModule
     MODEL_PARAMS = {
-        "embed_dim": 512,
+        "embed_dim": 768,
         "grid_size": 3,
-        "abs_depth": 2,
-        "trans_depth": 2,
-        "ternary_depth": 2,
-        "num_heads": 8,
-        "mlp_ratio": 4.0,
-        "proj_drop": 0,
-        "attn_drop": 0.3,
-        "drop_path_max": 0.3,
-        "num_symbols_abs": 10, # add one for CLS token
-        "num_symbols_ternary": 7, # add one for CLS token
+        # "abs_depth": 2,
+        # "trans_depth": 2,
+        "ternary_depth": 1,
+        # "abs_num_heads": 8,
+        # "trans_num_heads": 8,
+        "tern_num_heads": 32,
+        # "abs_mlp_ratio": 4.0,
+        # "trans_mlp_ratio": 4.0,
+        "tern_mlp_ratio": 4.0,
+        # "abs_proj_drop": 0,
+        # "trans_proj_drop": 0,
+        "tern_proj_drop": 0.5,
+        # "abs_attn_drop": 0.3,
+        # "trans_attn_drop": 0.3,
+        "tern_attn_drop": 0.5,
+        # "abs_drop_path_max": 0.3,
+        # "trans_drop_path_max": 0.3,
+        "tern_drop_path_max": 0.5,
+        # "num_symbols_abs": 9,
+        "num_symbols_ternary": 6,
         "norm_layer": nn.LayerNorm,
-        "bb_depth": 2,
-        "bb_num_heads": 8,
+        "phi_mlp_hidden_dim": 4,
+        "bb_depth": 1,
+        "bb_num_heads": 4,
+        "bb_mlp_ratio": 4,
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
-        "symbol_factor_abs": 1,
-        "symbol_factor_tern": 1
+        "decoder_mlp_drop": 0.5,
+        # "symbol_factor_abs": 1,
+        "symbol_factor_tern": 1,
+        "use_bb_pos_enc": True
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
