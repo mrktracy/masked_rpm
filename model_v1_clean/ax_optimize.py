@@ -129,7 +129,7 @@ def run_optimization(version):
 
     logging.basicConfig(level=logging.INFO,
                         filename=f"{results_dir}/{version}_ax_log.txt",
-                        filemode="w")
+                        filemode="a")
 
     ax_client = AxClient.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
     # ax_client.create_experiment(
