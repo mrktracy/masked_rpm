@@ -17,7 +17,7 @@ from funs import gather_files_pgm
 from models_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr27_pgmNeut_noDA"
+version = "Model_v1_itr28_pgmNeut_noDA"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -76,12 +76,12 @@ def main(version, results_folder, model_class, model_params):
     EPOCHS = 10
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 5e-5
+    LEARNING_RATE = 1e-4
     # LEARNING_RATE = 1e-4
     LOGS_PER_EPOCH = 120
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
-    ALPHA = 0.23488335791979137  # Balancing factor between task and reconstruction losses
+    ALPHA = 0.05  # Balancing factor between task and reconstruction losses
     ALPHA_GROWTH_RATE = 0
 
     ''' Data loaders, optimizer, criterion '''
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         "grid_size": 3,
         # "abs_depth": 2,
         # "trans_depth": 2,
-        "ternary_depth": 6,
+        "ternary_depth": 1,
         # "abs_num_heads": 8,
         # "trans_num_heads": 8,
         "tern_num_heads": 32,
@@ -173,28 +173,28 @@ if __name__ == "__main__":
         "tern_mlp_ratio": 4.0,
         # "abs_proj_drop": 0,
         # "trans_proj_drop": 0,
-        "tern_proj_drop": 0.15344913055599402,
+        "tern_proj_drop": 0.5,
         # "abs_attn_drop": 0.3,
         # "trans_attn_drop": 0.3,
-        "tern_attn_drop": 0.3098421324011749,
+        "tern_attn_drop": 0.5,
         # "abs_drop_path_max": 0.3,
         # "trans_drop_path_max": 0.3,
         "tern_drop_path_max": 0.5,
         # "num_symbols_abs": 9,
         "num_symbols_ternary": 6,
         "norm_layer": nn.LayerNorm,
-        "phi_mlp_hidden_dim": 6,
+        "phi_mlp_hidden_dim": 4,
         "bb_depth": 1,
-        "bb_num_heads": 16,
+        "bb_num_heads": 4,
         "bb_mlp_ratio": 4,
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
-        "decoder_mlp_drop": 0.2673466611172497,
+        "decoder_mlp_drop": 0.5,
         # "symbol_factor_abs": 1,
         "symbol_factor_tern": 1,
-        "use_bb_pos_enc": False
+        "use_bb_pos_enc": True
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
