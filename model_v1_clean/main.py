@@ -9,15 +9,15 @@ from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from evaluate_masked import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug_wRowSwap as rpm_dataset
-from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot_wRowSwap as rpm_dataset
-# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
 from models import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr22"
+version = "Model_v1_itr29_pgmNeut_noDA"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -63,8 +63,9 @@ def main(version, results_folder, model_class, model_params):
         model = nn.DataParallel(model)
 
     ''' Dataset setup '''
-    root_dir = '../../i_raven_data_full/'
+    # root_dir = '../../i_raven_data_full/'
     # root_dir = '../../pgm_data/extrapolation/'
+    root_dir = '../../pgm_data/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     train_dataset = rpm_dataset(train_files, device=device)
@@ -72,7 +73,7 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 20
+    EPOCHS = 10
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 0.0001
