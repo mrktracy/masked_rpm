@@ -17,7 +17,7 @@ from funs import gather_files_pgm
 from models_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr31_pgmNeut_noDA"
+version = "Model_v1_itr28_pgmNeut"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
