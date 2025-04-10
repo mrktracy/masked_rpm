@@ -73,12 +73,12 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 10
+    EPOCHS = 5
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
     LEARNING_RATE = 1e-4
     # LEARNING_RATE = 1e-4
-    LOGS_PER_EPOCH = 120
+    LOGS_PER_EPOCH = 120*16
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
     ALPHA = 0.05  # Balancing factor between task and reconstruction losses
