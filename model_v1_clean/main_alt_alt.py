@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
-from evaluate_masked import evaluate_model_dist as evaluation_function
+from evaluate import evaluate_model_dist_alt as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug_wRowSwap as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot as rpm_dataset
@@ -17,7 +17,7 @@ from funs import gather_files_pgm
 from models_alt_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr30_pgmNeut_noDA"
+version = "Model_v1_itr31_pgmNeut_noDA"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -113,13 +113,13 @@ def main(version, results_folder, model_class, model_params):
             target_nums = target_nums.to(device)  # Shape: [batch_size]
 
             # Forward pass
-            recreation, scores = model(sentences)
+            recreation, scores, aux_loss = model(sentences)
 
             # Calculate reconstruction error
             rec_err = criterion_reconstruction(sentences, recreation)
             task_err = criterion_task(scores, target_nums)  # target_nums shape: [batch_size]
 
-            loss = ALPHA * task_err + (1 - ALPHA) * rec_err
+            loss = ALPHA * task_err + (1 - ALPHA) * rec_err + aux_loss
 
             tot_loss += loss.item()
             count += 1
@@ -194,7 +194,10 @@ if __name__ == "__main__":
         "decoder_mlp_drop": 0.5,
         # "symbol_factor_abs": 1,
         "symbol_factor_tern": 1,
-        "use_bb_pos_enc": True
+        "use_bb_pos_enc": True,
+        "beta_residual": 0.25,
+        "beta_entropy": 0.01,
+        "codebook_size": 64
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)

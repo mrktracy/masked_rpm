@@ -197,6 +197,47 @@ class ResNetDecoder(nn.Module):
         return self.decoder(x)
 
 
+class ResidualVQ(nn.Module):
+    def __init__(self, embed_dim, codebook_size, beta_residual=1.0, beta_entropy=0.01):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.codebook = nn.Parameter(torch.randn(codebook_size, embed_dim))
+        self.residual_mlp = nn.Sequential(
+            nn.Linear(2 * embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim)
+        )
+        self.beta_residual = beta_residual
+        self.beta_entropy = beta_entropy
+
+    def forward(self, z):
+        # z: (B, D)
+        z_norm = F.normalize(z, dim=-1)
+        codebook_norm = F.normalize(self.codebook, dim=-1)
+
+        # Cosine similarities
+        cos_sim = torch.matmul(z_norm, codebook_norm.T)  # (B, K)
+        soft_assign = F.softmax(cos_sim, dim=-1)
+        idx = cos_sim.argmax(dim=-1)  # (B,)
+        e_star = self.codebook[idx]  # (B, D)
+
+        # Residual update
+        combined = torch.cat([e_star, z], dim=-1)
+        residual = self.residual_mlp(combined)
+        z_out = e_star + residual
+
+        # Losses
+        residual_loss = F.mse_loss(residual, torch.zeros_like(residual))
+        entropy_loss = (soft_assign * torch.log(soft_assign + 1e-8)).sum(dim=-1).mean()
+
+        aux_loss = (
+            self.beta_residual * residual_loss +
+            self.beta_entropy * entropy_loss
+        )
+
+        return z_out, aux_loss
+
+
 class ReasoningModule(nn.Module):
     def __init__(
         self,
@@ -235,7 +276,10 @@ class ReasoningModule(nn.Module):
         decoder_mlp_drop=0.5,
         use_bb_pos_enc=False,
         # symbol_factor_abs=1,
-        symbol_factor_tern=1
+        symbol_factor_tern=1,
+        beta_residual=0.25,
+        beta_entropy=0.01,
+        codebook_size=100
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -290,11 +334,20 @@ class ReasoningModule(nn.Module):
         # ])
 
         # Ternary layers
+        # use MLP attention for first layer
+        # self.ternary_module = nn.ModuleList([  # Ternary layers
+        #     Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, tern_num_heads,
+        #           tern_mlp_ratio, tern_proj_drop, tern_attn_drop,
+        #           tern_drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer, use_mlp_attn=(i == 0),
+        #           mlp_attn_use_norm=True)
+        #     for i in range(ternary_depth)
+        # ])
+
         self.ternary_module = nn.ModuleList([  # Ternary layers
             Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, tern_num_heads,
                   tern_mlp_ratio, tern_proj_drop, tern_attn_drop,
-                  tern_drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer, use_mlp_attn=(i == 0),
-                  mlp_attn_use_norm=True)
+                  tern_drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer, use_mlp_attn=False,
+                  mlp_attn_use_norm=False)
             for i in range(ternary_depth)
         ])
 
@@ -338,6 +391,11 @@ class ReasoningModule(nn.Module):
             nn.Linear(phi_mlp_hidden_dim * embed_dim, embed_dim)
         )
 
+        self.res_vq = ResidualVQ(embed_dim=embed_dim,
+                                 codebook_size=codebook_size,
+                                 beta_residual=beta_residual,
+                                 beta_entropy=beta_entropy)
+
         # under-powered
         # self.phi_mlp = nn.Sequential(
         #     nn.Linear(3 * embed_dim, embed_dim),
@@ -369,7 +427,9 @@ class ReasoningModule(nn.Module):
         # Apply the MLP
         result = self.phi_mlp(x)  # Shape: (batch_size * 6, embed_dim)
 
-        return result.view(batch_size, 6, -1)
+        result_quant, aux_loss = self.res_vq(result)
+
+        return result_quant.view(batch_size, 6, -1), aux_loss
 
     def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -400,7 +460,7 @@ class ReasoningModule(nn.Module):
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
 
         # Apply ternary operation to obtain row/column embeddings
-        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
+        ternary_tokens_unnormalized, aux_loss = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
 
         # Temporal context normalization of new row/column embeddings
         ternary_tokens_normalized = self.temporal_norm_tern.forward(ternary_tokens_unnormalized)
@@ -470,7 +530,7 @@ class ReasoningModule(nn.Module):
         # Scores from the concatenated outputs
         scores = self.guesser_head(reas_bottleneck).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
-        return reconstructed_sentences, scores
+        return reconstructed_sentences, scores, aux_loss
 
 
 """ Modification of "Vision Transformer (ViT) in PyTorch"

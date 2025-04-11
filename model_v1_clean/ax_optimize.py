@@ -6,7 +6,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.service.utils.report_utils import exp_to_df
-from evaluate_masked import evaluate_model_dist as evaluation_function
+from evaluate import evaluate_model_dist as evaluation_function
 from datasets import RPMFullSentencesRaw_base as rpm_dataset
 from funs import gather_files_pgm
 from models import ReasoningModule

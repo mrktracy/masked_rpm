@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
-from evaluate_masked import evaluate_model_dist as evaluation_function
+from evaluate import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug_wRowSwap as rpm_dataset
 from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot as rpm_dataset
