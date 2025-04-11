@@ -197,7 +197,8 @@ if __name__ == "__main__":
         "use_bb_pos_enc": True,
         "beta_residual": 0.25,
         "beta_entropy": 0.01,
-        "codebook_size": 64
+        "beta_align": 1.0,
+        "codebook_size": 8
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)

@@ -198,7 +198,7 @@ class ResNetDecoder(nn.Module):
 
 
 class ResidualVQ(nn.Module):
-    def __init__(self, embed_dim, codebook_size, beta_residual=1.0, beta_entropy=0.01):
+    def __init__(self, embed_dim, codebook_size, beta_residual=1.0, beta_entropy=0.01, beta_align=1.0):
         super().__init__()
         self.embed_dim = embed_dim
         self.codebook = nn.Parameter(torch.randn(codebook_size, embed_dim))
@@ -209,6 +209,7 @@ class ResidualVQ(nn.Module):
         )
         self.beta_residual = beta_residual
         self.beta_entropy = beta_entropy
+        self.beta_align = beta_align
 
     def forward(self, z):
         # z: (B, D)
@@ -227,15 +228,18 @@ class ResidualVQ(nn.Module):
         z_out = e_star + residual
 
         # Losses
+        align_loss = F.mse_loss(z, e_star.detach())
         residual_loss = F.mse_loss(residual, torch.zeros_like(residual))
         entropy_loss = (soft_assign * torch.log(soft_assign + 1e-8)).sum(dim=-1).mean()
 
         aux_loss = (
+            self.beta_align * align_loss +
             self.beta_residual * residual_loss +
             self.beta_entropy * entropy_loss
         )
 
         return z_out, aux_loss
+
 
 
 class ReasoningModule(nn.Module):
@@ -279,6 +283,7 @@ class ReasoningModule(nn.Module):
         symbol_factor_tern=1,
         beta_residual=0.25,
         beta_entropy=0.01,
+        beta_align=1,
         codebook_size=100
     ):
         super().__init__()
@@ -394,7 +399,8 @@ class ReasoningModule(nn.Module):
         self.res_vq = ResidualVQ(embed_dim=embed_dim,
                                  codebook_size=codebook_size,
                                  beta_residual=beta_residual,
-                                 beta_entropy=beta_entropy)
+                                 beta_entropy=beta_entropy,
+                                 beta_align=beta_align)
 
         # under-powered
         # self.phi_mlp = nn.Sequential(
