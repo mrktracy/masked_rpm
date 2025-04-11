@@ -196,7 +196,7 @@ if __name__ == "__main__":
         "symbol_factor_tern": 1,
         "use_bb_pos_enc": True,
         "beta_residual": 0.25,
-        "beta_entropy": 0.01,
+        "beta_entropy": 0,
         "beta_align": 1.0,
         "codebook_size": 8
     }
