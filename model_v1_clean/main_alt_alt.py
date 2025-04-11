@@ -17,7 +17,7 @@ from funs import gather_files_pgm
 from models_alt_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr31_pgmNeut_noDA"
+version = "Model_v1_itr32_pgmNeut_noDA"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         "beta_residual": 0.25,
         "beta_entropy": 0,
         "beta_align": 1.0,
-        "codebook_size": 8
+        "codebook_size": 32
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)
