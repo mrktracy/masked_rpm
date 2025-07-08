@@ -167,7 +167,7 @@ class BackbonePerception(nn.Module):
 
         # x = x[:, 0, :]
 
-        x = self.dropout(self.mlp(x))
+        x = self.dropout(self.mlp(x.view(batch_dim, -1)))
 
         return x
 
