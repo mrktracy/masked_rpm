@@ -131,50 +131,51 @@ def run_optimization(version):
                         filename=f"{results_dir}/{version}_ax_log.txt",
                         filemode="a")
 
-    ax_client = AxClient.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
-    # ax_client.create_experiment(
-    #     name=f"reasoning_module_optimization_{version}",
-    #     parameters=[
-    #         {"name": "alpha", "type": "range", "bounds": [0.0, 1.0]},
-    #         {"name": "embed_dim", "type": "choice", "values": [256, 512, 768]},
-    #         {"name": "learning_rate", "type": "range", "bounds": [5e-5, 3e-4], "log_scale": True},
-    #
-    #         # Reasoning module parameters
-    #         {"name": "abs_depth", "type": "choice", "values": [1, 2, 3, 4]},
-    #         {"name": "trans_depth", "type": "choice", "values": [1, 2, 3, 4]},
-    #         {"name": "ternary_depth", "type": "choice", "values": [1, 2, 3, 4]},
-    #         {"name": "abs_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-    #         {"name": "trans_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-    #         {"name": "tern_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-    #
-    #         {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [2, 4, 6]},
-    #
-    #         {"name": "abs_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "trans_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "abs_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "trans_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "tern_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "abs_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "trans_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-    #
-    #         {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2]},
-    #         {"name": "symbol_factor_abs", "type": "choice", "values": [1, 2]},
-    #
-    #         # Backbone parameters
-    #         {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
-    #         {"name": "bb_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-    #         # {"name": "bb_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
-    #         {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
-    #         {"name": "use_bb_pos_enc", "type": "choice", "values": [True, False]}
-    #     ],
-    #     objectives={"val_acc": ObjectiveProperties(minimize=False)},
-    # )
+    # ax_client = AxClient.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
+    ax_client = AxClient()
+    ax_client.create_experiment(
+        name=f"reasoning_module_optimization_{version}",
+        parameters=[
+            {"name": "alpha", "type": "range", "bounds": [0.0, 1.0]},
+            {"name": "embed_dim", "type": "choice", "values": [256, 512, 768]},
+            {"name": "learning_rate", "type": "range", "bounds": [5e-5, 3e-4], "log_scale": True},
+
+            # Reasoning module parameters
+            {"name": "abs_depth", "type": "choice", "values": [1, 2, 3, 4]},
+            {"name": "trans_depth", "type": "choice", "values": [1, 2, 3, 4]},
+            {"name": "ternary_depth", "type": "choice", "values": [1, 2, 3, 4]},
+            {"name": "abs_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+            {"name": "trans_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+            {"name": "tern_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+
+            {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [2, 4, 6]},
+
+            {"name": "abs_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "trans_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "abs_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "trans_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "tern_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "abs_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "trans_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
+
+            {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2]},
+            {"name": "symbol_factor_abs", "type": "choice", "values": [1, 2]},
+
+            # Backbone parameters
+            {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
+            {"name": "bb_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
+            # {"name": "bb_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
+            {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "use_bb_pos_enc", "type": "choice", "values": [True, False]}
+        ],
+        objectives={"val_acc": ObjectiveProperties(minimize=False)},
+    )
 
     results_path = f"../../tr_results/{version}/ax_results.csv"
     total_trials = 120
