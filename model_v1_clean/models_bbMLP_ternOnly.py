@@ -267,7 +267,7 @@ class ReasoningModule(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
 
         # Temporal normalization
-        # self.temporal_norm = TemporalNorm(embed_dim)
+        self.temporal_norm = TemporalNorm(embed_dim)
         self.temporal_norm_tern = TemporalNorm(embed_dim)
 
         # Learnable symbols for abstractors
