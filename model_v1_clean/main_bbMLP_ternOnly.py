@@ -190,7 +190,7 @@ if __name__ == "__main__":
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
         "decoder_mlp_drop": 0.5,
-        "symbol_factor_abs": 1,
+        # "symbol_factor_abs": 1,
         "symbol_factor_tern": 1,
         "use_bb_pos_enc": False
     }
