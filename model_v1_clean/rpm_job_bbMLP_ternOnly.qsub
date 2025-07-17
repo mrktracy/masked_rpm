@@ -15,4 +15,4 @@
 
 module load miniconda
 conda activate rpm
-python main_bbMLP.py
+python main_bbMLP_ternOnly.py
