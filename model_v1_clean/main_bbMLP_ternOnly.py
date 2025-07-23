@@ -193,7 +193,8 @@ if __name__ == "__main__":
         "decoder_mlp_drop": 0.5,
         # "symbol_factor_abs": 1,
         "symbol_factor_tern": 1,
-        "use_bb_pos_enc": False
+        "use_bb_pos_enc": False,
+        "mlp_pool_depth": 1
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)

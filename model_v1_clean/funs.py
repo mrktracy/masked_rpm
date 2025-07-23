@@ -5,6 +5,19 @@ import re
 
 import pandas as pd
 
+def build_mlp_pool(in_dim, out_dim, depth=1, hidden_dim=None, dropout=0.0):
+    layers = []
+    curr_in = in_dim
+    hidden_dim = hidden_dim or out_dim  # default to out_dim if not specified
+    for _ in range(depth - 1):
+        layers.append(nn.Linear(curr_in, hidden_dim))
+        layers.append(nn.ReLU())
+        layers.append(nn.Dropout(dropout))
+        curr_in = hidden_dim
+    layers.append(nn.Linear(curr_in, out_dim))
+    layers.append(nn.Dropout(dropout))
+    return nn.Sequential(*layers)
+
 
 def gather_files(root_dir):
     all_files = []
@@ -14,6 +27,7 @@ def gather_files(root_dir):
                 all_files.append(os.path.join(dirpath, filename))
     random.shuffle(all_files)
     return all_files
+
 
 def gather_files_pgm(root_dir):
     all_files = []
@@ -32,6 +46,7 @@ def gather_files_pgm(root_dir):
     test_files = [filename for filename in all_files if re.search(test_pattern, filename)]
 
     return train_files, val_files, test_files
+
 
 def gather_files_by_type(root_dir):
     all_files = pd.DataFrame(columns=["folder", "file"])
