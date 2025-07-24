@@ -156,7 +156,7 @@ def run_optimization(version):
             # {"name": "abs_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             # {"name": "trans_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [4, 6, 8]},
-            {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2, 3]},
+            # {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2, 3]},
 
             # Backbone parameters
             {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
