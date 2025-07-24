@@ -72,7 +72,9 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
         "bb_drop_path_max": parameterization["bb_drop_path_max"],
         "bb_mlp_drop": parameterization["bb_mlp_drop"],
         "decoder_mlp_drop": parameterization["decoder_mlp_drop"],
-        "use_bb_pos_enc": True
+        "use_bb_pos_enc": True,
+        "mlp_pool_depth": parameterization["mlp_pool_depth"]
+
     }
 
     model = ReasoningModule(**model_params).to(device)
