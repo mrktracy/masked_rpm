@@ -71,7 +71,7 @@ def calc_mean_std():
         file.write(f"std: {std}")
 def visualizedata():
 
-    save_dir = "../data/visualize_data/i_raven/"
+    save_dir = "../../data/visualize_data/i_raven/"
     os.makedirs(save_dir, exist_ok=True)
 
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -91,7 +91,7 @@ def visualizedata():
     # train_files, _, _ = gather_files_pgm(root_dir)
     # train_files = train_files[0:32]  # delete this after test
 
-    root_dir = '../data/i_raven_data/distribute_four'
+    root_dir = '../../data/i_raven_data/distribute_four'
     train_files, val_files, test_files  = gather_files_pgm(root_dir)
     train_files = train_files[0:32]
 
@@ -134,7 +134,7 @@ def visualizedata():
             file.write(f"Solution to problem {idx}: {sol}\n")
 
 def displayresults_ae():
-    filepath = "../ae_results/ae-v2-itr1/"
+    filepath = "../../ae_results/ae-v2-itr1/"
     files = os.listdir(filepath)
     random.shuffle(files)
 
