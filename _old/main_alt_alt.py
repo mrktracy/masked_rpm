@@ -7,17 +7,17 @@ import torch
 from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
-from evaluate import evaluate_model_dist as evaluation_function
+from code.ARoN.src.evaluate import evaluate_model_dist_alt as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug_wRowSwap as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot_wRowSwap as rpm_dataset
-from datasets import RPMFullSentencesRaw_base as rpm_dataset
-from funs import gather_files_pgm
-from models_bbMLP import ReasoningModule
+from code.ARoN.src.datasets import RPMFullSentencesRaw_base as rpm_dataset
+from code.ARoN.src.funs import gather_files_pgm
+from models_alt_alt import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr34_pgmNeut_noDA"
+version = "Model_v1_itr32_pgmNeut_noDA"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -73,14 +73,15 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 20
+    EPOCHS = 10
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 1e-4
+    # LEARNING_RATE = 1e-4
     LOGS_PER_EPOCH = 120
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
-    ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
+    ALPHA = 0.05  # Balancing factor between task and reconstruction losses
     ALPHA_GROWTH_RATE = 0
 
     ''' Data loaders, optimizer, criterion '''
@@ -112,13 +113,13 @@ def main(version, results_folder, model_class, model_params):
             target_nums = target_nums.to(device)  # Shape: [batch_size]
 
             # Forward pass
-            recreation, scores = model(sentences)
+            recreation, scores, aux_loss = model(sentences)
 
             # Calculate reconstruction error
             rec_err = criterion_reconstruction(sentences, recreation)
             task_err = criterion_task(scores, target_nums)  # target_nums shape: [batch_size]
 
-            loss = ALPHA * task_err + (1 - ALPHA) * rec_err
+            loss = ALPHA * task_err + (1 - ALPHA) * rec_err + aux_loss
 
             tot_loss += loss.item()
             count += 1
@@ -159,40 +160,45 @@ def main(version, results_folder, model_class, model_params):
 if __name__ == "__main__":
     MODEL_CLASS = ReasoningModule
     MODEL_PARAMS = {
-        "embed_dim": 512,
+        "embed_dim": 768,
         "grid_size": 3,
-        "abs_depth": 2,
-        "trans_depth": 2,
-        "ternary_depth": 2,
-        "abs_num_heads": 8,
-        "trans_num_heads": 8,
-        "tern_num_heads": 8,
-        "abs_mlp_ratio": 4.0,
-        "trans_mlp_ratio": 4.0,
+        # "abs_depth": 2,
+        # "trans_depth": 2,
+        "ternary_depth": 1,
+        # "abs_num_heads": 8,
+        # "trans_num_heads": 8,
+        "tern_num_heads": 32,
+        # "abs_mlp_ratio": 4.0,
+        # "trans_mlp_ratio": 4.0,
         "tern_mlp_ratio": 4.0,
-        "abs_proj_drop": 0,
-        "trans_proj_drop": 0,
-        "tern_proj_drop": 0,
-        "abs_attn_drop": 0.3,
-        "trans_attn_drop": 0.3,
-        "tern_attn_drop": 0.3,
-        "abs_drop_path_max": 0.3,
-        "trans_drop_path_max": 0.3,
-        "tern_drop_path_max": 0.3,
-        "num_symbols_abs": 9,
+        # "abs_proj_drop": 0,
+        # "trans_proj_drop": 0,
+        "tern_proj_drop": 0.5,
+        # "abs_attn_drop": 0.3,
+        # "trans_attn_drop": 0.3,
+        "tern_attn_drop": 0.5,
+        # "abs_drop_path_max": 0.3,
+        # "trans_drop_path_max": 0.3,
+        "tern_drop_path_max": 0.5,
+        # "num_symbols_abs": 9,
         "num_symbols_ternary": 6,
         "norm_layer": nn.LayerNorm,
-        "bb_depth": 2,
-        "bb_num_heads": 8,
+        "phi_mlp_hidden_dim": 4,
+        "bb_depth": 1,
+        "bb_num_heads": 4,
         "bb_mlp_ratio": 4,
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
         "decoder_mlp_drop": 0.5,
-        "symbol_factor_abs": 1,
+        # "symbol_factor_abs": 1,
         "symbol_factor_tern": 1,
-        "use_bb_pos_enc": False
+        "use_bb_pos_enc": True,
+        "beta_residual": 0.25,
+        "beta_entropy": 0,
+        "beta_align": 1.0,
+        "codebook_size": 32
     }
 
     main(version, results_folder, MODEL_CLASS, MODEL_PARAMS)

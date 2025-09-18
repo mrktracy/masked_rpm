@@ -1,10 +1,9 @@
 import torch
-import pos_embed as pos
+from code.ARoN.src import pos_embed as pos
 import torch.nn as nn
-import torch.nn.functional as F
 from timm.layers import Mlp, DropPath
-import logging
 from typing import Tuple
+from code.ARoN.src.funs import build_mlp_pool
 
 
 class Perception(nn.Module):
@@ -20,7 +19,8 @@ class Perception(nn.Module):
                  bb_drop_path_max=0.5,
                  bb_mlp_drop=0,
                  decoder_mlp_drop=0.5,
-                 use_bb_pos_enc=False):
+                 use_bb_pos_enc=False,
+                 mlp_pool_depth=1):
         super().__init__()
         self.n_nodes = grid_size ** 2
         self.embed_dim = embed_dim
@@ -36,7 +36,7 @@ class Perception(nn.Module):
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads,
                                              mlp_ratio=bb_mlp_ratio, mlp_drop=bb_mlp_drop, proj_drop=bb_proj_drop,
                                              attn_drop=bb_attn_drop, drop_path_max=bb_drop_path_max,
-                                             use_bb_pos_enc=use_bb_pos_enc)
+                                             use_bb_pos_enc=use_bb_pos_enc, mlp_pool_depth=mlp_pool_depth)
 
         # Decoder for reconstructing sentences
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=decoder_mlp_drop)
@@ -108,8 +108,9 @@ class BackbonePerception(nn.Module):
                  mlp_drop=0.3,
                  proj_drop=0.3,
                  attn_drop=0.3,
-                 drop_path_max = 0.5,
-                 use_bb_pos_enc=False):
+                 drop_path_max=0.5,
+                 use_bb_pos_enc=False,
+                 mlp_pool_depth=1):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
@@ -144,8 +145,13 @@ class BackbonePerception(nn.Module):
                   drop_path=drop_path_max * ((i + 1) / self.depth), restrict_qk=False)
             for i in range(self.depth)])
 
-        self.mlp = nn.Linear(self.out_channels * grid_dim ** 2, self.embed_dim)
-        self.dropout = nn.Dropout(p=mlp_drop)
+        self.mlp = build_mlp_pool(
+            in_dim=self.out_channels * grid_dim ** 2,
+            out_dim=self.embed_dim,
+            depth=mlp_pool_depth,
+            hidden_dim=mlp_pool_hidden_dim,
+            dropout=mlp_drop
+        )
 
     def forward(self, x):
 
@@ -202,27 +208,27 @@ class ReasoningModule(nn.Module):
         self,
         embed_dim: int,
         grid_size: int,
-        abs_depth: int,
-        trans_depth: int,
+        # abs_depth: int,
+        # trans_depth: int,
         ternary_depth: int,
-        abs_num_heads: int,
-        trans_num_heads: int,
+        # abs_num_heads: int,
+        # trans_num_heads: int,
         tern_num_heads: int,
         num_candidates: int = 8,
-        abs_mlp_ratio: float = 4.0,
-        trans_mlp_ratio: float = 4.0,
+        # abs_mlp_ratio: float = 4.0,
+        # trans_mlp_ratio: float = 4.0,
         tern_mlp_ratio: float = 4.0,
         phi_mlp_hidden_dim: int = 4,
-        abs_proj_drop: float = 0.0,
-        trans_proj_drop: float = 0.0,
+        # abs_proj_drop: float = 0.0,
+        # trans_proj_drop: float = 0.0,
         tern_proj_drop: float = 0.0,
-        abs_attn_drop: float = 0.0,
-        trans_attn_drop: float = 0.0,
+        # abs_attn_drop: float = 0.0,
+        # trans_attn_drop: float = 0.0,
         tern_attn_drop: float = 0.0,
-        abs_drop_path_max: float = 0.0,
-        trans_drop_path_max: float = 0.0,
+        # abs_drop_path_max: float = 0.0,
+        # trans_drop_path_max: float = 0.0,
         tern_drop_path_max: float = 0.0,
-        num_symbols_abs: int = 9,
+        # num_symbols_abs: int = 9,
         num_symbols_ternary: int = 6,
         norm_layer=nn.LayerNorm,
         bb_depth: int = 2,
@@ -234,14 +240,15 @@ class ReasoningModule(nn.Module):
         bb_mlp_drop=0,
         decoder_mlp_drop=0.5,
         use_bb_pos_enc=False,
-        symbol_factor_abs=1,
-        symbol_factor_tern=1
+        # symbol_factor_abs=1,
+        symbol_factor_tern=1,
+        mlp_pool_depth=1
     ):
         super().__init__()
         self.embed_dim = embed_dim
         self.grid_size = grid_size
         self.num_candidates = num_candidates
-        self.symbol_factor_abs = symbol_factor_abs
+        # self.symbol_factor_abs = symbol_factor_abs
         self.symbol_factor_tern = symbol_factor_tern
         self.num_symbols_ternary = num_symbols_ternary
 
@@ -258,7 +265,8 @@ class ReasoningModule(nn.Module):
             bb_drop_path_max=bb_drop_path_max,
             bb_mlp_drop=bb_mlp_drop,
             decoder_mlp_drop=decoder_mlp_drop,
-            use_bb_pos_enc=use_bb_pos_enc
+            use_bb_pos_enc=use_bb_pos_enc,
+            mlp_pool_depth=mlp_pool_depth
         )
 
         # Positional embeddings
@@ -271,7 +279,7 @@ class ReasoningModule(nn.Module):
         self.temporal_norm_tern = TemporalNorm(embed_dim)
 
         # Learnable symbols for abstractors
-        self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor_abs))
+        # self.symbols_abs = nn.Parameter(torch.randn(num_symbols_abs, embed_dim * symbol_factor_abs))
         self.symbols_ternary = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim * symbol_factor_tern))
 
         # self.pos_embed_tern = nn.Parameter(torch.randn(num_symbols_ternary, embed_dim))
@@ -282,12 +290,12 @@ class ReasoningModule(nn.Module):
         # self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
 
         # Abstractor layers
-        self.abstractor = nn.ModuleList([  # Abstractor layers
-            Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, abs_num_heads,
-                  abs_mlp_ratio, abs_proj_drop, abs_attn_drop, abs_drop_path_max * ((i + 1) / abs_depth),
-                  norm_layer=norm_layer)
-            for i in range(abs_depth)
-        ])
+        # self.abstractor = nn.ModuleList([  # Abstractor layers
+        #     Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, abs_num_heads,
+        #           abs_mlp_ratio, abs_proj_drop, abs_attn_drop, abs_drop_path_max * ((i + 1) / abs_depth),
+        #           norm_layer=norm_layer)
+        #     for i in range(abs_depth)
+        # ])
 
         # Ternary layers
         self.ternary_module = nn.ModuleList([  # Ternary layers
@@ -297,17 +305,17 @@ class ReasoningModule(nn.Module):
             for i in range(ternary_depth)
         ])
 
-        # Transformer layers
-        self.transformer = nn.ModuleList([  # Transformer layers
-            Block(embed_dim, embed_dim, trans_num_heads, trans_mlp_ratio, trans_proj_drop, trans_attn_drop, trans_drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
-            for i in range(trans_depth)
-        ])
+        # # Transformer layers
+        # self.transformer = nn.ModuleList([  # Transformer layers
+        #     Block(embed_dim, embed_dim, trans_num_heads, trans_mlp_ratio, trans_proj_drop, trans_attn_drop, trans_drop_path_max * ((i + 1) / trans_depth), norm_layer=norm_layer)
+        #     for i in range(trans_depth)
+        # ])
 
         # Guesser head
         self.guesser_head = nn.Sequential(
-            nn.LayerNorm(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern,
+            nn.LayerNorm(embed_dim * symbol_factor_tern,
                          eps=1e-5, elementwise_affine=True),
-            nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
+            nn.Linear(embed_dim * symbol_factor_tern, embed_dim),
             nn.ReLU(),
             nn.Linear(embed_dim, 1)
         )
@@ -404,20 +412,20 @@ class ReasoningModule(nn.Module):
         # ternary_tokens_normalized = ternary_tokens_normalized + pos_embed_tern
 
         # Temporarily expand the symbols for batch dimension manipulation
-        expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
+        # expanded_symbols_abs = self.symbols_abs.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
         expanded_symbols_ternary = self.symbols_ternary.unsqueeze(0).expand(batch_size * num_candidates, -1, -1)
 
         # Process embeddings with abstractor
-        abstracted = embeddings_normalized_reshaped.clone()
-        for idx, blk in enumerate(self.abstractor):
-            if idx == 0:
-                abstracted = blk(
-                    x_q=abstracted,
-                    x_k=abstracted,
-                    x_v=expanded_symbols_abs,
-                )
-            else:
-                abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=abstracted)
+        # abstracted = embeddings_normalized_reshaped.clone()
+        # for idx, blk in enumerate(self.abstractor):
+        #     if idx == 0:
+        #         abstracted = blk(
+        #             x_q=abstracted,
+        #             x_k=abstracted,
+        #             x_v=expanded_symbols_abs,
+        #         )
+        #     else:
+        #         abstracted = blk(x_q=abstracted, x_k=abstracted, x_v=abstracted)
 
         # Process ternary tokens
         for idx, blk in enumerate(self.ternary_module):
@@ -431,29 +439,31 @@ class ReasoningModule(nn.Module):
                 ternary_tokens = blk(x_q=ternary_tokens, x_k=ternary_tokens, x_v=ternary_tokens)
 
         # Process embeddings with transformer
-        transformed = embeddings_normalized_reshaped.clone()
-        for blk in self.transformer:
-            transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
+        # transformed = embeddings_normalized_reshaped.clone()
+        # for blk in self.transformer:
+        #     transformed = blk(x_q=transformed, x_k=transformed, x_v=transformed)
 
         # Aggregating the three streams before scoring and recreation
-        transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
-        abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
+        # transformed = transformed.view([batch_size, self.num_candidates, self.grid_size ** 2, -1])
+        # abstracted = abstracted.view(batch_size, self.num_candidates, self.grid_size ** 2, -1)
         ternary_tokens = ternary_tokens.view(
             [batch_size, self.num_candidates, self.grid_size * 2, -1])
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
-        transformed = self.temporal_norm.de_normalize(transformed, embeddings)
-
-        if self.symbol_factor_abs == 1: # skip de-normalization when symbol_factor_abs != 1
-            abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
+        # transformed = self.temporal_norm.de_normalize(transformed, embeddings)
+        #
+        # if self.symbol_factor_abs == 1: # skip de-normalization when symbol_factor_abs != 1
+        #     abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
 
         if self.symbol_factor_tern == 1: # skip de-normalization when symbol_factor_tern != 1
             ternary_tokens = self.temporal_norm_tern.de_normalize(ternary_tokens, ternary_tokens_unnorm_reshaped)
 
-        trans_abs = torch.cat([transformed, abstracted], dim=-1)
+        # trans_abs = torch.cat([transformed, abstracted], dim=-1)
 
-        reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
-            batch_size * self.num_candidates, -1)
+        # reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
+        #     batch_size * self.num_candidates, -1)
+
+        reas_bottleneck = ternary_tokens.mean(dim=-2).view(batch_size * self.num_candidates, -1)
 
         # Scores from the concatenated outputs
         scores = self.guesser_head(reas_bottleneck).view(batch_size, num_candidates)  # [batch_size, num_candidates]

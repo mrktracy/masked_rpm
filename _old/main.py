@@ -7,17 +7,17 @@ import torch
 from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
-from evaluate import evaluate_model_dist as evaluation_function
+from code.ARoN.src.evaluate import evaluate_model_dist as evaluation_function
 # from datasets import RPMFullSentencesRaw_dataAug_wRowSwap as rpm_dataset
-# from datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
+from code.ARoN.src.datasets import RPMFullSentencesRaw_dataAug as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot as rpm_dataset
 # from datasets import RPMFullSentencesRaw_dataAug_noOuterRot_wRowSwap as rpm_dataset
-from datasets import RPMFullSentencesRaw_base as rpm_dataset
-from funs import gather_files_pgm
-from models_alt import ReasoningModule
+# from datasets import RPMFullSentencesRaw_base as rpm_dataset
+from code.ARoN.src.funs import gather_files_pgm
+from models import ReasoningModule
 
 # Versioning
-version = "Model_v1_itr33_pgmNeut_noDA"
+version = "Model_v1_itr29_pgmNeut"
 logfile = f"../../tr_results/{version}/runlog_{version}.txt"
 results_folder = os.path.dirname(logfile)
 os.makedirs(results_folder, exist_ok=True)
@@ -73,15 +73,14 @@ def main(version, results_folder, model_class, model_params):
     test_dataset = rpm_dataset(test_files, device=device)
 
     ''' Hyperparameters '''
-    EPOCHS = 10
+    EPOCHS = 5
     FIRST_EPOCH = 0
     BATCH_SIZE = 32
-    LEARNING_RATE = 0.00017144062076357325
-    # LEARNING_RATE = 1e-4
-    LOGS_PER_EPOCH = 120
+    LEARNING_RATE = 0.0001
+    LOGS_PER_EPOCH = 120*16
     BATCHES_PER_PRINT = 20
     EPOCHS_PER_SAVE = 1
-    ALPHA = 1.  # Balancing factor between task and reconstruction losses
+    ALPHA = 0.08632841418080955  # Balancing factor between task and reconstruction losses
     ALPHA_GROWTH_RATE = 0
 
     ''' Data loaders, optimizer, criterion '''
@@ -160,39 +159,38 @@ def main(version, results_folder, model_class, model_params):
 if __name__ == "__main__":
     MODEL_CLASS = ReasoningModule
     MODEL_PARAMS = {
-        "embed_dim": 768,
+        "embed_dim": 512,
         "grid_size": 3,
-        # "abs_depth": 2,
-        # "trans_depth": 2,
-        "ternary_depth": 6,
-        # "abs_num_heads": 8,
-        # "trans_num_heads": 8,
-        "tern_num_heads": 32,
-        # "abs_mlp_ratio": 4.0,
-        # "trans_mlp_ratio": 4.0,
+        "abs_depth": 2,
+        "trans_depth": 2,
+        "ternary_depth": 2,
+        "abs_num_heads": 8,
+        "trans_num_heads": 8,
+        "tern_num_heads": 8,
+        "abs_mlp_ratio": 4.0,
+        "trans_mlp_ratio": 4.0,
         "tern_mlp_ratio": 4.0,
-        # "abs_proj_drop": 0,
-        # "trans_proj_drop": 0,
-        "tern_proj_drop": 0.0,
-        # "abs_attn_drop": 0.3,
-        # "trans_attn_drop": 0.3,
-        "tern_attn_drop": 0.5,
-        # "abs_drop_path_max": 0.3,
-        # "trans_drop_path_max": 0.3,
-        "tern_drop_path_max": 0.5,
-        # "num_symbols_abs": 9,
+        "abs_proj_drop": 0,
+        "trans_proj_drop": 0,
+        "tern_proj_drop": 0,
+        "abs_attn_drop": 0.3,
+        "trans_attn_drop": 0.3,
+        "tern_attn_drop": 0.3,
+        "abs_drop_path_max": 0.3,
+        "trans_drop_path_max": 0.3,
+        "tern_drop_path_max": 0.3,
+        "num_symbols_abs": 9,
         "num_symbols_ternary": 6,
         "norm_layer": nn.LayerNorm,
-        "phi_mlp_hidden_dim": 2,
-        "bb_depth": 1,
-        "bb_num_heads": 16,
+        "bb_depth": 2,
+        "bb_num_heads": 8,
         "bb_mlp_ratio": 4,
         "bb_proj_drop": 0,
         "bb_attn_drop": 0,
         "bb_drop_path_max": 0,
         "bb_mlp_drop": 0,
         "decoder_mlp_drop": 0.5,
-        # "symbol_factor_abs": 1,
+        "symbol_factor_abs": 1,
         "symbol_factor_tern": 1,
         "use_bb_pos_enc": False
     }

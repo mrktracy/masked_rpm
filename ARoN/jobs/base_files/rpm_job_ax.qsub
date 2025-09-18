@@ -22,4 +22,4 @@ if ! python -c "import ax.service.ax_client" &> /dev/null; then
     pip install --no-cache-dir ax-platform
 fi
 
-python ax_optimize_alt.py
+python ax_optimize.py

@@ -1,11 +1,9 @@
 import torch
-import pos_embed as pos
+from code.ARoN.src import pos_embed as pos
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.layers import Mlp, DropPath
-import logging
 from typing import Tuple
-from funs import build_mlp_pool
 
 
 class Perception(nn.Module):
@@ -21,8 +19,7 @@ class Perception(nn.Module):
                  bb_drop_path_max=0.5,
                  bb_mlp_drop=0,
                  decoder_mlp_drop=0.5,
-                 use_bb_pos_enc=False,
-                 mlp_pool_depth=1):
+                 use_bb_pos_enc=False):
         super().__init__()
         self.n_nodes = grid_size ** 2
         self.embed_dim = embed_dim
@@ -38,7 +35,7 @@ class Perception(nn.Module):
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads,
                                              mlp_ratio=bb_mlp_ratio, mlp_drop=bb_mlp_drop, proj_drop=bb_proj_drop,
                                              attn_drop=bb_attn_drop, drop_path_max=bb_drop_path_max,
-                                             use_bb_pos_enc=use_bb_pos_enc, mlp_pool_depth=mlp_pool_depth)
+                                             use_bb_pos_enc=use_bb_pos_enc)
 
         # Decoder for reconstructing sentences
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=decoder_mlp_drop)
@@ -110,9 +107,8 @@ class BackbonePerception(nn.Module):
                  mlp_drop=0.3,
                  proj_drop=0.3,
                  attn_drop=0.3,
-                 drop_path_max=0.5,
-                 use_bb_pos_enc=False,
-                 mlp_pool_depth=1):
+                 drop_path_max = 0.5,
+                 use_bb_pos_enc=False):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
@@ -124,7 +120,7 @@ class BackbonePerception(nn.Module):
         self.use_bb_pos_enc = use_bb_pos_enc
 
         # CLS Token
-        # self.cls_token = nn.Parameter(torch.randn(1, 1, out_channels))
+        self.cls_token = nn.Parameter(torch.randn(1, 1, out_channels))
 
         self.encoder = nn.Sequential(  # from N, 1, 160, 160
             ResidualBlock(1, 16),  # N, 16, 160, 160
@@ -136,7 +132,7 @@ class BackbonePerception(nn.Module):
         )
 
         if use_bb_pos_enc:
-            self.pos_embed = nn.Parameter(torch.zeros([grid_dim ** 2, out_channels]), requires_grad=False)
+            self.pos_embed = nn.Parameter(torch.zeros([grid_dim ** 2 + 1, out_channels]), requires_grad=False)
             pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=out_channels, grid_size=grid_dim, cls_token=True)
             self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
 
@@ -147,13 +143,8 @@ class BackbonePerception(nn.Module):
                   drop_path=drop_path_max * ((i + 1) / self.depth), restrict_qk=False)
             for i in range(self.depth)])
 
-        self.mlp = build_mlp_pool(
-            in_dim=self.out_channels * grid_dim ** 2,
-            out_dim=self.embed_dim,
-            depth=mlp_pool_depth,
-            hidden_dim=mlp_pool_hidden_dim,
-            dropout=mlp_drop
-        )
+        self.mlp = nn.Linear(self.out_channels, self.embed_dim)
+        self.dropout = nn.Dropout(p=mlp_drop)
 
     def forward(self, x):
 
@@ -163,8 +154,8 @@ class BackbonePerception(nn.Module):
 
         x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
 
-        # cls_tokens = self.cls_token.expand(batch_dim, -1, -1)
-        # x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
+        cls_tokens = self.cls_token.expand(batch_dim, -1, -1)
+        x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
 
         if self.use_bb_pos_enc:
             pos_embed = self.pos_embed.unsqueeze(0).expand(batch_dim, -1, self.out_channels)
@@ -173,9 +164,9 @@ class BackbonePerception(nn.Module):
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        # x = x[:, 0, :]
+        x = x[:, 0, :]
 
-        x = self.dropout(self.mlp(x.view(batch_dim, -1)))
+        x = self.dropout(self.mlp(x))
 
         return x
 
@@ -203,6 +194,51 @@ class ResNetDecoder(nn.Module):
 
     def forward(self, x):
         return self.decoder(x)
+
+
+class ResidualVQ(nn.Module):
+    def __init__(self, embed_dim, codebook_size, beta_residual=1.0, beta_entropy=0.01, beta_align=1.0):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.codebook = nn.Parameter(torch.randn(codebook_size, embed_dim))
+        self.residual_mlp = nn.Sequential(
+            nn.Linear(2 * embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim)
+        )
+        self.beta_residual = beta_residual
+        self.beta_entropy = beta_entropy
+        self.beta_align = beta_align
+
+    def forward(self, z):
+        # z: (B, D)
+        z_norm = F.normalize(z, dim=-1)
+        codebook_norm = F.normalize(self.codebook, dim=-1)
+
+        # Cosine similarities
+        cos_sim = torch.matmul(z_norm, codebook_norm.T)  # (B, K)
+        soft_assign = F.softmax(cos_sim, dim=-1)
+        idx = cos_sim.argmax(dim=-1)  # (B,)
+        e_star = self.codebook[idx]  # (B, D)
+
+        # Residual update
+        combined = torch.cat([e_star, z], dim=-1)
+        residual = self.residual_mlp(combined)
+        z_out = e_star + residual
+
+        # Losses
+        align_loss = F.mse_loss(z, e_star.detach())
+        residual_loss = F.mse_loss(residual, torch.zeros_like(residual))
+        entropy_loss = (soft_assign * torch.log(soft_assign + 1e-8)).sum(dim=-1).mean()
+
+        aux_loss = (
+            self.beta_align * align_loss +
+            self.beta_residual * residual_loss +
+            self.beta_entropy * entropy_loss
+        )
+
+        return z_out, aux_loss
+
 
 
 class ReasoningModule(nn.Module):
@@ -244,7 +280,10 @@ class ReasoningModule(nn.Module):
         use_bb_pos_enc=False,
         # symbol_factor_abs=1,
         symbol_factor_tern=1,
-        mlp_pool_depth=1
+        beta_residual=0.25,
+        beta_entropy=0.01,
+        beta_align=1,
+        codebook_size=100
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -267,8 +306,7 @@ class ReasoningModule(nn.Module):
             bb_drop_path_max=bb_drop_path_max,
             bb_mlp_drop=bb_mlp_drop,
             decoder_mlp_drop=decoder_mlp_drop,
-            use_bb_pos_enc=use_bb_pos_enc,
-            mlp_pool_depth=mlp_pool_depth
+            use_bb_pos_enc=use_bb_pos_enc
         )
 
         # Positional embeddings
@@ -291,7 +329,7 @@ class ReasoningModule(nn.Module):
         # pos_embed_data_tern = pos.get_2d_sincos_pos_embed_rect(embed_dim=embed_dim, grid_height=2, grid_width=3, cls_token=False)
         # self.pos_embed_tern.data.copy_(torch.from_numpy(pos_embed_data_tern).float())
 
-        # Abstractor layers
+        # # Abstractor layers
         # self.abstractor = nn.ModuleList([  # Abstractor layers
         #     Block(embed_dim * (1 if i == 0 else symbol_factor_abs), embed_dim * symbol_factor_abs, abs_num_heads,
         #           abs_mlp_ratio, abs_proj_drop, abs_attn_drop, abs_drop_path_max * ((i + 1) / abs_depth),
@@ -300,10 +338,20 @@ class ReasoningModule(nn.Module):
         # ])
 
         # Ternary layers
+        # use MLP attention for first layer
+        # self.ternary_module = nn.ModuleList([  # Ternary layers
+        #     Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, tern_num_heads,
+        #           tern_mlp_ratio, tern_proj_drop, tern_attn_drop,
+        #           tern_drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer, use_mlp_attn=(i == 0),
+        #           mlp_attn_use_norm=True)
+        #     for i in range(ternary_depth)
+        # ])
+
         self.ternary_module = nn.ModuleList([  # Ternary layers
             Block(embed_dim * (1 if i == 0 else symbol_factor_tern), embed_dim * symbol_factor_tern, tern_num_heads,
                   tern_mlp_ratio, tern_proj_drop, tern_attn_drop,
-                  tern_drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer)
+                  tern_drop_path_max * ((i + 1) / ternary_depth), norm_layer=norm_layer, use_mlp_attn=False,
+                  mlp_attn_use_norm=False)
             for i in range(ternary_depth)
         ])
 
@@ -314,6 +362,14 @@ class ReasoningModule(nn.Module):
         # ])
 
         # Guesser head
+        # self.guesser_head = nn.Sequential(
+        #     nn.LayerNorm(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern,
+        #                  eps=1e-5, elementwise_affine=True),
+        #     nn.Linear(embed_dim + embed_dim * symbol_factor_abs + embed_dim * symbol_factor_tern, embed_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(embed_dim, 1)
+        # )
+
         self.guesser_head = nn.Sequential(
             nn.LayerNorm(embed_dim * symbol_factor_tern,
                          eps=1e-5, elementwise_affine=True),
@@ -338,6 +394,12 @@ class ReasoningModule(nn.Module):
             nn.ReLU(),
             nn.Linear(phi_mlp_hidden_dim * embed_dim, embed_dim)
         )
+
+        self.res_vq = ResidualVQ(embed_dim=embed_dim,
+                                 codebook_size=codebook_size,
+                                 beta_residual=beta_residual,
+                                 beta_entropy=beta_entropy,
+                                 beta_align=beta_align)
 
         # under-powered
         # self.phi_mlp = nn.Sequential(
@@ -370,7 +432,9 @@ class ReasoningModule(nn.Module):
         # Apply the MLP
         result = self.phi_mlp(x)  # Shape: (batch_size * 6, embed_dim)
 
-        return result.view(batch_size, 6, -1)
+        result_quant, aux_loss = self.res_vq(result)
+
+        return result_quant.view(batch_size, 6, -1), aux_loss
 
     def forward(self, sentences: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -401,7 +465,7 @@ class ReasoningModule(nn.Module):
         embeddings_normalized_reshaped = embeddings_normalized.view(batch_size * num_candidates, grid_nodes, self.embed_dim)
 
         # Apply ternary operation to obtain row/column embeddings
-        ternary_tokens_unnormalized = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
+        ternary_tokens_unnormalized, aux_loss = self.ternary_mlp(embeddings_normalized_reshaped) # [batch_size * num_candidates, num_symbols_ternary, embed_dim]
 
         # Temporal context normalization of new row/column embeddings
         ternary_tokens_normalized = self.temporal_norm_tern.forward(ternary_tokens_unnormalized)
@@ -453,7 +517,7 @@ class ReasoningModule(nn.Module):
 
         # De-normalize the three streams (ternary_tokens_normalized, abstracted, transformed)
         # transformed = self.temporal_norm.de_normalize(transformed, embeddings)
-        #
+
         # if self.symbol_factor_abs == 1: # skip de-normalization when symbol_factor_abs != 1
         #     abstracted = self.temporal_norm.de_normalize(abstracted, embeddings)
 
@@ -465,12 +529,13 @@ class ReasoningModule(nn.Module):
         # reas_bottleneck = torch.cat([trans_abs.mean(dim=-2), ternary_tokens.mean(dim=-2)], dim=-1).view(
         #     batch_size * self.num_candidates, -1)
 
+        # mean-pooling of ternary tokens
         reas_bottleneck = ternary_tokens.mean(dim=-2).view(batch_size * self.num_candidates, -1)
 
         # Scores from the concatenated outputs
         scores = self.guesser_head(reas_bottleneck).view(batch_size, num_candidates)  # [batch_size, num_candidates]
 
-        return reconstructed_sentences, scores
+        return reconstructed_sentences, scores, aux_loss
 
 
 """ Modification of "Vision Transformer (ViT) in PyTorch"
@@ -561,6 +626,87 @@ class Attention(nn.Module):
         return x
 
 
+class MLPAttention(nn.Module):
+    def __init__(
+        self,
+        dim_kq,
+        dim_v,
+        num_heads=8,
+        hidden_dim=128,
+        attn_drop=0.0,
+        proj_drop=0.0,
+        norm_layer=nn.LayerNorm,
+        mlp_attn_use_norm=False
+    ):
+        super().__init__()
+
+        assert dim_kq % num_heads == 0, "dim_kq should be divisible by num_heads"
+        assert dim_v % num_heads == 0, "dim_v should be divisible by num_heads"
+
+        self.dim_kq = dim_kq
+        self.dim_v = dim_v
+        self.num_heads = num_heads
+        self.head_dim_kq = dim_kq // num_heads
+        self.head_dim_v = dim_v // num_heads
+        self.mlp_attn_use_norm = mlp_attn_use_norm
+
+        self.w_qs = nn.Linear(dim_kq, dim_kq)
+        self.w_ks = nn.Linear(dim_kq, dim_kq)
+        self.w_vs = nn.Linear(dim_v, dim_v)
+
+        if mlp_attn_use_norm:
+            self.q_norm = norm_layer(self.head_dim_kq)
+            self.k_norm = norm_layer(self.head_dim_kq)
+        else:
+            self.q_norm = nn.Identity()
+            self.k_norm = nn.Identity()
+
+        self.score_mlp = nn.Sequential(
+            nn.Linear(2 * self.head_dim_kq, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim_v, dim_v)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+    def forward(self, x_q, x_k, x_v):
+        batch_size = x_q.size(0)
+        len_q = x_q.size(1)
+        len_k = x_k.size(1)
+        len_v = x_v.size(1)
+
+        # Linear projections
+        q = self.w_qs(x_q).view(batch_size, len_q, self.num_heads, self.head_dim_kq).transpose(1, 2)  # (B, H, Q, D)
+        k = self.w_ks(x_k).view(batch_size, len_k, self.num_heads, self.head_dim_kq).transpose(1, 2)  # (B, H, K, D)
+        v = self.w_vs(x_v).view(batch_size, len_v, self.num_heads, self.head_dim_v).transpose(1, 2)  # (B, H, V, D)
+
+        # Apply optional normalization
+        q = self.q_norm(q)
+        k = self.k_norm(k)
+
+        # Expand and concatenate q and k for MLP scoring
+        q_exp = q.unsqueeze(3).expand(-1, -1, -1, len_k, -1)  # (B, H, Q, K, D)
+        k_exp = k.unsqueeze(2).expand(-1, -1, len_q, -1, -1)  # (B, H, Q, K, D)
+        qk_cat = torch.cat([q_exp, k_exp], dim=-1)            # (B, H, Q, K, 2D)
+
+        # MLP-based attention scores
+        scores = self.score_mlp(qk_cat).squeeze(-1)           # (B, H, Q, K)
+        attn = torch.softmax(scores, dim=-1)
+        attn = self.attn_drop(attn)
+
+        # Weighted sum of values
+        x = torch.matmul(attn, v)  # (B, H, Q, D)
+
+        # Merge heads and output projection
+        x = x.transpose(1, 2).contiguous().view(batch_size, len_q, self.dim_v)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+
+        return x
+
+
 class TemporalNorm(nn.Module):
     """
     Temporal normalization layer normalizing across the temporal (grid/sequence) dimension.
@@ -602,7 +748,6 @@ class TemporalNorm(nn.Module):
         return (x - self.bias) / self.weight * std + mean
 
 
-
 class LayerScale(nn.Module):
     def __init__(self, dim, init_values=1e-5, inplace=False):
         super().__init__()
@@ -632,25 +777,42 @@ class Block(nn.Module):
         norm_layer=nn.LayerNorm,
         mlp_layer=Mlp,
         restrict_qk=False,
+        use_mlp_attn=False,
+        mlp_attn_use_norm = False
     ):
         super().__init__()
         self.norm1 = norm_layer(dim_kq)
         self.norm1_v = norm_layer(dim_v)
         self.norm2 = norm_layer(dim_v)
         self.norm3 = norm_layer(dim_v)
-        self.attn = Attention(
-            dim_kq,
-            dim_v,
-            num_heads=num_heads,
-            q_bias=q_bias,
-            k_bias=k_bias,
-            v_bias=v_bias,
-            qk_norm=qk_norm,
-            attn_drop=attn_drop,
-            proj_drop=proj_drop,
-            norm_layer=norm_layer,
-            restrict_qk=restrict_qk,
-        )
+
+        if use_mlp_attn:
+            self.attn = MLPAttention(
+                dim_kq,
+                dim_v,
+                num_heads=num_heads,
+                hidden_dim=128,
+                attn_drop=attn_drop,
+                proj_drop=proj_drop,
+                norm_layer=norm_layer,
+                mlp_attn_use_norm = mlp_attn_use_norm
+            )
+
+        else:
+            self.attn = Attention(
+                dim_kq,
+                dim_v,
+                num_heads=num_heads,
+                q_bias=q_bias,
+                k_bias=k_bias,
+                v_bias=v_bias,
+                qk_norm=qk_norm,
+                attn_drop=attn_drop,
+                proj_drop=proj_drop,
+                norm_layer=norm_layer,
+                restrict_qk=restrict_qk,
+            )
+
         self.ls1 = LayerScale(dim_kq, init_values=init_values) if init_values else nn.Identity()
         self.drop_path1 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.mlp = mlp_layer(
@@ -663,6 +825,7 @@ class Block(nn.Module):
         self.drop_path2 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.dim_kq = dim_kq
         self.dim_v = dim_v
+        self.use_mlp_attn = use_mlp_attn
 
     def forward(self, x_q, x_k, x_v, use_mlp_layer=True):
         """
@@ -687,4 +850,3 @@ class Block(nn.Module):
             x = self.norm3(x + self.drop_path2(self.ls2(self.mlp(self.norm2(x)))))
 
         return x  # Shape: (batch_size * num_candidates, grid_nodes, dim_v)
-
