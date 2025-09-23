@@ -110,7 +110,8 @@ class BackbonePerception(nn.Module):
                  attn_drop=0.3,
                  drop_path_max=0.5,
                  use_bb_pos_enc=False,
-                 mlp_pool_depth=1):
+                 mlp_pool_depth=1,
+                 mlp_pool_hidden_dim_factor=4):
         super(BackbonePerception, self).__init__()
 
         self.embed_dim = embed_dim
@@ -149,7 +150,7 @@ class BackbonePerception(nn.Module):
             in_dim=self.out_channels * grid_dim ** 2,
             out_dim=self.embed_dim,
             depth=mlp_pool_depth,
-            hidden_dim=mlp_pool_hidden_dim,
+            hidden_dim=self.embed_dim * mlp_pool_hidden_dim_factor,
             dropout=mlp_drop
         )
 
@@ -173,7 +174,7 @@ class BackbonePerception(nn.Module):
 
         # x = x[:, 0, :]
 
-        x = self.dropout(self.mlp(x.view(batch_dim, -1)))
+        x = self.mlp(x.view(batch_dim, -1))
 
         return x
 

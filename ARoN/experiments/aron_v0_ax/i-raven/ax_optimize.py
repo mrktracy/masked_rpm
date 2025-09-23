@@ -9,7 +9,7 @@ from ax.service.utils.report_utils import exp_to_df
 
 import sys
 # Add project_root/code/ARoN to Python path so we can import from src/*
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
 
 from src.evaluate import evaluate_model_dist as evaluation_function
 from src.datasets import RPMFullSentencesRaw_base as rpm_dataset
@@ -78,8 +78,8 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
         "bb_mlp_drop": parameterization["bb_mlp_drop"],
         "decoder_mlp_drop": parameterization["decoder_mlp_drop"],
         "use_bb_pos_enc": True,
-        "mlp_pool_depth": parameterization["mlp_pool_depth"]
-
+        "mlp_pool_depth": parameterization["mlp_pool_depth"],
+        "mlp_pool_hidden_dim_factor": parameterization["mlp_pool_hidden_dim_factor"]
     }
 
     model = ReasoningModule(**model_params).to(device)
@@ -172,7 +172,8 @@ def run_optimization(version):
             {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "mlp_pool_depth", "type": "choice", "values": [1, 2, 3]}
+            {"name": "mlp_pool_depth", "type": "choice", "values": [1, 2, 3]},
+            {"name": "mlp_pool_hidden_dim_factor", "type": "choice", "values": [1, 2, 4]}
             # {"name": "use_bb_pos_enc", "type": "choice", "values": [True]}
         ],
         objectives={"val_acc": ObjectiveProperties(minimize=False)},
