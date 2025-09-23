@@ -9,7 +9,7 @@ from ax.service.utils.report_utils import exp_to_df
 from code.ARoN.src.evaluate import evaluate_model_dist as evaluation_function
 from code.ARoN.src.datasets import RPMFullSentencesRaw_base as rpm_dataset
 from code.ARoN.src.funs import gather_files_pgm
-from models_bbMLP_ternOnly import ReasoningModule
+from code.ARoN.src.models_bbMLP_ternOnly import ReasoningModule
 import datetime
 import random
 import numpy as np
@@ -220,6 +220,6 @@ def run_optimization(version):
 
 
 if __name__ == "__main__":
-    version = "Model_v1_itr36"
+    version = "model_v0_ax_pgm"
     set_seed()
     run_optimization(version)

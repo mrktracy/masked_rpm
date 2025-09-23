@@ -1,0 +1,33 @@
+#!/bin/bash -l
+
+# ===== Job Submission Options =====
+#$ -P noc-lab              # Project account (PI’s group on SCC)
+#$ -N aron_v0_ax_pgm       # Job name (appears in qstat / emails)
+#$ -l h_rt=300:00:00       # Wallclock time limit (hh:mm:ss) — 300h here
+#$ -m bea                  # Email when job begins (b), ends (e), or aborts (a)
+#$ -j y                    # Merge stdout and stderr into a single file
+#$ -cwd                    # Run job from current working directory
+#$ -o logs/job.out         # File to capture standard output
+#$ -e logs/job.err         # File to capture error output
+
+# ===== Resource Requests =====
+#$ -l mem_per_core=6G      # Memory per requested CPU core
+#$ -pe omp 4               # Number of CPU cores (OpenMP slots); adjust if needed
+#$ -l gpus=1               # Number of GPUs requested
+#$ -l gpu_c=6              # Minimum GPU compute capability (6 = V100)
+#$ -l gpu_type=A100        # Request specific GPU type (A100 here)
+
+# ===== Environment Setup =====
+module load miniconda       # Load conda module on SCC
+conda activate rpm          # Activate your project environment
+
+# ===== Dependency Safety Check =====
+# Ensure ax-platform is installed in the environment before running
+if ! python -c "import ax.service.ax_client" &> /dev/null; then
+  echo "Installing ax-platform in the environment..."
+  pip install --no-cache-dir ax-platform
+fi
+
+# ===== Run the Sweep =====
+# Assumes this script is run from the experiment folder
+python ax_optimize.py
