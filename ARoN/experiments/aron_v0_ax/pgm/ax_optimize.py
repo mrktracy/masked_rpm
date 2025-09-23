@@ -9,9 +9,9 @@ from ax.service.utils.report_utils import exp_to_df
 
 import sys
 
-# Go up 5 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ -> ./root/
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
-sys.path.append(os.path.join(project_root, "code", "ARoN", "src")) # Append the src/ directory so `import src.*` works
+# Go up 3 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ -> ./root/code/ARoN/
+aron_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+sys.path.append(aron_root) # Append the src/ directory so `import src.*` works
 
 from src.evaluate import evaluate_model_dist as evaluation_function
 from src.datasets import RPMFullSentencesRaw_base as rpm_dataset
@@ -40,7 +40,7 @@ def initialize_weights_he(m):
 def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_batches=3000):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Go up 5 levels from experiments/[run]/[dataset] → project root
+    # Go up 5 levels from experiments/[run]/[dataset] -> project root
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
 
     # root_dir = os.path.join(project_root, "i_raven_data_full")
