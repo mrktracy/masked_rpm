@@ -39,6 +39,10 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # root_dir = '../../../../../i_raven_data_full/'
     root_dir = '../../../../../pgm_data/neutral/'
+
+    if not os.path.exists(root_dir):
+        raise FileNotFoundError(f"Dataset root not found: {root_dir}")
+
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     train_dataset = rpm_dataset(train_files, device=device)
@@ -49,24 +53,12 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
     model_params = {
         "embed_dim": int(parameterization["embed_dim"]),
         "grid_size": 3,
-        # "abs_depth": int(parameterization["abs_depth"]),
-        # "trans_depth": int(parameterization["trans_depth"]),
         "ternary_depth": int(parameterization["ternary_depth"]),
-        # "abs_num_heads": int(parameterization["abs_num_heads"]),
-        # "trans_num_heads": int(parameterization["trans_num_heads"]),
         "tern_num_heads": int(parameterization["tern_num_heads"]),
-        # "abs_mlp_ratio": int(parameterization["abs_mlp_ratio"]),
-        # "trans_mlp_ratio": int(parameterization["trans_mlp_ratio"]),
         "tern_mlp_ratio": 4,
         "phi_mlp_hidden_dim": int(parameterization["phi_mlp_hidden_dim"]),
-        # "abs_proj_drop": parameterization["abs_proj_drop"],
-        # "trans_proj_drop": parameterization["trans_proj_drop"],
         "tern_proj_drop": parameterization["tern_proj_drop"],
-        # "abs_attn_drop": parameterization["abs_attn_drop"],
-        # "trans_attn_drop": parameterization["trans_attn_drop"],
         "tern_attn_drop": parameterization["tern_attn_drop"],
-        # "abs_drop_path_max": parameterization["abs_drop_path_max"],
-        # "trans_drop_path_max": parameterization["trans_drop_path_max"],
         "tern_drop_path_max": parameterization["tern_drop_path_max"],
         "symbol_factor_tern": 1,
         "bb_depth": int(parameterization["bb_depth"]),
@@ -143,30 +135,16 @@ def run_optimization(version):
             {"name": "learning_rate", "type": "range", "bounds": [1e-6, 5e-4], "log_scale": True},
 
             # Reasoning module parameters
-            # {"name": "abs_depth", "type": "choice", "values": [1, 2, 3, 4]},
-            # {"name": "trans_depth", "type": "choice", "values": [1, 2, 3, 4]},
             {"name": "ternary_depth", "type": "choice", "values": [1, 2, 4, 6, 8, 10]},
-            # {"name": "abs_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
-            # {"name": "trans_num_heads", "type": "choice", "values": [2, 4, 8, 16]},
             {"name": "tern_num_heads", "type": "choice", "values": [4, 8, 16, 32, 64]},
-            # {"name": "abs_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-            # {"name": "trans_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-            # {"name": "abs_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-            # {"name": "trans_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "tern_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-            # {"name": "abs_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-            # {"name": "trans_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-            # {"name": "abs_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
-            # {"name": "trans_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [4, 6, 8]},
-            # {"name": "symbol_factor_tern", "type": "choice", "values": [1, 2, 3]},
 
             # Backbone parameters
             {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4]},
             {"name": "bb_num_heads", "type": "choice", "values": [4, 8, 16, 32, 64]},
-            # {"name": "bb_mlp_ratio", "type": "choice", "values": [2, 4, 6]},
             {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
@@ -174,7 +152,6 @@ def run_optimization(version):
             {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
             {"name": "mlp_pool_depth", "type": "choice", "values": [1, 2, 3]},
             {"name": "mlp_pool_hidden_dim_factor", "type": "choice", "values": [1, 2, 4]}
-            # {"name": "use_bb_pos_enc", "type": "choice", "values": [True]}
         ],
         objectives={"val_acc": ObjectiveProperties(minimize=False)},
     )
@@ -188,16 +165,18 @@ def run_optimization(version):
     for trial in range(first_trial, total_trials):
         start_time = datetime.datetime.now()
         logging.info(f"Starting trial {trial + 1} of {total_trials} at {start_time}...")
+
+        # Heartbeat marker
+        with open(f"{results_dir}/heartbeat.txt", "a") as f:
+            f.write(f"Started trial {trial + 1} at {start_time}\n")
+
         try:
-            # Get parameters for the trial
             parameters, trial_index = ax_client.get_next_trial()
-            logging.info(f"Trial {trial + 1} parameters: {parameters}")  # Log the parameters being tried
+            logging.info(f"Trial {trial + 1} parameters: {parameters}")
 
-            # Train and evaluate the model
             val_acc = train_and_evaluate(parameters, epochs=1, use_max_batches=True, max_batches=2500)
-            logging.info(f"Trial {trial + 1} validation accuracy: {val_acc}")  # Log the validation accuracy
+            logging.info(f"Trial {trial + 1} validation accuracy: {val_acc}")
 
-            # Mark the trial as complete in Ax
             ax_client.complete_trial(trial_index=trial_index, raw_data=val_acc)
             logging.info(f"Trial {trial + 1} completed successfully.")
 
@@ -205,7 +184,6 @@ def run_optimization(version):
             ax_client.log_trial_failure(trial_index=trial_index)
             logging.error(f"Trial {trial + 1} failed: {e}")
 
-        # Save Ax state after each trial
         try:
             ax_client.save_to_json_file(filepath=f"{results_dir}/ax_state.json")
         except Exception as save_err:
@@ -215,12 +193,10 @@ def run_optimization(version):
         duration = end_time - start_time
         logging.info(f"Trial {trial + 1} duration: {duration}\n")
 
-    # save best parameters
     best_parameters, metrics = ax_client.get_best_parameters()
     best_val_acc = metrics.get("val_acc", {}).get("value", None)
     logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Accuracy: {best_val_acc}")
 
-    # Final save of results
     experiment = ax_client.experiment
     results_df = exp_to_df(experiment)
     results_df.to_csv(results_path, index=False)
