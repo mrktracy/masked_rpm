@@ -2,7 +2,6 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-
 # Dataset for training and evaluation, corresponding to model v17
 class RPMFullSentences_evalByType(Dataset):
     def __init__(self, df, device):

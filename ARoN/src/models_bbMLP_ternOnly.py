@@ -1,9 +1,9 @@
 import torch
-from code.ARoN.src import pos_embed as pos
+from src import pos_embed as pos
 import torch.nn as nn
 from timm.layers import Mlp, DropPath
 from typing import Tuple
-from code.ARoN.src.funs import build_mlp_pool
+from src.funs import build_mlp_pool
 
 
 class Perception(nn.Module):

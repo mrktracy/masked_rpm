@@ -1,5 +1,5 @@
 import torch
-from code.ARoN.src import pos_embed as pos
+from src import pos_embed as pos
 import torch.nn as nn
 from timm.layers import Mlp, DropPath
 from typing import Tuple
