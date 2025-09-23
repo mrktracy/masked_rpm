@@ -37,8 +37,8 @@ def initialize_weights_he(m):
 
 def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_batches=3000):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    root_dir = '../../i_raven_data_full/'
-    # root_dir = '../../pgm_data/neutral/'
+    root_dir = '../../../../../i_raven_data_full/'
+    # root_dir = '../../../../../pgm_data/neutral/'
     train_files, val_files, test_files = gather_files_pgm(root_dir)
 
     train_dataset = rpm_dataset(train_files, device=device)
