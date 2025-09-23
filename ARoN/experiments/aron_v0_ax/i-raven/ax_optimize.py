@@ -9,11 +9,9 @@ from ax.service.utils.report_utils import exp_to_df
 
 import sys
 
-# Go up 3 levels from experiments/[run_name]/[dataset_name]/ → code/ARoN/
-aron_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-
-# Append the src/ directory so `import src.*` works
-sys.path.append(os.path.join(aron_root, "src"))
+# Go up 5 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ → ./root/
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
+sys.path.append(os.path.join(project_root, "code", "ARoN", "src")) # Append the src/ directory so `import src.*` works
 
 from src.evaluate import evaluate_model_dist as evaluation_function
 from src.datasets import RPMFullSentencesRaw_base as rpm_dataset
