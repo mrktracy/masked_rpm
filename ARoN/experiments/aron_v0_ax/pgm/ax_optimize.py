@@ -117,7 +117,7 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
 
 
 def run_optimization(version):
-    results_dir = f"../../tr_results/{version}"
+    results_dir = "./results/"
     os.makedirs(results_dir, exist_ok=True)
 
     logging.basicConfig(level=logging.INFO,
@@ -156,7 +156,7 @@ def run_optimization(version):
         objectives={"val_acc": ObjectiveProperties(minimize=False)},
     )
 
-    results_path = f"../../tr_results/{version}/ax_results.csv"
+    results_path = os.path.join(results_dir, "ax_results.csv")
     total_trials = 120
     trial_index = 0
 
