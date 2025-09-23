@@ -8,8 +8,12 @@ from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.service.utils.report_utils import exp_to_df
 
 import sys
-# Add project_root/code/ARoN to Python path so we can import from src/*
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+
+# Go up 3 levels from experiments/[run_name]/[dataset_name]/ → code/ARoN/
+aron_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+
+# Append the src/ directory so `import src.*` works
+sys.path.append(os.path.join(aron_root, "src"))
 
 from src.evaluate import evaluate_model_dist as evaluation_function
 from src.datasets import RPMFullSentencesRaw_base as rpm_dataset
