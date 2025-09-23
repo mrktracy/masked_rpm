@@ -9,7 +9,7 @@ from ax.service.utils.report_utils import exp_to_df
 
 import sys
 
-# Go up 5 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ → ./root/
+# Go up 5 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ -> ./root/
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
 sys.path.append(os.path.join(project_root, "code", "ARoN", "src")) # Append the src/ directory so `import src.*` works
 
@@ -204,7 +204,7 @@ def run_optimization(version):
         best_val_acc = metrics.get("val_acc", {}).get("value", None)
         logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Accuracy: {best_val_acc}")
     else:
-        logging.warning("No successful trials — skipping best parameters summary")
+        logging.warning("No successful trials - skipping best parameters summary")
 
     experiment = ax_client.experiment
     results_df = exp_to_df(experiment)
