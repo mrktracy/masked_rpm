@@ -2,7 +2,7 @@
 
 # ===== Job Submission Options =====
 #$ -P noc-lab                      # Project account (PI’s group on SCC)
-#$ -N aron_v0_ax_i-raven_A40           # Job name (appears in qstat / emails, reused for logs)
+#$ -N aron_v0_ax_pgm_A40           # Job name (appears in qstat / emails, reused for logs)
 #$ -l h_rt=300:00:00               # Wallclock time limit (hh:mm:ss) — 300h here
 #$ -m bea                          # Email when job begins (b), ends (e), or aborts (a)
 #$ -j y                            # Merge stdout and stderr into one file
