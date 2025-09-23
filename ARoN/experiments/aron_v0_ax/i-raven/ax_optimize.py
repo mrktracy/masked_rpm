@@ -11,7 +11,10 @@ import sys
 
 # Go up 3 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ -> ./root/code/ARoN/
 aron_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-sys.path.append(aron_root) # Append the src/ directory so `import src.*` works
+src_path = os.path.join(aron_root, "src")
+print(">>> DEBUG adding src_path:", src_path)
+assert os.path.exists(src_path), f"src path does not exist: {src_path}"
+sys.path.append(src_path)
 
 from src.evaluate import evaluate_model_dist as evaluation_function
 from src.datasets import RPMFullSentencesRaw_base as rpm_dataset
