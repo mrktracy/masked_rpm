@@ -6,10 +6,15 @@ from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.service.utils.report_utils import exp_to_df
+
+import sys
+# Add project root (masked_rpm/) to Python path so code/ARoN/... works
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+
 from code.ARoN.src.evaluate import evaluate_model_dist as evaluation_function
 from code.ARoN.src.datasets import RPMFullSentencesRaw_base as rpm_dataset
 from code.ARoN.src.funs import gather_files_pgm
-from models_bbMLP_ternOnly import ReasoningModule
+from code.ARoN.src.models_bbMLP_ternOnly import ReasoningModule
 import datetime
 import random
 import numpy as np
@@ -220,6 +225,6 @@ def run_optimization(version):
 
 
 if __name__ == "__main__":
-    version = "Model_v1_itr36"
+    version = "aron_v0_ax_pgm"
     set_seed()
     run_optimization(version)
