@@ -41,8 +41,12 @@ def initialize_weights_he(m):
 
 def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_batches=3000):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # root_dir = '../../../../../i_raven_data_full/'
-    root_dir = '../../../../../pgm_data/neutral/'
+
+    # Go up 5 levels from experiments/[run]/[dataset] → project root
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
+
+    # root_dir = os.path.join(project_root, "i_raven_data_full")
+    root_dir = os.path.join(project_root, "pgm_data", "neutral")
 
     if not os.path.exists(root_dir):
         raise FileNotFoundError(f"Dataset root not found: {root_dir}")
