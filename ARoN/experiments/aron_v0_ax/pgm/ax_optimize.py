@@ -201,9 +201,12 @@ def run_optimization(version):
         duration = end_time - start_time
         logging.info(f"Trial {trial + 1} duration: {duration}\n")
 
-    best_parameters, metrics = ax_client.get_best_parameters()
-    best_val_acc = metrics.get("val_acc", {}).get("value", None)
-    logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Accuracy: {best_val_acc}")
+    if any(t.status.is_completed for t in ax_client.experiment.trials.values()):
+        best_parameters, metrics = ax_client.get_best_parameters()
+        best_val_acc = metrics.get("val_acc", {}).get("value", None)
+        logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Accuracy: {best_val_acc}")
+    else:
+        logging.warning("No successful trials — skipping best parameters summary")
 
     experiment = ax_client.experiment
     results_df = exp_to_df(experiment)
