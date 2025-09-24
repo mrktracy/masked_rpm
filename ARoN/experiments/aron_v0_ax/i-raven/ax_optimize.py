@@ -10,11 +10,17 @@ from ax.service.utils.report_utils import exp_to_df
 import sys
 
 # Go up 3 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ -> ./root/code/ARoN/
+# aron_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+# src_path = os.path.join(aron_root, "src")
+# print(">>> DEBUG adding src_path:", src_path)
+# assert os.path.exists(src_path), f"src path does not exist: {src_path}"
+# sys.path.append(src_path)
+
+# Go up 3 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ -> ./root/code/ARoN/
 aron_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-src_path = os.path.join(aron_root, "src")
-print(">>> DEBUG adding src_path:", src_path)
-assert os.path.exists(src_path), f"src path does not exist: {src_path}"
-sys.path.append(src_path)
+print(">>> DEBUG adding aron_root:", aron_root)
+assert os.path.exists(aron_root), f"aron root does not exist: {aron_root}"
+sys.path.insert(0, aron_root)
 
 from src.evaluate import evaluate_model_dist as evaluation_function
 from src.datasets import RPMFullSentencesRaw_base as rpm_dataset
