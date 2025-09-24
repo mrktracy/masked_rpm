@@ -7,8 +7,8 @@
 #$ -m bea                              # Email when job begins (b), ends (e), or aborts (a)
 #$ -j y                                # Merge stdout and stderr into one file
 #$ -cwd                                # Run job from current working directory
-#$ -o logs/$JOB_NAME/job.out           # Stdout goes into version-specific folder (based on job name)
-#$ -e logs/$JOB_NAME/job.err           # Stderr goes into the same folder
+#$ -o logs/$JOB_NAME/job_$JOB_ID.out       # Stdout goes into version-specific folder (based on job name)
+#$ -e logs/$JOB_NAME/job_$JOB_ID.err       # Stderr goes into the same folder (if -j n above)
 
 # ===== Resource Requests =====
 #$ -pe omp 4                           # Number of CPU cores (4 per GPU is a good balance)
