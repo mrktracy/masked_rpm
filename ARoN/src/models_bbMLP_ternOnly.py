@@ -115,17 +115,21 @@ class BackbonePerception(nn.Module):
                  grid_dim=5,
                  num_heads=32,
                  mlp_ratio=4,
-                 norm_layer=nn.LayerNorm,
+                 norm_layer=None,          # <- no nn.LayerNorm here
                  depth=4,
                  mlp_drop=0.3,
                  proj_drop=0.3,
                  attn_drop=0.3,
                  drop_path_max=0.5,
                  use_bb_pos_enc=False,
-                 bb_pool_type=0,   # 0 = MLP pooling, 1 = CLS pooling
+                 bb_pool_type=0,           # 0 = MLP pooling, 1 = CLS pooling
                  mlp_pool_depth=1,
                  mlp_pool_hidden_dim_factor=4):
         super().__init__()
+
+        # Default norm layer
+        if norm_layer is None:
+            norm_layer = nn.LayerNorm
 
         self.embed_dim = embed_dim
         self.out_channels = out_channels
@@ -213,6 +217,7 @@ class BackbonePerception(nn.Module):
         x = self.pool(x)  # (batch, embed_dim)
 
         return x
+
 
 
 class ResNetDecoder(nn.Module):
