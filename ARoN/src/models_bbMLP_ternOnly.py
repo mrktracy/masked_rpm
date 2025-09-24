@@ -20,7 +20,9 @@ class Perception(nn.Module):
                  bb_mlp_drop=0,
                  decoder_mlp_drop=0.5,
                  use_bb_pos_enc=False,
-                 mlp_pool_depth=1):
+                 mlp_pool_depth=1,
+                 mlp_pool_hidden_dim_factor=4
+                 ):
         super().__init__()
         self.n_nodes = grid_size ** 2
         self.embed_dim = embed_dim
@@ -36,7 +38,8 @@ class Perception(nn.Module):
         self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads,
                                              mlp_ratio=bb_mlp_ratio, mlp_drop=bb_mlp_drop, proj_drop=bb_proj_drop,
                                              attn_drop=bb_attn_drop, drop_path_max=bb_drop_path_max,
-                                             use_bb_pos_enc=use_bb_pos_enc, mlp_pool_depth=mlp_pool_depth)
+                                             use_bb_pos_enc=use_bb_pos_enc, mlp_pool_depth=mlp_pool_depth,
+                                             mlp_pool_hidden_dim_factor=mlp_pool_hidden_dim_factor)
 
         # Decoder for reconstructing sentences
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=decoder_mlp_drop)
@@ -243,7 +246,8 @@ class ReasoningModule(nn.Module):
         use_bb_pos_enc=False,
         # symbol_factor_abs=1,
         symbol_factor_tern=1,
-        mlp_pool_depth=1
+        mlp_pool_depth=1,
+        mlp_pool_hidden_dim_factor=4
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -267,7 +271,8 @@ class ReasoningModule(nn.Module):
             bb_mlp_drop=bb_mlp_drop,
             decoder_mlp_drop=decoder_mlp_drop,
             use_bb_pos_enc=use_bb_pos_enc,
-            mlp_pool_depth=mlp_pool_depth
+            mlp_pool_depth=mlp_pool_depth,
+            mlp_pool_hidden_dim_factor=mlp_pool_hidden_dim_factor
         )
 
         # Positional embeddings
