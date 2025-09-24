@@ -1,0 +1,241 @@
+import os
+import logging
+import torch
+from torch import nn
+from torch.optim.lr_scheduler import ExponentialLR
+from torch.utils.data import DataLoader
+from ax.service.ax_client import AxClient, ObjectiveProperties
+from ax.service.utils.report_utils import exp_to_df
+
+import sys
+
+# Go up 3 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ -> ./root/code/ARoN/
+# aron_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+# src_path = os.path.join(aron_root, "src")
+# print(">>> DEBUG adding src_path:", src_path)
+# assert os.path.exists(src_path), f"src path does not exist: {src_path}"
+# sys.path.append(src_path)
+
+# Go up 3 levels from ./root/code/ARoN/experiments/[run_name]/[dataset_name]/ -> ./root/code/ARoN/
+aron_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+print(">>> DEBUG adding aron_root:", aron_root)
+assert os.path.exists(aron_root), f"aron root does not exist: {aron_root}"
+sys.path.insert(0, aron_root)
+
+from src.evaluate import evaluate_model_dist as evaluation_function
+from src.datasets import RPMFullSentencesRaw_base as rpm_dataset
+from src.funs import gather_files_pgm
+from src.models_bbMLP_ternOnly import ReasoningModule
+
+import datetime
+import random
+import numpy as np
+
+
+def set_seed(seed=42):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
+
+def initialize_weights_he(m):
+    if isinstance(m, nn.Linear):
+        nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+
+
+def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_batches=3000):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Go up 5 levels from experiments/[run]/[dataset] -> project root
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
+
+    # root_dir = os.path.join(project_root, "i_raven_data_full")
+    root_dir = os.path.join(project_root, "pgm_data", "neutral")
+
+    if not os.path.exists(root_dir):
+        raise FileNotFoundError(f"Dataset root not found: {root_dir}")
+
+    train_files, val_files, test_files = gather_files_pgm(root_dir)
+
+    train_dataset = rpm_dataset(train_files, device=device)
+    val_dataset = rpm_dataset(val_files, device=device)
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+    model_params = {
+        "embed_dim": int(parameterization["embed_dim"]),
+        "grid_size": 3,
+        "ternary_depth": int(parameterization["ternary_depth"]),
+        "tern_num_heads": int(parameterization["tern_num_heads"]),
+        "tern_mlp_ratio": 4,
+        "phi_mlp_hidden_dim": int(parameterization["phi_mlp_hidden_dim"]),
+        "tern_proj_drop": parameterization["tern_proj_drop"],
+        "tern_attn_drop": parameterization["tern_attn_drop"],
+        "tern_drop_path_max": parameterization["tern_drop_path_max"],
+        "symbol_factor_tern": 1,
+        "bb_depth": int(parameterization["bb_depth"]),
+        "bb_num_heads": int(parameterization["bb_num_heads"]),
+        "bb_mlp_ratio": 4,
+        "bb_proj_drop": parameterization["bb_proj_drop"],
+        "bb_attn_drop": parameterization["bb_attn_drop"],
+        "bb_drop_path_max": parameterization["bb_drop_path_max"],
+        "bb_mlp_drop": parameterization["bb_mlp_drop"],
+        "decoder_mlp_drop": parameterization["decoder_mlp_drop"],
+        "use_bb_pos_enc": True,
+        "bb_pool_type": 1,
+        "mlp_pool_depth": parameterization["mlp_pool_depth"],
+        "mlp_pool_hidden_dim_factor": parameterization["mlp_pool_hidden_dim_factor"]
+    }
+
+    model = ReasoningModule(**model_params).to(device)
+    model.apply(initialize_weights_he)
+
+    if torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=parameterization["learning_rate"], weight_decay=1e-4)
+    scheduler = ExponentialLR(optimizer, gamma=0.95)
+    criterion_task = nn.CrossEntropyLoss()
+    criterion_reconstruction = nn.MSELoss()
+
+    batch_count = 0
+    for epoch in range(epochs):
+        model.train()
+        for sentences, target_nums, _, _ in train_dataloader:
+            if use_max_batches and batch_count >= max_batches:
+                break
+
+            optimizer.zero_grad()
+            sentences = sentences.to(device)
+            target_nums = target_nums.to(device)
+
+            reconstructed_sentences, scores = model(sentences)
+            rec_err = criterion_reconstruction(sentences, reconstructed_sentences)
+            task_err = criterion_task(scores, target_nums)
+            loss = parameterization["alpha"] * task_err + (1 - parameterization["alpha"]) * rec_err
+            loss.backward()
+            optimizer.step()
+
+            if use_max_batches:
+                batch_count += 1
+
+        if use_max_batches and batch_count >= max_batches:
+            break
+
+        scheduler.step()
+
+    model.eval()
+    val_acc, _ = evaluation_function(model, val_dataloader, device)
+    return val_acc
+
+
+def run_optimization(version):
+    results_dir = "./results/"
+    os.makedirs(results_dir, exist_ok=True)
+
+    logging.basicConfig(level=logging.INFO,
+                        filename=f"{results_dir}/{version}_ax_log.txt",
+                        filemode="a") # in append mode if picking up from a saved ax_state
+
+    # ax_client = AxClient.load_from_json_file(filepath=f"{results_dir}/ax_state.json")
+
+    ax_client = AxClient()
+    ax_client.create_experiment(
+        name=f"reasoning_module_optimization_{version}",
+        parameters=[
+            # Blending loss weights
+            {"name": "alpha", "type": "range", "bounds": [0.0, 1.0], "value_type": "float"},
+
+            # Embedding / learning rate
+            {"name": "embed_dim", "type": "choice", "values": [256, 512, 768, 1024],
+             "value_type": "int", "is_ordered": True, "sort_values": True},
+            {"name": "learning_rate", "type": "range", "bounds": [1e-6, 5e-4],
+             "log_scale": True, "value_type": "float"},
+
+            # Reasoning module parameters
+            {"name": "ternary_depth", "type": "choice", "values": [1, 2, 4, 6, 8, 10],
+             "value_type": "int", "is_ordered": True, "sort_values": True},
+            {"name": "tern_num_heads", "type": "choice", "values": [4, 8, 16, 32, 64],
+             "value_type": "int", "is_ordered": True, "sort_values": True},
+            {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "tern_attn_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [4, 6, 8],
+             "value_type": "int", "is_ordered": True, "sort_values": True},
+
+            # Backbone parameters
+            {"name": "bb_depth", "type": "choice", "values": [1, 2, 3, 4],
+             "value_type": "int", "is_ordered": True, "sort_values": True},
+            {"name": "bb_num_heads", "type": "choice", "values": [4, 8, 16, 32, 64],
+             "value_type": "int", "is_ordered": True, "sort_values": True},
+            {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+
+            # Pooling head
+            {"name": "mlp_pool_depth", "type": "choice", "values": [1, 2, 3],
+             "value_type": "int", "is_ordered": True, "sort_values": True},
+            {"name": "mlp_pool_hidden_dim_factor", "type": "choice", "values": [1, 2, 4],
+             "value_type": "int", "is_ordered": True, "sort_values": True}
+        ],
+        objectives={"val_acc": ObjectiveProperties(minimize=False)},
+    )
+
+    results_path = os.path.join(results_dir, "ax_results.csv")
+    total_trials = 120
+    trial_index = 0
+
+    first_trial = len(ax_client.experiment.trials) # if restarting, pick up where you left off
+
+    for trial in range(first_trial, total_trials):
+        start_time = datetime.datetime.now()
+        logging.info(f"Starting trial {trial + 1} of {total_trials} at {start_time}...")
+
+        # Heartbeat marker
+        with open(f"{results_dir}/heartbeat.txt", "a") as f:
+            f.write(f"Started trial {trial + 1} at {start_time}\n")
+
+        try:
+            parameters, trial_index = ax_client.get_next_trial()
+            logging.info(f"Trial {trial + 1} parameters: {parameters}")
+
+            val_acc = train_and_evaluate(parameters, epochs=1, use_max_batches=True, max_batches=2500)
+            logging.info(f"Trial {trial + 1} validation accuracy: {val_acc}")
+
+            ax_client.complete_trial(trial_index=trial_index, raw_data=val_acc)
+            logging.info(f"Trial {trial + 1} completed successfully.")
+
+        except Exception as e:
+            ax_client.log_trial_failure(trial_index=trial_index)
+            logging.error(f"Trial {trial + 1} failed: {e}")
+
+        try:
+            ax_client.save_to_json_file(filepath=f"{results_dir}/ax_state.json")
+        except Exception as save_err:
+            logging.error(f"Failed to save Ax state: {save_err}")
+
+        end_time = datetime.datetime.now()
+        duration = end_time - start_time
+        logging.info(f"Trial {trial + 1} duration: {duration}\n")
+
+    if any(t.status.is_completed for t in ax_client.experiment.trials.values()):
+        best_parameters, metrics = ax_client.get_best_parameters()
+        best_val_acc = metrics.get("val_acc", {}).get("value", None)
+        logging.info(f"Best Trial - Parameters: {best_parameters}, Validation Accuracy: {best_val_acc}")
+    else:
+        logging.warning("No successful trials - skipping best parameters summary")
+
+    experiment = ax_client.experiment
+    results_df = exp_to_df(experiment)
+    results_df.to_csv(results_path, index=False)
+
+
+if __name__ == "__main__":
+    version = "aron_v1_ax_pgm"
+    set_seed()
+    run_optimization(version)
