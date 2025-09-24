@@ -145,19 +145,23 @@ def run_optimization(version):
     ax_client.create_experiment(
         name=f"reasoning_module_optimization_{version}",
         parameters=[
-            {"name": "alpha", "type": "range", "bounds": [0.0, 1.0]},
+            # Blending loss weights
+            {"name": "alpha", "type": "range", "bounds": [0.0, 1.0], "value_type": "float"},
+
+            # Embedding / learning rate
             {"name": "embed_dim", "type": "choice", "values": [256, 512, 768, 1024],
              "value_type": "int", "is_ordered": True, "sort_values": True},
-            {"name": "learning_rate", "type": "range", "bounds": [1e-6, 5e-4], "log_scale": True},
+            {"name": "learning_rate", "type": "range", "bounds": [1e-6, 5e-4],
+             "log_scale": True, "value_type": "float"},
 
             # Reasoning module parameters
             {"name": "ternary_depth", "type": "choice", "values": [1, 2, 4, 6, 8, 10],
              "value_type": "int", "is_ordered": True, "sort_values": True},
             {"name": "tern_num_heads", "type": "choice", "values": [4, 8, 16, 32, 64],
              "value_type": "int", "is_ordered": True, "sort_values": True},
-            {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "tern_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "tern_proj_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "tern_attn_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "tern_drop_path_max", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
             {"name": "phi_mlp_hidden_dim", "type": "choice", "values": [4, 6, 8],
              "value_type": "int", "is_ordered": True, "sort_values": True},
 
@@ -166,11 +170,13 @@ def run_optimization(version):
              "value_type": "int", "is_ordered": True, "sort_values": True},
             {"name": "bb_num_heads", "type": "choice", "values": [4, 8, 16, 32, 64],
              "value_type": "int", "is_ordered": True, "sort_values": True},
-            {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
-            {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5]},
+            {"name": "bb_proj_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "bb_attn_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "bb_drop_path_max", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "bb_mlp_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+            {"name": "decoder_mlp_drop", "type": "range", "bounds": [0.0, 0.5], "value_type": "float"},
+
+            # Pooling head
             {"name": "mlp_pool_depth", "type": "choice", "values": [1, 2, 3],
              "value_type": "int", "is_ordered": True, "sort_values": True},
             {"name": "mlp_pool_hidden_dim_factor", "type": "choice", "values": [1, 2, 4],
