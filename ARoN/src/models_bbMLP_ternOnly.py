@@ -20,6 +20,7 @@ class Perception(nn.Module):
                  bb_mlp_drop=0,
                  decoder_mlp_drop=0.5,
                  use_bb_pos_enc=False,
+                 bb_pool_type=0,
                  mlp_pool_depth=1,
                  mlp_pool_hidden_dim_factor=4
                  ):
@@ -35,11 +36,19 @@ class Perception(nn.Module):
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
 
         # Backbone for feature extraction
-        self.perception = BackbonePerception(embed_dim=self.embed_dim, depth=bb_depth, num_heads=bb_num_heads,
-                                             mlp_ratio=bb_mlp_ratio, mlp_drop=bb_mlp_drop, proj_drop=bb_proj_drop,
-                                             attn_drop=bb_attn_drop, drop_path_max=bb_drop_path_max,
-                                             use_bb_pos_enc=use_bb_pos_enc, mlp_pool_depth=mlp_pool_depth,
-                                             mlp_pool_hidden_dim_factor=mlp_pool_hidden_dim_factor)
+        self.perception = BackbonePerception(embed_dim=self.embed_dim,
+                                             depth=bb_depth,
+                                             num_heads=bb_num_heads,
+                                             mlp_ratio=bb_mlp_ratio,
+                                             mlp_drop=bb_mlp_drop,
+                                             proj_drop=bb_proj_drop,
+                                             attn_drop=bb_attn_drop,
+                                             drop_path_max=bb_drop_path_max,
+                                             use_bb_pos_enc=use_bb_pos_enc,
+                                             bb_pool_type = bb_pool_type,
+                                             mlp_pool_depth=mlp_pool_depth,
+                                             mlp_pool_hidden_dim_factor=mlp_pool_hidden_dim_factor
+                                             )
 
         # Decoder for reconstructing sentences
         self.decoder = ResNetDecoder(embed_dim=self.embed_dim, mlp_drop=decoder_mlp_drop)
@@ -113,9 +122,10 @@ class BackbonePerception(nn.Module):
                  attn_drop=0.3,
                  drop_path_max=0.5,
                  use_bb_pos_enc=False,
+                 bb_pool_type=0,   # 0 = MLP pooling, 1 = CLS pooling
                  mlp_pool_depth=1,
                  mlp_pool_hidden_dim_factor=4):
-        super(BackbonePerception, self).__init__()
+        super().__init__()
 
         self.embed_dim = embed_dim
         self.out_channels = out_channels
@@ -124,60 +134,83 @@ class BackbonePerception(nn.Module):
         self.mlp_ratio = mlp_ratio
         self.grid_dim = grid_dim
         self.use_bb_pos_enc = use_bb_pos_enc
+        self.bb_pool_type = bb_pool_type
 
-        # CLS Token
-        # self.cls_token = nn.Parameter(torch.randn(1, 1, out_channels))
+        # CLS token
+        if self.bb_pool_type == 1:
+            self.cls_token = nn.Parameter(torch.randn(1, 1, out_channels))
 
-        self.encoder = nn.Sequential(  # from N, 1, 160, 160
-            ResidualBlock(1, 16),  # N, 16, 160, 160
-            ResidualBlock(16, 32, 2),  # N, 32, 80, 80
-            ResidualBlock(32, 64, 2),  # N, 64, 40, 40
-            ResidualBlock(64, 128, 2),  # N, 128, 20, 20
-            ResidualBlock(128, 256, 2),  # N, 256, 10, 10
-            ResidualBlock(256, 512, 2)  # N, 512, 5, 5
+        # CNN encoder
+        self.encoder = nn.Sequential(
+            ResidualBlock(1, 16),
+            ResidualBlock(16, 32, 2),
+            ResidualBlock(32, 64, 2),
+            ResidualBlock(64, 128, 2),
+            ResidualBlock(128, 256, 2),
+            ResidualBlock(256, 512, 2)  # -> (batch, 512, 5, 5)
         )
 
+        # Positional encoding
         if use_bb_pos_enc:
-            self.pos_embed = nn.Parameter(torch.zeros([grid_dim ** 2, out_channels]), requires_grad=False)
-            pos_embed_data = pos.get_2d_sincos_pos_embed(embed_dim=out_channels, grid_size=grid_dim, cls_token=True)
+            seq_len = grid_dim ** 2 + (1 if bb_pool_type == 1 else 0)
+            self.pos_embed = nn.Parameter(torch.zeros([seq_len, out_channels]), requires_grad=False)
+            pos_embed_data = pos.get_2d_sincos_pos_embed(
+                embed_dim=out_channels, grid_size=grid_dim, cls_token=(bb_pool_type == 1)
+            )
             self.pos_embed.data.copy_(torch.from_numpy(pos_embed_data).float())
 
+        # Transformer blocks
         self.blocks = nn.ModuleList([
-            Block(self.out_channels, self.out_channels, self.num_heads, self.mlp_ratio,
+            Block(out_channels, out_channels, num_heads, mlp_ratio,
                   q_bias=False, k_bias=False, v_bias=False, norm_layer=norm_layer,
                   proj_drop=proj_drop, attn_drop=attn_drop,
-                  drop_path=drop_path_max * ((i + 1) / self.depth), restrict_qk=False)
-            for i in range(self.depth)])
+                  drop_path=drop_path_max * ((i + 1) / depth), restrict_qk=False)
+            for i in range(depth)
+        ])
 
-        self.mlp = build_mlp_pool(
-            in_dim=self.out_channels * grid_dim ** 2,
-            out_dim=self.embed_dim,
-            depth=mlp_pool_depth,
-            hidden_dim=self.embed_dim * mlp_pool_hidden_dim_factor,
-            dropout=mlp_drop
-        )
+        # Pooling
+        if bb_pool_type == 1:
+            # Project CLS token to embed_dim
+            self.pool = nn.Linear(out_channels, embed_dim)
+        else:
+            # Flatten tokens and project
+            self.pool = build_mlp_pool(
+                in_dim=out_channels * grid_dim ** 2,
+                out_dim=embed_dim,
+                depth=mlp_pool_depth,
+                hidden_dim=embed_dim * mlp_pool_hidden_dim_factor,
+                dropout=mlp_drop
+            )
 
     def forward(self, x):
+        batch_size = x.size(0)
 
-        batch_dim = x.size(0)
+        # CNN -> tokens
+        x = self.encoder(x)  # (batch, 512, 5, 5)
+        x = x.reshape(batch_size, self.grid_dim ** 2, self.out_channels)  # (batch, 25, 512)
 
-        x = self.encoder(x)
+        # Optional CLS token
+        if self.bb_pool_type == 1:
+            cls_tokens = self.cls_token.expand(batch_size, -1, -1)  # (batch, 1, 512)
+            x = torch.cat([cls_tokens, x], dim=1)  # (batch, 26, 512)
 
-        x = x.reshape(batch_dim, self.grid_dim ** 2, self.out_channels)
-
-        # cls_tokens = self.cls_token.expand(batch_dim, -1, -1)
-        # x = torch.cat([cls_tokens, x], dim=1)  # CLS token at the start
-
+        # Positional encoding
         if self.use_bb_pos_enc:
-            pos_embed = self.pos_embed.unsqueeze(0).expand(batch_dim, -1, self.out_channels)
+            pos_embed = self.pos_embed.unsqueeze(0).expand(batch_size, -1, self.out_channels)
             x = x + pos_embed
 
+        # Transformer blocks
         for block in self.blocks:
             x = block(x_q=x, x_k=x, x_v=x)
 
-        # x = x[:, 0, :]
+        # Pooling
+        if self.bb_pool_type == 1:
+            x = x[:, 0, :]  # CLS token (batch, 512)
+        else:
+            x = x.reshape(batch_size, -1)  # Flatten (batch, 25*512)
 
-        x = self.mlp(x.view(batch_dim, -1))
+        # Project to embed_dim
+        x = self.pool(x)  # (batch, embed_dim)
 
         return x
 
@@ -246,8 +279,9 @@ class ReasoningModule(nn.Module):
         use_bb_pos_enc=False,
         # symbol_factor_abs=1,
         symbol_factor_tern=1,
+        bb_pool_type=0, # 0 = MLP, 1 = CLS
         mlp_pool_depth=1,
-        mlp_pool_hidden_dim_factor=4
+        mlp_pool_hidden_dim_factor=4,
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -271,6 +305,7 @@ class ReasoningModule(nn.Module):
             bb_mlp_drop=bb_mlp_drop,
             decoder_mlp_drop=decoder_mlp_drop,
             use_bb_pos_enc=use_bb_pos_enc,
+            bb_pool_type = bb_pool_type,
             mlp_pool_depth=mlp_pool_depth,
             mlp_pool_hidden_dim_factor=mlp_pool_hidden_dim_factor
         )
