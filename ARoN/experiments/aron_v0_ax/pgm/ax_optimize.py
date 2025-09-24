@@ -85,6 +85,7 @@ def train_and_evaluate(parameterization, epochs=1, use_max_batches=False, max_ba
         "bb_mlp_drop": parameterization["bb_mlp_drop"],
         "decoder_mlp_drop": parameterization["decoder_mlp_drop"],
         "use_bb_pos_enc": True,
+        "bb_pool_type": 0,
         "mlp_pool_depth": parameterization["mlp_pool_depth"],
         "mlp_pool_hidden_dim_factor": parameterization["mlp_pool_hidden_dim_factor"]
     }
