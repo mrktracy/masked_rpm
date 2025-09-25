@@ -1,7 +1,7 @@
 import os
 import logging
 import torch
-from torch import nn
+import torch.nn as nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from ax.service.ax_client import AxClient, ObjectiveProperties
