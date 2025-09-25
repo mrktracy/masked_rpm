@@ -2,7 +2,8 @@
 import os
 import random
 import re
-
+import torch
+import torch.nn as nn
 import pandas as pd
 
 def build_mlp_pool(in_dim, out_dim, depth=1, hidden_dim=None, dropout=0.0):
