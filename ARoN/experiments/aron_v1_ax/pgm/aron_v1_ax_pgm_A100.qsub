@@ -13,7 +13,7 @@
 # ===== Resource Requests =====
 #$ -pe omp 4                       # Number of CPU cores (4 per GPU is a good balance)
 #$ -l mem_per_core=6G              # Memory per requested CPU core
-#$ -l gpus=1                       # Number of GPUs requested
+#$ -l gpus=2                       # Number of GPUs requested
 #$ -l gpu_type=A100                # Specifically request A100 GPUs
 #$ -l gpu_c=8.0                    # Compute capability for A100 (8.0)
 
